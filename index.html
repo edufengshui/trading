@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Trading Calculator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="theme-color" content="#0d7a4f">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Trading">
+  <!-- RELATIVE paths (./) so everything stays inside /trading/ -->
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icons/icon.svg">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="wrap">
+    <div class="logo">📈</div>
+    <h1>Trading Calculator</h1>
+    <p class="sub">PWA shell is live.</p>
+    <p class="ok" id="status">Checking service worker…</p>
+    <p class="ver">v1</p>
+  </main>
+
+  <!-- App logic placeholder. Build the real app on top of this file. -->
+  <script src="./app.js"></script>
+
+  <!-- Register the service worker with a RELATIVE path so its scope is /trading/ -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('sw.js').then(function () {
+          var s = document.getElementById('status');
+          if (s) { s.textContent = '✓ Installed & offline-ready'; s.classList.add('good'); }
+        }).catch(function (e) {
+          var s = document.getElementById('status');
+          if (s) { s.textContent = 'Service worker failed: ' + (e && e.message ? e.message : e); }
+        });
+      });
+    }
+  </script>
+</body>
+</html>
