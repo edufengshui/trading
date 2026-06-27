@@ -1,18 +1,14 @@
 {
   "name": "Trading Calculator",
   "short_name": "Trading",
-  "description": "Trading tools.",
+  "description": "Da Liu Ren (大六壬) chart calculator in true solar time.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#0f1115",
-  "theme_color": "#0d7a4f",
+  "background_color": "#0e1022",
+  "theme_color": "#0e1022",
   "icons": [
-    {
-      "src": "./icons/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    }
+    { "src": "./icons/icon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any" },
+    { "src": "./icons/icon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "maskable" }
   ]
 }

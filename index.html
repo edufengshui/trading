@@ -1,45 +1,58 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Trading Calculator</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <meta name="theme-color" content="#0d7a4f">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Trading">
-  <!-- RELATIVE paths (./) so everything stays inside /trading/ -->
-  <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="./icons/icon.svg">
-  <link rel="stylesheet" href="./styles.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1022">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icons/icon.svg">
+<link rel="stylesheet" href="./styles.css">
+<title>Trading Calculator · 大六壬</title>
 </head>
 <body>
-  <main class="wrap">
-    <div class="logo">📈</div>
-    <h1>Trading Calculator</h1>
-    <p class="sub">PWA shell is live.</p>
-    <p class="ok" id="status">Checking service worker…</p>
-    <p class="ver">v1</p>
-  </main>
+<div class="wrap">
+  <header class="top">
+    <div class="title">大六壬<small>Trading Calculator</small></div>
+    <div class="tag">a moment in true solar time becomes a chart</div>
+  </header>
 
-  <!-- App logic placeholder. Build the real app on top of this file. -->
-  <script src="./app.js"></script>
+  <div class="controls">
+    <div class="field"><label>Date</label><input type="date" id="date"></div>
+    <div class="field"><label>Time (civil)</label><input type="time" id="time"></div>
+    <div class="field"><label>Longitude °E</label><input type="number" id="longitude" step="0.0001" value="16.3738"></div>
+    <div class="field"><label>UTC offset (h)</label><input type="number" id="utc-offset" step="0.5" value="1"></div>
+    <div class="field chk"><input type="checkbox" id="dst"><label for="dst" class="inline">DST +1h</label></div>
+    <div class="btns">
+      <button class="ghost" id="gmt">00:00 GMT</button>
+      <button class="ghost" id="now">Now</button>
+      <button class="go" id="build">Build chart</button>
+    </div>
+  </div>
 
-  <!-- Register the service worker with a RELATIVE path so its scope is /trading/ -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function () {
-        navigator.serviceWorker.register('sw.js').then(function () {
-          var s = document.getElementById('status');
-          if (s) { s.textContent = '✓ Installed & offline-ready'; s.classList.add('good'); }
-        }).catch(function (e) {
-          var s = document.getElementById('status');
-          if (s) { s.textContent = 'Service worker failed: ' + (e && e.message ? e.message : e); }
-        });
-      });
-    }
-  </script>
+  <div class="err" id="err"></div>
+  <div class="pillars" id="pillars"></div>
+  <div class="three" id="three"></div>
+  <div id="methodWrap"></div>
+  <div class="lessons" id="lessons"></div>
+  <div class="grid" id="grid"></div>
+
+  <div class="legend">
+    <span><i class="dot" style="background:var(--gold)"></i>貴人 Nobleman</span>
+    <span><i class="dot" style="background:var(--cinnabar)"></i>朱雀 Red Bird</span>
+    <span><i class="dot" style="background:var(--void)"></i>旬空 Hour Void (空)</span>
+    <span><b style="color:var(--cinnabar)">賊</b> 下克上</span>
+    <span><b style="color:var(--azure)">克</b> 上克下</span>
+  </div>
+  <div class="note" id="note"></div>
+  <div class="status" id="status"></div>
+</div>
+
+<!-- engine pipeline — load order matters, all relative paths -->
+<script src="./lunar.js"></script>
+<script src="./solar-time.js"></script>
+<script src="./jieqi-gmt.js"></script>
+<script src="./daliuren.js"></script>
+<script src="./app.js"></script>
 </body>
 </html>

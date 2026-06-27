@@ -1,0 +1,408 @@
+<!--
+  Da Liu Ren (大六壬) chart calculator — self-contained.
+  Embeds the validated XKDG DLR engine (plates · four lessons · nine-ritual three
+  transmissions · twelve generals · six relations · hour void) and renders the chart
+  in the classical 12-palace square. Inputs are the chart primitives; on the live site
+  these come from solar-time.js + jieqi-gmt.js. Three validated reference charts preset.
+-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>大六壬 · Da Liu Ren Calculator</title>
+<style>
+  :root{
+    --ink:#0e1022; --panel:#161a30; --panel2:#1d2240; --line:#2c3258;
+    --parch:#ece3cf; --muted:#8e94b4; --faint:#5b618a;
+    --cinnabar:#d8453f; --gold:#d9b15e; --jade:#56a98c; --azure:#5c84c8;
+    --void:#6b4a6b;
+    --cjk:"Songti SC","STSong","Noto Serif CJK SC","Source Han Serif SC","SimSun",serif;
+    --disp:Georgia,Cambria,"Times New Roman",serif;
+    --ui:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:
+      radial-gradient(1200px 700px at 50% -10%, #1a1f3d 0%, transparent 60%),
+      var(--ink);
+    color:var(--parch);font-family:var(--ui);line-height:1.4;
+    -webkit-font-smoothing:antialiased;padding:18px;}
+  .wrap{max-width:1080px;margin:0 auto;}
+
+  header.top{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+    border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:16px;}
+  .title{font-family:var(--cjk);font-size:30px;letter-spacing:.12em;color:var(--gold);}
+  .title small{font-family:var(--disp);font-size:14px;letter-spacing:.18em;
+    color:var(--muted);text-transform:uppercase;margin-left:8px;}
+  .tag{font-family:var(--disp);font-style:italic;color:var(--faint);font-size:13px;margin-left:auto;}
+
+  .controls{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:14px 16px;margin-bottom:18px;}
+  .field{display:flex;flex-direction:column;gap:4px;}
+  .field label{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);}
+  select{background:var(--panel2);color:var(--parch);border:1px solid var(--line);
+    border-radius:7px;padding:7px 9px;font-family:var(--cjk);font-size:16px;min-width:62px;}
+  select:focus{outline:2px solid var(--gold);outline-offset:1px;}
+  .presets{display:flex;gap:8px;margin-left:auto;align-items:flex-end;}
+  .presets .plabel{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--muted);align-self:center;margin-right:2px;}
+  button.preset{background:transparent;color:var(--parch);border:1px solid var(--line);
+    border-radius:999px;padding:7px 13px;font-family:var(--disp);font-size:12.5px;
+    cursor:pointer;transition:.15s;}
+  button.preset:hover{border-color:var(--gold);color:var(--gold);}
+
+  /* Three Messages */
+  .three{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:8px;}
+  .msg{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:12px 14px;display:flex;align-items:center;gap:12px;position:relative;overflow:hidden;}
+  .msg .stage{font-family:var(--disp);font-style:italic;font-size:12px;color:var(--muted);
+    writing-mode:vertical-rl;text-orientation:mixed;letter-spacing:.1em;
+    border-right:1px solid var(--line);padding-right:10px;}
+  .msg .glyph{font-family:var(--cjk);font-size:34px;line-height:1;color:var(--parch);}
+  .msg .meta{display:flex;flex-direction:column;gap:2px;}
+  .msg .gen{font-family:var(--cjk);font-size:15px;}
+  .msg .gen em{font-family:var(--disp);font-style:normal;font-size:11px;color:var(--muted);margin-left:5px;}
+  .msg .rel{font-size:11px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;}
+  .method{font-family:var(--disp);font-size:13px;letter-spacing:.04em;color:var(--ink);
+    background:var(--gold);border-radius:8px;padding:7px 14px;display:inline-block;margin:6px 0 18px;}
+  .method .cn{font-family:var(--cjk);font-weight:bold;margin-right:8px;}
+  .method.flag{background:#caa24f;}
+  .method .warn{font-style:italic;margin-left:8px;opacity:.8;}
+
+  /* Four lessons strip */
+  .lessons{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;}
+  .lesson{background:var(--panel);border:1px solid var(--line);border-radius:9px;
+    padding:9px 8px;text-align:center;}
+  .lesson .lgen{font-family:var(--cjk);font-size:13px;color:var(--muted);}
+  .lesson .lgen em{font-family:var(--disp);font-style:normal;font-size:10px;color:var(--faint);display:block;}
+  .lesson .ltop{font-family:var(--cjk);font-size:26px;line-height:1.1;}
+  .lesson .lbot{font-family:var(--cjk);font-size:20px;color:var(--muted);}
+  .lesson .lnum{font-family:var(--disp);font-size:10.5px;letter-spacing:.12em;color:var(--faint);
+    text-transform:uppercase;margin-top:4px;}
+  .lesson .lnum b{color:var(--cinnabar);font-style:normal;}
+
+  /* 12-palace square */
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);
+    gap:7px;aspect-ratio:1/.92;}
+  .cell{background:var(--panel);border:1px solid var(--line);border-radius:9px;
+    padding:7px 8px;position:relative;display:flex;flex-direction:column;min-height:0;}
+  .cell .earth{position:absolute;top:5px;right:8px;font-family:var(--cjk);font-size:12px;color:var(--faint);}
+  .cell .gen{font-family:var(--cjk);font-size:13px;line-height:1.1;}
+  .cell .gen em{font-family:var(--disp);font-style:normal;font-size:9.5px;color:var(--muted);display:block;}
+  .cell .heaven{font-family:var(--cjk);font-size:30px;line-height:1;margin-top:auto;}
+  .cell .rel{font-size:10px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;}
+  .cell.void .heaven{color:var(--void);}
+  .cell.void::after{content:"空";position:absolute;bottom:6px;right:8px;
+    font-family:var(--cjk);font-size:12px;color:var(--void);}
+  .cell.nobleman{border-color:var(--gold);box-shadow:inset 0 0 0 1px rgba(217,177,94,.4);}
+  .cell.nobleman .gen{color:var(--gold);}
+  .cell.bird .gen,.cell.bird .heaven{color:var(--cinnabar);}
+  .cell .corner-num{position:absolute;bottom:5px;left:8px;font-family:var(--disp);
+    font-size:9px;color:var(--faint);}
+
+  .center{grid-column:2/4;grid-row:2/4;background:
+      radial-gradient(120% 120% at 50% 30%, #20264a 0%, var(--panel) 70%);
+    border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;gap:9px;padding:12px;}
+  .center .row{display:flex;flex-direction:column;gap:1px;}
+  .center .k{font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);}
+  .center .v{font-family:var(--cjk);font-size:18px;color:var(--parch);}
+  .center .v em{font-family:var(--disp);font-style:normal;font-size:11px;color:var(--muted);margin-left:6px;}
+  .center .mg{font-size:26px;color:var(--gold);}
+  .center .void{color:var(--void);}
+  .center hr{width:60%;border:none;border-top:1px solid var(--line);margin:2px 0;}
+
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:16px;font-size:11px;color:var(--muted);}
+  .legend span{display:inline-flex;align-items:center;gap:6px;}
+  .dot{width:10px;height:10px;border-radius:3px;display:inline-block;}
+  .note{margin-top:14px;font-family:var(--disp);font-size:12px;color:var(--faint);font-style:italic;}
+  .fade{animation:fade .25s ease;}
+  @keyframes fade{from{opacity:.2}to{opacity:1}}
+  @media(max-width:720px){
+    .three{grid-template-columns:1fr;}.lessons{grid-template-columns:repeat(2,1fr);}
+    .cell .heaven{font-size:24px;}.title{font-size:24px;}
+  }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="title">大六壬<small>Da Liu Ren</small></div>
+    <div class="tag">heaven plate over earth · the four lessons · three transmissions</div>
+  </header>
+
+  <div class="controls" id="controls">
+    <div class="field"><label>Day stem 日干</label><select id="dayStem"></select></div>
+    <div class="field"><label>Day branch 日支</label><select id="dayBranch"></select></div>
+    <div class="field"><label>Hour stem 時干</label><select id="hourStem"></select></div>
+    <div class="field"><label>Hour branch 占時</label><select id="hourBranch"></select></div>
+    <div class="field"><label>Month general 月將 (中氣)</label><select id="monthGen"></select></div>
+    <div class="presets">
+      <span class="plabel">Reference</span>
+      <button class="preset" data-p="1">壬申 · 雨水</button>
+      <button class="preset" data-p="2">甲戌 · 霜降</button>
+      <button class="preset" data-p="3">庚子 · 春分</button>
+    </div>
+  </div>
+
+  <div class="three" id="three"></div>
+  <div id="methodWrap"></div>
+  <div class="lessons" id="lessons"></div>
+  <div class="grid" id="grid"></div>
+
+  <div class="legend">
+    <span><i class="dot" style="background:var(--gold)"></i>貴人 Nobleman</span>
+    <span><i class="dot" style="background:var(--cinnabar)"></i>朱雀 Red Bird</span>
+    <span><i class="dot" style="background:var(--void)"></i>旬空 Hour Void (空)</span>
+    <span><b style="color:var(--cinnabar)">賊</b> 下克上 lower controls upper</span>
+    <span><b style="color:var(--azure)">克</b> 上克下 upper controls lower</span>
+  </div>
+  <div class="note" id="note"></div>
+</div>
+
+<script>
+/* ============================ DLR engine (validated) ============================ */
+const DLR = (function(){
+  const BRANCHES=['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+  const STEMS=['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+  const bIdx=b=>BRANCHES.indexOf(b), sIdx=s=>STEMS.indexOf(s);
+  const BWX={子:'水',丑:'土',寅:'木',卯:'木',辰:'土',巳:'火',午:'火',未:'土',申:'金',酉:'金',戌:'土',亥:'水'};
+  const KE={木:'土',土:'水',水:'火',火:'金',金:'木'};
+  const SHENG={木:'火',火:'土',土:'金',金:'水',水:'木'};
+  const ctrl=(a,b)=>KE[a]===b, bctrl=(x,y)=>ctrl(BWX[x],BWX[y]);
+  const JIG={甲:'寅',乙:'辰',丙:'巳',丁:'未',戊:'巳',己:'未',庚:'申',辛:'戌',壬:'亥',癸:'丑'};
+  const sYang=s=>sIdx(s)%2===0, bYang=b=>bIdx(b)%2===0;
+  const SWX=['木','木','火','火','土','土','金','金','水','水'], swx=s=>SWX[sIdx(s)];
+  const postHorse=db=>({0:'寅',1:'亥',2:'申',3:'巳'})[bIdx(db)%4];
+  const XING={子:'卯',卯:'子',寅:'巳',巳:'申',申:'寅',丑:'戌',戌:'未',未:'丑',辰:'辰',午:'午',酉:'酉',亥:'亥'};
+  const selfX=b=>b==='辰'||b==='午'||b==='酉'||b==='亥';
+  const chong=b=>BRANCHES[(bIdx(b)+6)%12];
+  const SCOMB={甲:'己',己:'甲',乙:'庚',庚:'乙',丙:'辛',辛:'丙',丁:'壬',壬:'丁',戊:'癸',癸:'戊'};
+  const trineNext=b=>BRANCHES[(bIdx(b)+4)%12];
+  const isMeng=b=>'寅申巳亥'.includes(b), isZhong=b=>'子午卯酉'.includes(b);
+
+  const MG_BY_ZHONGQI={雨水:'亥',春分:'戌',谷雨:'酉',小满:'申',夏至:'未',大暑:'午',处暑:'巳',秋分:'辰',霜降:'卯',小雪:'寅',冬至:'丑',大寒:'子'};
+  const MG_NAME={亥:'登明',戌:'河魁',酉:'從魁',申:'傳送',未:'小吉',午:'勝光',巳:'太乙',辰:'天罡',卯:'太衝',寅:'功曹',丑:'大吉',子:'神后'};
+
+  const GEN=[['貴人','Nobleman'],['螣蛇','Flying Snake'],['朱雀','Red Bird'],['六合','Six Harmonies'],
+    ['勾陳','Polaris'],['青龍','Green Dragon'],['天空','Empty Sky'],['白虎','White Tiger'],
+    ['太常','Supreme Norm'],['玄武','Black Warrior'],['太陰','Moon'],['天后','Heaven Queen']];
+  const NOB_DAY={甲:'未',乙:'申',丙:'酉',丁:'亥',戊:'丑',己:'子',庚:'丑',辛:'寅',壬:'卯',癸:'巳'};
+  const NOB_NIGHT={甲:'丑',乙:'子',丙:'亥',丁:'酉',戊:'未',己:'申',庚:'未',辛:'午',壬:'巳',癸:'卯'};
+  const isDay=h=>'卯辰巳午未申'.includes(h);
+
+  function plates(mg,hr){
+    const d=((bIdx(mg)-bIdx(hr))%12+12)%12;
+    const heaven=BRANCHES.map((_,e)=>BRANCHES[(e+d)%12]);
+    return {delta:d,heaven,
+      heavenAbove:b=>BRANCHES[(bIdx(b)+d)%12],
+      earthUnder:b=>BRANCHES[((bIdx(b)-d)%12+12)%12],
+      isFuYin:d===0,isFanYin:d===6};
+  }
+  function fourLessons(ds,db,p){
+    const b1=JIG[ds],t1=p.heavenAbove(b1);
+    const t2=p.heavenAbove(t1);
+    const t3=p.heavenAbove(db),t4=p.heavenAbove(t3);
+    return [{top:t1,bottom:b1},{top:t2,bottom:t1},{top:t3,bottom:db},{top:t4,bottom:t3}];
+  }
+  function three(L,ds,db,p){
+    const ha=p.heavenAbove,eu=p.earthUnder,jg=JIG[ds],dy=sYang(ds);
+    const chain=f=>{const m=ha(f);return{chu:f,zhong:m,mo:ha(m)};};
+    const zei=[],ke=[];
+    L.forEach((x,i)=>{if(bctrl(x.bottom,x.top))zei.push(i);if(bctrl(x.top,x.bottom))ke.push(i);});
+    const hasKe=zei.length||ke.length;
+    const distinct=[];L.forEach(x=>{const k=x.top+x.bottom;if(!distinct.includes(k))distinct.push(k);});
+    const baZhuan=(jg===db);
+    const biYong=ids=>ids.filter(i=>bYang(L[i].top)===dy);
+    const depth=i=>{let X=L[i].top,n=0,pp=bIdx(L[i].bottom),home=bIdx(X);
+      for(let s=0;s<12;s++){if(pp===home)break;if(bctrl(BRANCHES[pp],X))n++;pp=(pp+11)%12;}return n;};
+    const res=(m,nv,t)=>({method:m,needsValidation:nv,three:t});
+    function shfrom(set,name){
+      if(set.length===1)return res(name,false,chain(L[set[0]].top));
+      const bi=biYong(set);
+      if(bi.length===1)return res('比用',false,chain(L[bi[0]].top));
+      const pool=bi.length?bi:set,ds_=pool.map(depth),mx=Math.max(...ds_);
+      const deep=pool.filter((i,k)=>ds_[k]===mx);let ch=null;
+      if(deep.length===1)ch=deep[0];else{
+        const mg=deep.filter(i=>isMeng(L[i].bottom)),zh=deep.filter(i=>isZhong(L[i].bottom));
+        if(mg.length===1)ch=mg[0];else if(!mg.length&&zh.length===1)ch=zh[0];}
+      if(ch!==null)return res('涉害',true,chain(L[ch].top));
+      return res('涉害',true,chain(dy?ha(jg):ha(db)));
+    }
+    const pen=(first,sec)=>{const z=selfX(first)?sec:XING[first];const m=selfX(z)?chong(z):XING[z];return{chu:first,zhong:z,mo:m};};
+    if(p.isFuYin){
+      let f;if(hasKe){const s=(zei.length?zei:ke);f=L[s[0]].top;}else{f=dy?ha(jg):db;}
+      return res('伏吟',false,pen(f,dy?db:jg));
+    }
+    if(p.isFanYin){
+      if(hasKe){const r=shfrom(zei.length?zei:ke,zei.length?'重審':'元首');r.method='返吟·'+r.method;return r;}
+      return res('返吟·驛馬',false,{chu:postHorse(db),zhong:ha(db),mo:ha(jg)});
+    }
+    if(hasKe)return shfrom(zei.length?zei:ke,zei.length?'重審':'元首');
+    if(baZhuan){
+      const base=ha(jg);
+      const chu=dy?BRANCHES[(bIdx(base)+2)%12]:BRANCHES[((bIdx(L[3].top)-2)%12+12)%12];
+      return res('八專',true,{chu,zhong:base,mo:base});
+    }
+    const dwx=swx(ds),hao=[],tan=[];
+    L.forEach((x,i)=>{const t=BWX[x.top];if(ctrl(t,dwx))hao.push(i);if(ctrl(dwx,t))tan.push(i);});
+    let ys=hao.length?hao:tan,yn=hao.length?'遙剋·蒿矢':'遙剋·彈射';
+    if(ys.length){
+      const uq=[];ys.forEach(i=>{if(!uq.some(j=>L[j].top===L[i].top))uq.push(i);});
+      if(uq.length===1)return res(yn,false,chain(L[uq[0]].top));
+      const bi=biYong(uq);if(bi.length===1)return res(yn+'·比用',false,chain(L[bi[0]].top));
+      return res(yn,true,chain(L[uq[0]].top));
+    }
+    if(distinct.length===3){
+      const chu=dy?ha(JIG[SCOMB[ds]]):trineNext(db),dz=ha(jg);
+      return res('別責',true,{chu,zhong:dz,mo:dz});
+    }
+    if(dy)return res('昴星',false,{chu:ha('酉'),zhong:ha(db),mo:ha(jg)});
+    return res('昴星',false,{chu:eu('酉'),zhong:ha(jg),mo:ha(db)});
+  }
+  function placeGenerals(ds,hr,p){
+    const day=isDay(hr),nob=(day?NOB_DAY:NOB_NIGHT)[ds];
+    const earth=p.earthUnder(nob),dir='亥子丑寅卯辰'.includes(earth)?1:-1;
+    const by={};for(let k=0;k<12;k++){const hb=BRANCHES[((bIdx(nob)+dir*k)%12+12)%12];by[hb]=GEN[k];}
+    return {nobleman:nob,isDay:day,earthPalace:earth,dir,
+      direction:dir>0?'順 clockwise':'逆 anti-clockwise',generalOf:b=>by[b]};
+  }
+  function sixRel(ds,b){
+    const d=swx(ds),e=BWX[b];
+    if(e===d)return['兄弟','Brothers'];
+    if(SHENG[d]===e)return['子孫','Children'];
+    if(SHENG[e]===d)return['父母','Parents'];
+    if(KE[d]===e)return['妻財','Wealth'];
+    return (bYang(b)===sYang(ds))?['鬼','Ghost']:['官','Officer'];
+  }
+  const xunKong=(si,bi)=>{const h=((bi-si)%12+12)%12;return[BRANCHES[(h+10)%12],BRANCHES[(h+11)%12]];};
+
+  function build(ds,db,hr,mg,hs){
+    const p=plates(mg,hr),L=fourLessons(ds,db,p),tr=three(L,ds,db,p),g=placeGenerals(ds,hr,p);
+    const vd=(hs!=null)?xunKong(sIdx(hs),bIdx(hr)):null;
+    const isV=b=>vd?vd.includes(b):false;
+    const dec=b=>({branch:b,general:g.generalOf(b),relation:sixRel(ds,b),isVoid:isV(b)});
+    const lessons=L.map((x,i)=>({top:dec(x.top),bottom:x.bottom,zei:bctrl(x.bottom,x.top),ke:bctrl(x.top,x.bottom)}));
+    let td=null;if(tr.three)td={chu:dec(tr.three.chu),zhong:dec(tr.three.zhong),mo:dec(tr.three.mo)};
+    const palaces=BRANCHES.map(e=>{const hb=p.heavenAbove(e);return{earth:e,heaven:hb,general:g.generalOf(hb),relation:sixRel(ds,hb),isVoid:isV(hb)};});
+    return {dayStem:ds,dayBranch:db,hourStem:hs||null,hourBranch:hr,
+      monthGeneral:{branch:mg,name:MG_NAME[mg],zhongqi:Object.keys(MG_BY_ZHONGQI).find(k=>MG_BY_ZHONGQI[k]===mg)},
+      postHorse:postHorse(db),hourVoid:vd,
+      plates:{delta:p.delta,isFuYin:p.isFuYin,isFanYin:p.isFanYin},
+      fourLessons:lessons,transmission:{...tr,detailed:td},
+      generals:{nobleman:g.nobleman,isDay:g.isDay,earthPalace:g.earthPalace,direction:g.direction,palaces}};
+  }
+  return {BRANCHES,STEMS,MG_BY_ZHONGQI,MG_NAME,build};
+})();
+
+/* ============================ method label (CN→EN) ============================ */
+const METHOD_EN={
+  '元首':'Beginning Leader','重審':'Re-examination','比用':'Knowing One',
+  '涉害':'Wading Harm','遙剋·蒿矢':'Distant Control: Arrow','遙剋·彈射':'Distant Control: Shooting',
+  '遙剋·蒿矢·比用':'Distant Control: Arrow','遙剋·彈射·比用':'Distant Control: Shooting',
+  '昴星':'Hairy Head','別責':'Other Responsibility','八專':'Eight Specialty',
+  '伏吟':'Hidden Hum','返吟·重審':'Fan Yin: Re-examination','返吟·元首':'Fan Yin: Beginning Leader',
+  '返吟·比用':'Fan Yin: Knowing One','返吟·涉害':'Fan Yin: Wading Harm','返吟·驛馬':'Fan Yin: Post Horse'
+};
+const RELZH={Brothers:'兄弟',Children:'子孫',Parents:'父母',Wealth:'妻財',Officer:'官',Ghost:'鬼'};
+
+/* ============================ UI ============================ */
+const $=id=>document.getElementById(id);
+function opt(sel,arr,val){sel.innerHTML=arr.map(x=>`<option ${x===val?'selected':''}>${x}</option>`).join('');}
+const ZHONGQI=Object.keys(DLR.MG_BY_ZHONGQI);
+
+opt($('dayStem'),DLR.STEMS,'壬');
+opt($('dayBranch'),DLR.BRANCHES,'申');
+opt($('hourStem'),DLR.STEMS,'戊');
+opt($('hourBranch'),DLR.BRANCHES,'申');
+$('monthGen').innerHTML=ZHONGQI.map(z=>`<option value="${DLR.MG_BY_ZHONGQI[z]}">${z} → ${DLR.MG_BY_ZHONGQI[z]} ${DLR.MG_NAME[DLR.MG_BY_ZHONGQI[z]]}</option>`).join('');
+$('monthGen').value='亥';
+
+const PRESETS={
+  1:{ds:'壬',db:'申',hs:'戊',hr:'申',mg:'亥'},
+  2:{ds:'甲',db:'戌',hs:'癸',hr:'酉',mg:'卯'},
+  3:{ds:'庚',db:'子',hs:'丁',hr:'丑',mg:'戌'}
+};
+document.querySelectorAll('.preset').forEach(b=>b.onclick=()=>{
+  const p=PRESETS[b.dataset.p];
+  $('dayStem').value=p.ds;$('dayBranch').value=p.db;$('hourStem').value=p.hs;
+  $('hourBranch').value=p.hr;$('monthGen').value=p.mg;render();
+});
+$('controls').addEventListener('change',render);
+
+function genCell(g){return `${g[0]}<em>${g[1]}</em>`;}
+
+function render(){
+  const ds=$('dayStem').value,db=$('dayBranch').value,hs=$('hourStem').value,
+        hr=$('hourBranch').value,mg=$('monthGen').value;
+  const c=DLR.build(ds,db,hr,mg,hs);
+
+  // Three messages
+  const stages=[['初傳','Initial','chu'],['中傳','Middle','zhong'],['末傳','Final','mo']];
+  $('three').innerHTML=stages.map(([cn,en,key])=>{
+    const m=c.transmission.detailed[key];
+    const bird=m.general[0]==='朱雀';
+    return `<div class="msg ${m.isVoid?'void':''}">
+      <div class="stage">${cn} · ${en}</div>
+      <div class="glyph" style="${bird?'color:var(--cinnabar)':''}">${m.branch}</div>
+      <div class="meta">
+        <div class="gen">${genCell(m.general)}</div>
+        <div class="rel">${m.relation[0]} ${m.relation[1]}${m.isVoid?' · 空':''}</div>
+      </div></div>`;
+  }).join('');
+
+  // Method banner
+  const t=c.transmission, en=METHOD_EN[t.method]||'';
+  $('methodWrap').innerHTML=`<span class="method ${t.needsValidation?'flag':''}">
+    <span class="cn">${t.method}</span>${en}
+    ${t.needsValidation?'<span class="warn">· rule-coded, confirm vs reference</span>':''}</span>`;
+
+  // Four lessons (display 1st on the right, like the source software)
+  const order=[3,2,1,0],labels={0:'1st',1:'2nd',2:'3rd',3:'4th'};
+  $('lessons').innerHTML=order.map(i=>{
+    const L=c.fourLessons[i],mark=L.zei?'<b>賊</b> Zei':(L.ke?'<b style="color:var(--azure)">克</b> Ke':'');
+    const bird=L.top.general[0]==='朱雀';
+    return `<div class="lesson">
+      <div class="lgen">${L.top.general[0]}<em>${L.top.general[1]}</em></div>
+      <div class="ltop" style="${bird?'color:var(--cinnabar)':''}${L.top.isVoid?';color:var(--void)':''}">${L.top.branch}</div>
+      <div class="lbot">${L.bottom}</div>
+      <div class="lnum">${labels[i]} ${mark}</div></div>`;
+  }).join('');
+
+  // 12-palace square: fixed earth positions
+  //  巳 午 未 申 / 辰 · · 酉 / 卯 · · 戌 / 寅 丑 子 亥
+  const layout=[['巳','午','未','申'],['辰',null,null,'酉'],['卯',null,null,'戌'],['寅','丑','子','亥']];
+  const pmap={};c.generals.palaces.forEach(p=>pmap[p.earth]=p);
+  let cells='';
+  for(let r=0;r<4;r++)for(let col=0;col<4;col++){
+    const e=layout[r][col];
+    if(e===null){ if(r===1&&col===1){cells+=centerCell(c);} continue; }
+    const p=pmap[e];
+    const cls=[p.general[0]==='貴人'?'nobleman':'',p.general[0]==='朱雀'?'bird':'',p.isVoid?'void':''].join(' ');
+    cells+=`<div class="cell ${cls}" style="grid-row:${r+1};grid-column:${col+1}">
+      <span class="earth">${e}</span>
+      <div class="gen">${genCell(p.general)}</div>
+      <div class="rel">${p.relation[0]} ${p.relation[1]}</div>
+      <div class="heaven">${p.heaven}</div></div>`;
+  }
+  $('grid').innerHTML=cells;
+
+  $('note').textContent=
+    `占時 hour ${hr} · ${c.generals.isDay?'晝 day':'夜 night'} divination → 貴人 Nobleman ${c.generals.nobleman}, `+
+    `arrives at earth ${c.generals.earthPalace}, generals run ${c.generals.direction}. `+
+    `驛馬 Post-Horse ${c.postHorse}.`;
+
+  ['three','methodWrap','lessons','grid'].forEach(id=>{$(id).classList.remove('fade');void $(id).offsetWidth;$(id).classList.add('fade');});
+}
+
+function centerCell(c){
+  const v=c.hourVoid?c.hourVoid.join(' '):'—';
+  return `<div class="center" style="grid-row:2/4;grid-column:2/4">
+    <div class="row"><span class="k">Season 中氣</span><span class="v">${c.monthGeneral.zhongqi||''}</span></div>
+    <hr>
+    <div class="row"><span class="k">Month General 月將</span>
+      <span class="v mg">${c.monthGeneral.branch}<em>${c.monthGeneral.name}</em></span></div>
+    <hr>
+    <div class="row"><span class="k">Hour Void 旬空</span><span class="v void">${v}</span></div>
+  </div>`;
+}
+
+render();
+</script>
