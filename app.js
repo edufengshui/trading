@@ -63,12 +63,13 @@ function render(pillars, c) {
       col[0] + '</div><div class="gz">' + col[1] + '</div></div>';
   }).join('');
 
-  // three transmissions
+  // three transmissions (stacked vertically)
   var stages = [['初傳', 'Initial', 'chu'], ['中傳', 'Middle', 'zhong'], ['末傳', 'Final', 'mo']];
   $('three').innerHTML = stages.map(function (s) {
     var m = c.transmission.threeDetailed[s[2]], bird = m.general.cn === '朱雀';
     var col = bird ? 'color:var(--cinnabar)' : (m.isVoid ? 'color:var(--void)' : '');
-    return '<div class="msg ' + (m.isVoid ? 'void' : '') + '"><div class="stage">' + s[0] + ' · ' + s[1] + '</div>' +
+    return '<div class="msg ' + (m.isVoid ? 'void' : '') + '">' +
+      '<div class="stage"><span class="scn">' + s[0] + '</span><span class="sen">' + s[1] + ' Message</span></div>' +
       '<div class="glyph" style="' + col + '">' + m.branch + '</div>' +
       '<div class="meta"><div class="gen">' + genCell(m.general) + '</div>' +
       '<div class="rel">' + m.relation.cn + ' ' + m.relation.en + (m.isVoid ? ' · 空' : '') + '</div></div></div>';
