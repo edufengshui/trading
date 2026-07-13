@@ -376,6 +376,42 @@
     };
   }
 
+  // 五鼠遁 (Five-Rat method): hour stem from day stem + hour branch.
+  // 子-hour stem: 甲己→甲, 乙庚→丙, 丙辛→戊, 丁壬→庚, 戊癸→壬; then advances with the branch.
+  function hourStemFor(dayStem, hourBranch) {
+    var s0 = ((sIdx(dayStem) % 5) * 2) % 10;
+    return STEMS[(s0 + bIdx(hourBranch)) % 10];
+  }
+
+  // ---- Forex chart: 占時 comes from the daily seed branch, not the clock -------
+  // Day pillar and 月將 are taken from the instant (00:00 GMT at the chosen longitude);
+  // the hour branch is the seed 地支, and its stem is derived via 五鼠遁 so 旬空 works.
+  function buildChartFromForexSeed(utcMs, lonDeg, seedBranch) {
+    var ST = (typeof window !== 'undefined' ? window.XKDGSolarTime : null) ||
+             (typeof require !== 'undefined' ? safeReq('./solar-time.js') : null);
+    var JQ = (typeof window !== 'undefined' ? window.XKDGJieQiGMT : null) ||
+             (typeof require !== 'undefined' ? safeReq('./jieqi-gmt.js') : null);
+    if (!ST || !JQ) return { error: 'missing XKDGSolarTime or XKDGJieQiGMT' };
+
+    var p = ST.pillarsFromUtc(utcMs, lonDeg);
+    if (!p) return { error: 'pillars failed (lunar-javascript Solar missing?)' };
+    var dayStem = p.day.charAt(0), dayBranch = p.day.charAt(1);
+    var tst = p.meta.tst;
+
+    var cur = JQ.currentJieQi(tst.y, tst.mo, tst.d);
+    var zhongQi = nearestZhongQi(JQ, tst, cur);
+    if (!zhongQi) return { error: 'could not resolve 中氣' };
+    var mg = MONTH_GENERAL_BY_ZHONGQI[zhongQi];
+
+    var hourStem = hourStemFor(dayStem, seedBranch);
+    var chart = buildChartFromPrimitives(dayStem, dayBranch, seedBranch, mg, hourStem);
+    chart.source = {
+      mode: 'forex', dayPillar: p.day, hourPillar: hourStem + seedBranch,
+      seedBranch: seedBranch, zhongQi: zhongQi, tst: tst, longitude: lonDeg
+    };
+    return chart;
+  }
+
   // ---- wrapper from an absolute instant, using the other app modules ----------
   // utcMs + longitude → day pillar + hour branch (TST) via XKDGSolarTime,
   // 中氣 via XKDGJieQiGMT (00:00 GMT of the TST chart-day) → 月將 → chart.
@@ -433,8 +469,10 @@
     sixRelation: sixRelation,
     xunKong: xunKong,
     postHorse: postHorse,
+    hourStemFor: hourStemFor,
     buildChartFromPrimitives: buildChartFromPrimitives,
-    buildChartFromInstant: buildChartFromInstant
+    buildChartFromInstant: buildChartFromInstant,
+    buildChartFromForexSeed: buildChartFromForexSeed
   };
   if (typeof window !== 'undefined') window.XKDGDaLiuRen = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;

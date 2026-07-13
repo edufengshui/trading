@@ -133,10 +133,74 @@ function centerCell(c) {
     '<div><span class="k">Hour Void 旬空</span><div class="v void">' + v + '</div></div></div>';
 }
 
+/* ---------- Forex mode: daily 00:00 GMT seeds from the Worker ---------- */
+var WORKER_URL = 'https://trading-forex-seed.decumano16.workers.dev/';
+var FOREX_LON = 0;          // 0° Greenwich for the day pillar & 月將 at 00:00 GMT
+var forexData = null;
+
+async function loadForex() {
+  clearErr();
+  var bar = $('forexbar'); bar.style.display = 'block';
+  bar.innerHTML = '<span class="fxdate">Loading forex feed…</span>';
+  try {
+    var res = await fetch(WORKER_URL, { cache: 'no-store' });
+    forexData = await res.json();
+  } catch (e) {
+    bar.style.display = 'none';
+    return showErr('<b>Could not reach the forex feed.</b> ' + e.message);
+  }
+  if (!forexData || !forexData.rows) {
+    bar.style.display = 'none';
+    return showErr('<b>Feed returned no data.</b> ' + ((forexData && forexData.error) || ''));
+  }
+  renderForexBar();
+}
+
+function renderForexBar() {
+  var bar = $('forexbar');
+  var ok = forexData.rows.filter(function (r) { return r.status === 'ok'; });
+  var errs = forexData.rows.filter(function (r) { return r.status !== 'ok'; }).map(function (r) { return r.cross; });
+  var head = '<span class="fxdate">Forex · ' + forexData.date + ' 00:00 GMT · 0° Greenwich</span>';
+  var pills = ok.map(function (r) {
+    return '<button class="pill" data-cross="' + r.cross + '" data-branch="' + r.branch + '">' +
+      r.cross + ' <b>' + r.branch + '</b></button>';
+  }).join('');
+  bar.innerHTML = head + '<div class="pills">' + pills + '</div>' +
+    (errs.length ? '<span class="fxerr">no data (market closed?): ' + errs.join(', ') + '</span>' : '');
+  bar.querySelectorAll('.pill').forEach(function (b) {
+    b.addEventListener('click', function () { selectForexCross(b.dataset.cross, b.dataset.branch, b); });
+  });
+  var first = bar.querySelector('.pill');
+  if (first) selectForexCross(first.dataset.cross, first.dataset.branch, first);
+}
+
+function selectForexCross(cross, branch, btn) {
+  clearErr();
+  if (!window.XKDGDaLiuRen || !window.XKDGSolarTime) return showErr('<b>Engine not loaded.</b>');
+  // Anchor the day pillar & 月將 to the GMT calendar date. At 00:00:00 GMT the true solar
+  // time at 0° falls a few minutes into the previous day (equation of time), which would
+  // roll the day pillar back one day — so we sample at 12:00 GMT, keeping the TST day equal
+  // to the trading date while 月將 still resolves to 00:00 GMT of that day.
+  var d = forexData.date.split('-').map(Number);
+  var utcMs = Date.UTC(d[0], d[1] - 1, d[2], 12, 0, 0);
+  var p = window.XKDGSolarTime.pillarsFromUtc(utcMs, FOREX_LON);
+  var chart = window.XKDGDaLiuRen.buildChartFromForexSeed(utcMs, FOREX_LON, branch);
+  if (!p || !chart || chart.error) {
+    return showErr('<b>Could not build chart:</b> ' + ((chart && chart.error) || 'pillars failed'));
+  }
+  var pillars = { year: p.year, month: p.month, day: p.day, hour: chart.source.hourPillar };
+  var bar = $('forexbar');
+  bar.querySelectorAll('.pill').forEach(function (x) { x.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  render(pillars, chart);
+  $('note').textContent = cross + ' · seed ' + branch + ' → 占時 (Divination-Hour) · ' + $('note').textContent;
+}
+
 /* ---------- wiring ---------- */
 window.addEventListener('DOMContentLoaded', function () {
   setNow();                                   // default to the current moment
   $('build').addEventListener('click', build);
+  $('forex').addEventListener('click', loadForex);
   $('now').addEventListener('click', function () { setNow(); build(); });
   $('gmt').addEventListener('click', function () { // chart for 00:00 GMT of the chosen date
     if (!$('date').value) setNow();

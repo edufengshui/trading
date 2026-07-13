@@ -42,6 +42,19 @@ button.ghost:hover{border-color:var(--gold);color:var(--gold);}
   padding:12px 14px;font-size:13px;margin-bottom:14px;display:none;}
 .err b{color:var(--cinnabar);}
 
+.forexbar{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  padding:12px 14px;margin-bottom:14px;}
+.forexbar .fxdate{font-family:var(--disp);font-size:12px;letter-spacing:.06em;color:var(--gold);
+  text-transform:uppercase;display:block;margin-bottom:9px;}
+.forexbar .pills{display:flex;flex-wrap:wrap;gap:8px;}
+.forexbar .pill{background:var(--panel2);color:var(--parch);border:1px solid var(--line);
+  border-radius:999px;padding:7px 13px;font-family:var(--ui);font-size:13px;cursor:pointer;transition:.15s;
+  display:inline-flex;align-items:center;gap:7px;}
+.forexbar .pill b{font-family:var(--cjk);font-size:16px;color:var(--gold);}
+.forexbar .pill:hover{border-color:var(--gold);}
+.forexbar .pill.active{border-color:var(--gold);background:rgba(217,177,94,.14);}
+.forexbar .fxerr{display:block;margin-top:9px;font-size:11px;color:var(--faint);font-style:italic;}
+
 .pillars{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
 .pillar{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;text-align:center;}
 .pillar .plab{font-family:var(--disp);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);}

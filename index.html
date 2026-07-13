@@ -24,11 +24,14 @@
     <div class="field"><label>UTC offset (h)</label><input type="number" id="utc-offset" step="0.5" value="1"></div>
     <div class="field chk"><input type="checkbox" id="dst"><label for="dst" class="inline">DST +1h</label></div>
     <div class="btns">
+      <button class="ghost" id="forex">Forex 00:00 GMT</button>
       <button class="ghost" id="gmt">00:00 GMT</button>
       <button class="ghost" id="now">Now</button>
       <button class="go" id="build">Build chart</button>
     </div>
   </div>
+
+  <div class="forexbar" id="forexbar" style="display:none"></div>
 
   <div class="err" id="err"></div>
   <div class="pillars" id="pillars"></div>
