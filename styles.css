@@ -68,6 +68,13 @@ button.ghost:hover{border-color:var(--gold);color:var(--gold);}
 .trendpanel .trendtrace{margin:0 0 8px;padding-left:18px;font-size:12px;line-height:1.55;color:var(--parch);}
 .trendpanel .trendtrace li{margin:2px 0;}
 .trendpanel .trendnote{font-size:11px;color:var(--faint);font-style:italic;border-top:1px solid var(--line);padding-top:8px;}
+.trendpanel .sig{font-family:var(--ui);font-size:13px;font-weight:800;letter-spacing:.08em;
+  padding:6px 16px;border-radius:8px;text-transform:uppercase;}
+.trendpanel .sig.long{background:rgba(120,180,120,.2);color:#8fce8f;border:1px solid #4f7d4f;}
+.trendpanel .sig.short{background:rgba(200,90,80,.2);color:#e08a80;border:1px solid var(--cinnabar);}
+.trendpanel .sig.na{background:var(--panel2);color:var(--faint);border:1px solid var(--line);font-weight:600;letter-spacing:.02em;text-transform:none;}
+.trendpanel .trendmsgs b.up{color:#6fa6e8;}
+.trendpanel .trendmsgs b.down{color:var(--cinnabar);}
 
 .pillars{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
 .pillar{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;text-align:center;}

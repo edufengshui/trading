@@ -195,7 +195,8 @@ function selectForexCross(cross, branch, btn) {
   if (btn) btn.classList.add('active');
   render(pillars, chart);
   $('note').textContent = cross + ' · seed ' + branch + ' → 占時 (Divination-Hour) · ' + $('note').textContent;
-  renderTrend(cross, chart, d);
+  var row = (forexData.rows || []).filter(function (r) { return r.cross === cross; })[0] || null;
+  renderTrend(cross, chart, d, row);
 }
 
 // season ruling element (English) from the last 立 term before the date
@@ -216,23 +217,37 @@ function seasonElementFor(y, mo, dd) {
   return lastElem;
 }
 
-function renderTrend(cross, chart, dArr) {
+function renderTrend(cross, chart, dArr, row) {
   var p = $('trendpanel');
   if (!window.XKDGTrend || !chart.transmission || !chart.transmission.three) { p.style.display = 'none'; return; }
   var t3 = chart.transmission.three;
   var season = seasonElementFor(dArr[0], dArr[1], dArr[2]);
   var v = window.XKDGTrend.evaluateTrend(t3.chu, t3.zhong, t3.mo,
     { dayStem: chart.dayStem, voidBranches: chart.hourVoid, seasonElement: season });
-  var badge = v.confirmed
-    ? '<span class="tv ok">TREND CONFIRMED · follows EMA</span>'
+
+  var dir = row && row.direction ? row.direction : null;         // 'up' | 'down' | 'flat' | null
+  var signal = null;
+  if (dir === 'up') signal = v.confirmed ? 'LONG' : 'SHORT';
+  else if (dir === 'down') signal = v.confirmed ? 'SHORT' : 'LONG';
+
+  var verdictBadge = v.confirmed
+    ? '<span class="tv ok">CONFIRMED · follows EMA</span>'
     : '<span class="tv no">NOT CONFIRMED · against EMA</span>';
-  var head = '<div class="trendhead"><span>' + cross + ' — Level 1 reading</span>' + badge + '</div>';
+  var signalBadge = signal
+    ? '<span class="sig ' + signal.toLowerCase() + '">' + signal + '</span>'
+    : '<span class="sig na">signal n/a — EMA trend missing</span>';
+  var head = '<div class="trendhead"><span>' + cross + ' — Level 1</span>' + signalBadge + '</div>';
+
+  var arrow = dir === 'up' ? '↑ up (blue)' : dir === 'down' ? '↓ down (red)' : (dir ? dir : 'n/a');
+  var emaLine = '<div class="trendmsgs">EMA(8+1) daily trend: <b class="' + (dir || '') + '">' + arrow + '</b>' +
+    (row && row.ema != null ? ' · ema ' + row.ema + ' (prev ' + row.emaPrev + ')' : '') +
+    (row && (row.emaError || row.emaNote) ? ' · ' + (row.emaError || row.emaNote) : '') + '</div>';
+
   var msgs = '<div class="trendmsgs">初傳 M1 <b>' + v.M1 + '</b> (' + v.elements.M1 + ') → 中傳 M2 <b>' + v.M2 +
     '</b> (' + v.elements.M2 + ') → 末傳 M3 <b>' + v.M3 + '</b> (' + v.elements.M3 + ')' +
-    (season ? ' · season ' + season : '') + (v.m1Void ? ' · M1 空(void)' : '') + '</div>';
+    (season ? ' · season ' + season : '') + (v.m1Void ? ' · M1 空(void)' : '') + ' — ' + verdictBadge + '</div>';
   var trace = '<ul class="trendtrace">' + v.trace.map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul>';
-  var note = '<div class="trendnote">Trend direction (up/down) comes from EMA(8+1) — to be wired next. For now: “follows” vs “against”.</div>';
-  p.innerHTML = head + msgs + trace + note;
+  p.innerHTML = head + emaLine + msgs + trace;
   p.style.display = 'block';
 }
 
