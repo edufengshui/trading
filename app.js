@@ -28,6 +28,7 @@ function setNow() {
 
 function build() {
   clearErr();
+  var _tp = $('trendpanel'); if (_tp) _tp.style.display = 'none';
   if (!window.XKDGSolarTime || !window.XKDGJieQiGMT || !window.XKDGDaLiuRen || !(window.Solar || window.Lunar)) {
     return showErr('<b>Engine not loaded.</b> This page needs lunar.js, solar-time.js, jieqi-gmt.js and daliuren.js (in that order) in the same folder.');
   }
@@ -194,6 +195,45 @@ function selectForexCross(cross, branch, btn) {
   if (btn) btn.classList.add('active');
   render(pillars, chart);
   $('note').textContent = cross + ' · seed ' + branch + ' → 占時 (Divination-Hour) · ' + $('note').textContent;
+  renderTrend(cross, chart, d);
+}
+
+// season ruling element (English) from the last 立 term before the date
+function seasonElementFor(y, mo, dd) {
+  if (!window.Lunar) return null;
+  var LI = { '立春': 'Wood', '立夏': 'Fire', '立秋': 'Metal', '立冬': 'Water' };
+  var target = Date.UTC(y, mo - 1, dd);
+  var last = null, lastElem = null;
+  [y - 1, y].forEach(function (yr) {
+    var tbl = window.Lunar.fromYmd(yr, 1, 1).getJieQiTable();
+    Object.keys(tbl).forEach(function (name) {
+      if (!LI[name]) return;
+      var s = tbl[name];
+      var ms = Date.UTC(s.getYear(), s.getMonth() - 1, s.getDay());
+      if (ms <= target && (last === null || ms > last)) { last = ms; lastElem = LI[name]; }
+    });
+  });
+  return lastElem;
+}
+
+function renderTrend(cross, chart, dArr) {
+  var p = $('trendpanel');
+  if (!window.XKDGTrend || !chart.transmission || !chart.transmission.three) { p.style.display = 'none'; return; }
+  var t3 = chart.transmission.three;
+  var season = seasonElementFor(dArr[0], dArr[1], dArr[2]);
+  var v = window.XKDGTrend.evaluateTrend(t3.chu, t3.zhong, t3.mo,
+    { dayStem: chart.dayStem, voidBranches: chart.hourVoid, seasonElement: season });
+  var badge = v.confirmed
+    ? '<span class="tv ok">TREND CONFIRMED · follows EMA</span>'
+    : '<span class="tv no">NOT CONFIRMED · against EMA</span>';
+  var head = '<div class="trendhead"><span>' + cross + ' — Level 1 reading</span>' + badge + '</div>';
+  var msgs = '<div class="trendmsgs">初傳 M1 <b>' + v.M1 + '</b> (' + v.elements.M1 + ') → 中傳 M2 <b>' + v.M2 +
+    '</b> (' + v.elements.M2 + ') → 末傳 M3 <b>' + v.M3 + '</b> (' + v.elements.M3 + ')' +
+    (season ? ' · season ' + season : '') + (v.m1Void ? ' · M1 空(void)' : '') + '</div>';
+  var trace = '<ul class="trendtrace">' + v.trace.map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul>';
+  var note = '<div class="trendnote">Trend direction (up/down) comes from EMA(8+1) — to be wired next. For now: “follows” vs “against”.</div>';
+  p.innerHTML = head + msgs + trace + note;
+  p.style.display = 'block';
 }
 
 /* ---------- wiring ---------- */

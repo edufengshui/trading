@@ -5,7 +5,7 @@
  */
 'use strict';
 
-var CACHE = 'trading-app-v1';
+var CACHE = 'trading-app-v2';
 
 // Core files precached at install so the app opens offline. Relative paths only.
 var CORE = [
@@ -17,6 +17,7 @@ var CORE = [
   './solar-time.js',
   './jieqi-gmt.js',
   './daliuren.js',
+  './trend.js',
   './manifest.webmanifest',
   './icons/icon.svg'
 ];

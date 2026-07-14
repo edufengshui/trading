@@ -55,6 +55,20 @@ button.ghost:hover{border-color:var(--gold);color:var(--gold);}
 .forexbar .pill.active{border-color:var(--gold);background:rgba(217,177,94,.14);}
 .forexbar .fxerr{display:block;margin-top:9px;font-size:11px;color:var(--faint);font-style:italic;}
 
+.trendpanel{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  padding:14px 16px;margin-bottom:14px;}
+.trendpanel .trendhead{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;
+  font-family:var(--disp);font-size:13px;letter-spacing:.04em;color:var(--parch);margin-bottom:8px;}
+.trendpanel .tv{font-family:var(--ui);font-size:12px;font-weight:700;letter-spacing:.05em;
+  padding:5px 12px;border-radius:999px;text-transform:uppercase;}
+.trendpanel .tv.ok{background:rgba(120,180,120,.16);color:#8fce8f;border:1px solid #4f7d4f;}
+.trendpanel .tv.no{background:rgba(200,90,80,.16);color:#e08a80;border:1px solid var(--cinnabar);}
+.trendpanel .trendmsgs{font-size:12px;color:var(--faint);margin-bottom:8px;}
+.trendpanel .trendmsgs b{font-family:var(--cjk);font-size:15px;color:var(--gold);}
+.trendpanel .trendtrace{margin:0 0 8px;padding-left:18px;font-size:12px;line-height:1.55;color:var(--parch);}
+.trendpanel .trendtrace li{margin:2px 0;}
+.trendpanel .trendnote{font-size:11px;color:var(--faint);font-style:italic;border-top:1px solid var(--line);padding-top:8px;}
+
 .pillars{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
 .pillar{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;text-align:center;}
 .pillar .plab{font-family:var(--disp);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);}
