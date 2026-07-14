@@ -335,9 +335,8 @@
     var trans = threeTransmissions(lessons, dayStem, dayBranch, plates);
     var generals = placeGenerals(dayStem, hourBranch, plates);
 
-    // 旬空 (Hour Void): from the HOUR pillar's 旬 (requires the hour stem).
-    var voidBranches = (hourStem != null)
-      ? xunKong(sIdx(hourStem), bIdx(hourBranch)) : null;
+    // 旬空 (Day Void): the two branches with no stem in the DAY pillar's 旬 (decade).
+    var voidBranches = xunKong(sIdx(dayStem), bIdx(dayBranch));
     function isVoid(b) { return voidBranches ? (voidBranches.indexOf(b) >= 0) : null; }
     function decorate(branch) {
       return { branch: branch, general: generals.generalOf(branch),

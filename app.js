@@ -223,7 +223,8 @@ function renderTrend(cross, chart, dArr, row) {
   var t3 = chart.transmission.three;
   var season = seasonElementFor(dArr[0], dArr[1], dArr[2]);
   var v = window.XKDGTrend.evaluateTrend(t3.chu, t3.zhong, t3.mo,
-    { dayStem: chart.dayStem, voidBranches: chart.hourVoid, seasonElement: season });
+    { dayStem: chart.dayStem, voidBranches: chart.hourVoid, seasonElement: season,
+      monthGeneral: chart.monthGeneral && chart.monthGeneral.branch });
 
   var dir = row && row.direction ? row.direction : null;         // 'up' | 'down' | 'flat' | null
   var signal = null;
