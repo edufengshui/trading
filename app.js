@@ -224,18 +224,22 @@ function renderTrend(cross, chart, dArr, row) {
   var season = seasonElementFor(dArr[0], dArr[1], dArr[2]);
   var v = window.XKDGTrend.evaluateTrend(t3.chu, t3.zhong, t3.mo,
     { dayStem: chart.dayStem, voidBranches: chart.hourVoid, seasonElement: season,
-      monthGeneral: chart.monthGeneral && chart.monthGeneral.branch });
+      monthGeneral: chart.monthGeneral && chart.monthGeneral.branch,
+      isFanYin: chart.transmission.special === '返吟' });
 
   var dir = row && row.direction ? row.direction : null;         // 'up' | 'down' | 'flat' | null
   var signal = null;
-  if (dir === 'up') signal = v.confirmed ? 'LONG' : 'SHORT';
+  if (v.noTrade) signal = 'NO TRADE';
+  else if (dir === 'up') signal = v.confirmed ? 'LONG' : 'SHORT';
   else if (dir === 'down') signal = v.confirmed ? 'SHORT' : 'LONG';
 
-  var verdictBadge = v.confirmed
-    ? '<span class="tv ok">CONFIRMED · follows EMA</span>'
-    : '<span class="tv no">NOT CONFIRMED · against EMA</span>';
+  var verdictBadge = v.noTrade
+    ? '<span class="tv no">返吟 FAN YIN · no trade</span>'
+    : (v.confirmed
+      ? '<span class="tv ok">CONFIRMED · follows EMA</span>'
+      : '<span class="tv no">NOT CONFIRMED · against EMA</span>');
   var signalBadge = signal
-    ? '<span class="sig ' + signal.toLowerCase() + '">' + signal + '</span>'
+    ? '<span class="sig ' + (v.noTrade ? 'notrade' : signal.toLowerCase()) + '">' + signal + '</span>'
     : '<span class="sig na">signal n/a — EMA trend missing</span>';
   var head = '<div class="trendhead"><span>' + cross + ' — Level 1</span>' + signalBadge + '</div>';
 

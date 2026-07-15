@@ -42,9 +42,15 @@
     { elem: 'Metal', trio: ['申', '酉', '戌'], en: 'Metal/West' },
     { elem: 'Water', trio: ['亥', '子', '丑'], en: 'Water/North' }
   ];
+  // 刑 (penalties): 寅巳申 · 丑戌未 · 子卯 · 辰午酉亥 自刑 (self)
+  var XING = { '寅': '巳', '巳': '申', '申': '寅', '丑': '戌', '戌': '未', '未': '丑',
+               '子': '卯', '卯': '子', '辰': '辰', '午': '午', '酉': '酉', '亥': '亥' };
+  // earth branches advancing clockwise (辰→未→戌→丑→辰), three at a time
+  var EARTH_ADVANCE = ['辰未戌', '未戌丑', '戌丑辰', '丑辰未'];
 
   function generates(a, b) { return GEN[a] === b; }
   function controls(a, b) { return KE[a] === b; }
+  function penalizes(a, b) { return XING[a] === b && a !== b; }   // 刑 between two different branches
   function chong(b) { return BRANCHES[(BRANCHES.indexOf(b) + 6) % 12]; }
   function tombOfBranch(br) { return TOMB_OF_ELEM[WX[br]] || null; }
   function veryUntimely(elem, season) { if (!season) return false; return controls(elem, season) || controls(season, elem); }
@@ -64,6 +70,15 @@
     opts = opts || {};
     var dayStem = opts.dayStem, voids = opts.voidBranches || [], season = opts.seasonElement || null, mg = opts.monthGeneral || null;
     var trace = []; function T(s) { trace.push(s); }
+
+    // 返吟 (Fan Yin / Clashing chart): do not trade
+    if (opts.isFanYin) {
+      T('la carta è 返吟 (Fan Yin / Clashing) → meglio non operare oggi');
+      return { confirmed: null, noTrade: true, trace: trace, M1: M1, M2: M2, M3: M3,
+               elements: { M1: WX[M1], M2: WX[M2], M3: WX[M3] }, seasonElement: season,
+               m1Void: false, monthGeneral: mg, trendMsg: M1, substituted: false, combo: null };
+    }
+
     function isMG(b) { return !!(mg && b === mg); }
     function timely(elem) { if (!season) return true; return elem === season || generates(season, elem); } // 旺 or 相
     function isVoid(b) { return voids.indexOf(b) >= 0 && !isMG(b); }        // 月將 is never void
@@ -145,6 +160,21 @@
       else if (cChongA && isMG(A)) { T(C + ' clasha il trend ma è il 月將 (sempre forte) → il trend regge'); }
     }
 
+    // ---- 刑 on an advancing earth sequence: cannot advance → does not follow ----
+    if (EARTH_ADVANCE.indexOf(M1 + M2 + M3) >= 0) {
+      var pen = null;
+      if (penalizes(M3, M2)) pen = 'M3 ' + M3 + ' 刑 M2 ' + M2;
+      else if (penalizes(M2, M1)) pen = 'M2 ' + M2 + ' 刑 M1 ' + M1;
+      else if (penalizes(M3, M1)) pen = 'M3 ' + M3 + ' 刑 M1 ' + M1;
+      else if (penalizes(M2, M3)) pen = 'M2 ' + M2 + ' 刑 M3 ' + M3;
+      else if (penalizes(M1, M2)) pen = 'M1 ' + M1 + ' 刑 M2 ' + M2;
+      if (pen) {
+        confirmed = false;
+        T('sequenza oraria di rami di terra ' + M1 + M2 + M3 + ' con 刑 (penalty): ' + pen +
+          ' → la sequenza non può avanzare → non si segue il trend');
+      }
+    }
+
     // ---- 三會 directional trio: final override ----
     if (combo) {
       if (combo.order === 'clockwise') {
@@ -155,7 +185,7 @@
       }
     }
 
-    return { confirmed: confirmed, trace: trace, M1: M1, M2: M2, M3: M3,
+    return { confirmed: confirmed, noTrade: false, trace: trace, M1: M1, M2: M2, M3: M3,
              elements: { M1: WX[M1], M2: WX[M2], M3: WX[M3] }, seasonElement: season,
              m1Void: isVoid(M1), monthGeneral: mg, trendMsg: A, substituted: substituted,
              combo: combo };

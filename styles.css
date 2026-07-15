@@ -72,6 +72,7 @@ button.ghost:hover{border-color:var(--gold);color:var(--gold);}
   padding:6px 16px;border-radius:8px;text-transform:uppercase;}
 .trendpanel .sig.long{background:rgba(120,180,120,.2);color:#8fce8f;border:1px solid #4f7d4f;}
 .trendpanel .sig.short{background:rgba(200,90,80,.2);color:#e08a80;border:1px solid var(--cinnabar);}
+.trendpanel .sig.notrade{background:rgba(217,177,94,.18);color:var(--gold);border:1px solid var(--gold);}
 .trendpanel .sig.na{background:var(--panel2);color:var(--faint);border:1px solid var(--line);font-weight:600;letter-spacing:.02em;text-transform:none;}
 .trendpanel .trendmsgs b.up{color:#6fa6e8;}
 .trendpanel .trendmsgs b.down{color:var(--cinnabar);}
