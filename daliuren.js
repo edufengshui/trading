@@ -14,12 +14,17 @@
  *   - 日干支 = the TST day pillar.
  *
  * STATUS of 三傳 (九宗門 / Nine Rituals) — all nine implemented:
- *   VALIDATED against reference charts : 賊剋 (元首/重審), 比用, 遙剋 (蒿矢/彈射), 返吟-with-克.
+ *   VALIDATED against reference charts : 賊剋 (元首/重審), 比用, 遙剋 (蒿矢/彈射), 返吟-with-克,
+ *     涉害 depth counting (庚寅日/占時巳/月將未 → 辰午申, full match incl. generals & 旬空).
  *   RULE-COMPLETE, deterministic        : 昴星 (Hairy Head), 伏吟 (Hidden Hum), 返吟-no-克 (驛馬).
  *     Coded verbatim from the reference slides; no ambiguity, but not yet chart-confirmed.
- *   RULE-CODED, needsValidation:true    : 涉害 (depth-of-harm counting direction is school-
- *     dependent), 別責 (干合/三合 "in front" reading), 八專 ("count 3" inclusivity). One
- *     reference chart each will lock these.
+ *   RULE-CODED, needsValidation:true    : 涉害 孟/仲 tie-breaks (only when depth ties),
+ *     別責 (干合/三合 "in front" reading), 八專 ("count 3" inclusivity). One reference chart
+ *     each will lock these.
+ *
+ * 涉害 depth rule (validated): 从其本家起, 数至所临之处 — the upper spirit travels retrograde
+ *   from its OWN home palace to the palace it now sits on; count the palaces on that path that
+ *   克 it. Deepest harm wins. (Earlier bug: counted the long way round from seat back to home.)
  *
  * Pure data + functions; the instant→chart wrapper uses XKDGSolarTime / XKDGJieQiGMT if present.
  */
@@ -153,13 +158,15 @@
     }
 
     // 涉害深淺: harm depth = # earth cells that 克 the upper spirit on its way home (retrograde).
+    // 涉害深淺: 从其本家起, 数至所临之处 — the upper spirit travelled `steps` palaces retrograde
+    // from its own home to the palace it now sits on; count the palaces on that path that 克 it.
+    // (The home palace is the branch itself, so it can never 克 it — including it is harmless.)
     function harmDepth(i) {
-      var X = lessons[i].top, seat = lessons[i].bottom, home = bIdx(X), n = 0;
-      var p = bIdx(seat);
-      for (var step = 0; step < 12; step++) {
-        if (p === home) break;
+      var X = lessons[i].top, home = bIdx(X), seat = bIdx(lessons[i].bottom), n = 0;
+      var steps = ((home - seat) % 12 + 12) % 12;
+      for (var k = 1; k <= steps; k++) {
+        var p = ((home - k) % 12 + 12) % 12;
         if (branchControls(BRANCHES[p], X)) n++;
-        p = (p + 11) % 12; // retrograde
       }
       return n;
     }
@@ -172,15 +179,16 @@
       var pool = bi.length ? bi : set;
       var depths = pool.map(harmDepth), max = Math.max.apply(null, depths);
       var deep = pool.filter(function (i, k) { return depths[k] === max; });
-      var chosen = null;
+      var chosen = null, byTieBreak = false;
       if (deep.length === 1) chosen = deep[0];
       else {
         var meng = deep.filter(function (i) { return isMeng(lessons[i].bottom); });
         var zhong = deep.filter(function (i) { return isZhong(lessons[i].bottom); });
-        if (meng.length === 1) chosen = meng[0];
-        else if (meng.length === 0 && zhong.length === 1) chosen = zhong[0];
+        if (meng.length === 1) { chosen = meng[0]; byTieBreak = true; }
+        else if (meng.length === 0 && zhong.length === 1) { chosen = zhong[0]; byTieBreak = true; }
       }
-      if (chosen !== null) return flag(chosen, '涉害');
+      // depth-decided 涉害 is validated against a reference chart; the 孟/仲 tie-breaks are not yet.
+      if (chosen !== null) return byTieBreak ? flag(chosen, '涉害') : ok(chosen, '涉害');
       // last resort 涉害: yang→day-stem上神, yin→day-branch上神
       return flagThree('涉害', chain(dayYang ? ha(jigong) : ha(dayBranch)));
     }
