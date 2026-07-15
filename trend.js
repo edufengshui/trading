@@ -15,9 +15,12 @@
  *               An empty (空) tomb does NOT bury → the tomb action is skipped.
  *   Void of M1: a void trend confirms only if nourished — M2生M1 with M2 strong (timely, or a
  *               strong M3生M2) and M3 not obstructing M2. A trend leaning on a void M1 → not.
- *   月將 (Month General): a message equal to the 月將 is never void, always strong, and its
- *               action carries DOUBLE energy — its nourishment of a void M1 always suffices, and
- *               when it obstructs it cannot be neutralised by a normal M3.
+ *   月將 (Month General): never void, always strong, DOUBLE energy — its nourishment of a void
+ *               M1 always suffices; when it obstructs it cannot be neutralised by a normal M3.
+ *               If M1 is void and M2 is the 月將, M2 REPRESENTS the trend and M3 judges it.
+ *   三會 (directional trio): 寅卯辰 Wood · 巳午未 Fire · 申酉戌 Metal · 亥子丑 Water.
+ *               Clockwise (ascending) → normal reading. Anticlockwise (descending) → the
+ *               reading is REVERSED (final override).
  */
 (function () {
   'use strict';
@@ -32,6 +35,13 @@
   var TOMB_SHA = { '甲': '未', '乙': '戌', '丙': '戌', '丁': '丑', '戊': '戌',
                    '己': '丑', '庚': '丑', '辛': '辰', '壬': '辰', '癸': '未' };
   var TOMB_OF_ELEM = { Water: '辰', Wood: '未', Fire: '戌', Metal: '丑' }; // earth: none
+  // 三會方局 (directional trios) — no Earth trio
+  var DIRECTIONAL = [
+    { elem: 'Wood',  trio: ['寅', '卯', '辰'], en: 'Wood/East' },
+    { elem: 'Fire',  trio: ['巳', '午', '未'], en: 'Fire/South' },
+    { elem: 'Metal', trio: ['申', '酉', '戌'], en: 'Metal/West' },
+    { elem: 'Water', trio: ['亥', '子', '丑'], en: 'Water/North' }
+  ];
 
   function generates(a, b) { return GEN[a] === b; }
   function controls(a, b) { return KE[a] === b; }
@@ -39,86 +49,121 @@
   function tombOfBranch(br) { return TOMB_OF_ELEM[WX[br]] || null; }
   function veryUntimely(elem, season) { if (!season) return false; return controls(elem, season) || controls(season, elem); }
 
+  // exact ascending trio → clockwise; exact descending trio → anticlockwise; else null
+  function directionalCombo(a, b, c) {
+    var seq = a + b + c;
+    for (var i = 0; i < DIRECTIONAL.length; i++) {
+      var d = DIRECTIONAL[i], asc = d.trio.join(''), desc = d.trio.slice().reverse().join('');
+      if (seq === asc) return { elem: d.elem, cn: asc, en: d.en, order: 'clockwise' };
+      if (seq === desc) return { elem: d.elem, cn: desc, en: d.en, order: 'anticlockwise' };
+    }
+    return null;
+  }
+
   function evaluateTrend(M1, M2, M3, opts) {
     opts = opts || {};
     var dayStem = opts.dayStem, voids = opts.voidBranches || [], season = opts.seasonElement || null, mg = opts.monthGeneral || null;
-    var e1 = WX[M1], e2 = WX[M2], e3 = WX[M3];
     var trace = []; function T(s) { trace.push(s); }
-    function isMG(b) { return mg && b === mg; }
+    function isMG(b) { return !!(mg && b === mg); }
     function timely(elem) { if (!season) return true; return elem === season || generates(season, elem); } // 旺 or 相
-    function strongMsg(b, elem) { return isMG(b) || timely(elem); }
+    function isVoid(b) { return voids.indexOf(b) >= 0 && !isMG(b); }        // 月將 is never void
+    function strongMsg(b) { return isMG(b) || timely(WX[b]); }
 
-    var effVoid1 = (voids.indexOf(M1) >= 0) && !isMG(M1);   // 月將 is never void
-    var m2Void = (voids.indexOf(M2) >= 0) && !isMG(M2);
-    var m3Void = (voids.indexOf(M3) >= 0) && !isMG(M3);
-    var m2MG = isMG(M2);                                     // Month General in M2 → immovable, double energy
+    var combo = directionalCombo(M1, M2, M3);   // computed first, applied as final override
 
-    var m2GenM1 = generates(e2, e1), m2SameM1 = (e2 === e1), m1GenM2 = generates(e1, e2);
-    var m2CtrlM1 = controls(e2, e1), m1CtrlM2 = controls(e1, e2);
-    var m2CombM1 = (COMBINE[M2] === M1);
-    var m2IsTombM1 = (tombOfBranch(M1) === M2) && !m2Void;   // empty tomb doesn't bury
-    var m3ChongM2 = (chong(M2) === M3), m3DrainM2 = generates(e2, e3), m3IsTombM2 = (tombOfBranch(M2) === M3) && !m3Void;
-    var m3CtrlM2 = controls(e3, e2), m3GenM2 = generates(e3, e2), m3ChongM1 = (chong(M1) === M3);
-    // a Month-General M2 cannot be neutralised or obstructed by a normal M3
-    var m3NeutralizesM2 = (m3ChongM2 || m3DrainM2 || m3IsTombM2) && !m2MG;
-    var m3Obstructs = (m3CtrlM2 || m3ChongM2 || m3DrainM2 || m3IsTombM2) && !m2MG;
-    var m2Strong = strongMsg(M2, e2) || (m3GenM2 && strongMsg(M3, e3));
+    // 月將 in M2 takes over a void trend
+    var A = M1, B = M2, C = M3, substituted = false;
+    if (isVoid(M1) && isMG(M2)) {
+      A = M2; B = M3; C = null; substituted = true;
+      T('M1 ' + M1 + ' è vuoto (空) e M2 ' + M2 + ' è il 月將 (Month General) → è M2 a rappresentare il trend, giudicato da M3 ' + M3);
+    }
 
-    if (isMG(M1)) T('初傳 M1 ' + M1 + ' è il 月將 (Month General) → mai vuoto, sempre forte (doppia energia)');
-    if ((tombOfBranch(M1) === M2) && m2Void) T('M2 ' + M2 + ' sarebbe la tomba di M1 ma M2 è vuoto (空) → non seppellisce');
+    // ---- core assessment: A = trend, B = judge, C = third (may be null) ----
+    var eA = WX[A], eB = WX[B], eC = C ? WX[C] : null;
+    var voidA = isVoid(A), voidB = isVoid(B), voidC = C ? isVoid(C) : false;
+    var bMG = isMG(B);
+
+    var bGenA = generates(eB, eA), bSameA = (eB === eA), aGenB = generates(eA, eB);
+    var bCtrlA = controls(eB, eA), aCtrlB = controls(eA, eB);
+    var bCombA = (COMBINE[B] === A);
+    var bIsTombA = (tombOfBranch(A) === B) && !voidB;                       // empty tomb doesn't bury
+    var cChongB = C ? (chong(B) === C) : false, cDrainB = C ? generates(eB, eC) : false;
+    var cIsTombB = C ? ((tombOfBranch(B) === C) && !voidC) : false;
+    var cCtrlB = C ? controls(eC, eB) : false, cGenB = C ? generates(eC, eB) : false;
+    var cChongA = C ? (chong(A) === C) : false;
+    var cNeutralizesB = (cChongB || cDrainB || cIsTombB) && !bMG;           // 月將 B is immovable
+    var cObstructsB = (cCtrlB || cChongB || cDrainB || cIsTombB) && !bMG;
+    var bStrong = strongMsg(B) || (cGenB && C && strongMsg(C));
+
+    if (isMG(A)) T('trend ' + A + ' è il 月將 → mai vuoto, sempre forte (doppia energia)');
+    if ((tombOfBranch(A) === B) && voidB) T('M2 ' + B + ' sarebbe la tomba del trend ma è vuoto (空) → non seppellisce');
 
     var confirmed = null, kind = '';
-
-    function leanOnM1(reason) {
-      if (effVoid1) { confirmed = false; T(reason + ' → si appoggia a M1, ma M1 è vuoto (空) e non nutrito → non confermato'); }
-      else if (veryUntimely(e1, season) && !isMG(M1)) { confirmed = false; T(reason + ' → si appoggia a M1, ma M1 senza energia (囚/死) → non confermato'); }
-      else { confirmed = true; T(reason + ' → si appoggia a M1 → confermato'); }
+    function leanOnA(reason) {
+      if (voidA) { confirmed = false; T(reason + ' → si appoggia al trend, ma è vuoto (空) e non nutrito → non confermato'); }
+      else if (veryUntimely(eA, season) && !isMG(A)) { confirmed = false; T(reason + ' → si appoggia al trend, ma è senza energia (囚/死) → non confermato'); }
+      else { confirmed = true; T(reason + ' → si appoggia al trend → confermato'); }
     }
 
-    if (dayStem && TOMB_SHA[dayStem] === M1) {
+    if (dayStem && TOMB_SHA[dayStem] === A) {
       kind = 'daystomb';
-      if (m2CtrlM1 || m1GenM2) { confirmed = true; T('M1 ' + M1 + ' è la tomba del tronco-giorno ' + dayStem + ', ma M2 ' + M2 + ' la ' + (m2CtrlM1 ? 'controlla' : 'drena') + ' → tomba aperta → confermato'); }
-      else { confirmed = false; T('M1 ' + M1 + ' è la tomba del tronco-giorno ' + dayStem + ' → M1 sepolto → non confermato'); }
+      if (bCtrlA || aGenB) { confirmed = true; T('trend ' + A + ' è la tomba del tronco-giorno ' + dayStem + ', ma ' + B + ' la ' + (bCtrlA ? 'controlla' : 'drena') + ' → tomba aperta → confermato'); }
+      else { confirmed = false; T('trend ' + A + ' è la tomba del tronco-giorno ' + dayStem + ' → sepolto → non confermato'); }
     }
-    else if (m2CombM1) { confirmed = false; kind = 'combine'; T('M2 ' + M2 + ' lega M1 ' + M1 + ' [六合]' + (m2MG ? ' (月將, doppia)' : '') + ' → non confermato'); }
-    else if (m2IsTombM1) {
-      kind = 'tombM1';
-      if (effVoid1) { confirmed = false; T('M2 ' + M2 + ' è la tomba di M1 ' + M1 + ' e M1 è vuoto (空): una tomba non recupera un trend vuoto — nemmeno il 冲 di M3 lo salva → non confermato'); }
-      else if (m3ChongM2 && !m2MG) { confirmed = true; T('M2 ' + M2 + ' è la tomba di M1 ' + M1 + ', ma M3 ' + M3 + ' clasha M2 → tomba aperta → M1 recuperato → confermato'); }
-      else { confirmed = false; T('M2 ' + M2 + ' è la tomba di M1 ' + M1 + (m2MG ? ' (月將: non apribile)' : '') + ' → M1 sepolto → non confermato'); }
+    else if (bCombA) { confirmed = false; kind = 'combine'; T(B + ' lega il trend ' + A + ' [六合]' + (bMG ? ' (月將, doppia)' : '') + ' → non confermato'); }
+    else if (bIsTombA) {
+      kind = 'tombA';
+      if (voidA) { confirmed = false; T(B + ' è la tomba del trend ' + A + ' e il trend è vuoto (空): una tomba non recupera un trend vuoto — nemmeno un 冲 lo salva → non confermato'); }
+      else if (cChongB && !bMG) { confirmed = true; T(B + ' è la tomba del trend ' + A + ', ma ' + C + ' la clasha → tomba aperta → trend recuperato → confermato'); }
+      else { confirmed = false; T(B + ' è la tomba del trend ' + A + (bMG ? ' (月將: non apribile)' : '') + ' → sepolto → non confermato'); }
     }
-    else if (m2GenM1) {
-      if (effVoid1) {
+    else if (bGenA) {
+      if (voidA) {
         kind = 'void';
-        var nourished = m2MG || (m2Strong && !m3Obstructs);
-        if (nourished) { confirmed = true; T('M1 ' + M1 + ' vuoto ma M2 ' + M2 + ' lo genera' + (m2MG ? ' (月將, doppia energia → basta da solo)' : timely(e2) ? ' (forte/timely)' : ' (rinforzato da M3)') + (m2MG ? '' : ' e M3 non ostacola') + ' → trend vuoto rifornito → confermato'); }
-        else { confirmed = false; T('M1 ' + M1 + ' vuoto: M2 lo genera ma ' + (!m2Strong ? 'M2 è debole' : 'M3 ostacola M2') + ' → nutrimento insufficiente → non confermato'); }
-      } else { confirmed = true; kind = 'help'; T('M2 ' + M2 + ' genera M1 ' + M1 + ' [生]' + (m2MG ? ' (月將)' : '') + ' → confermato'); }
+        var nourished = bMG || (bStrong && !cObstructsB);
+        if (nourished) { confirmed = true; T('trend ' + A + ' vuoto ma ' + B + ' lo genera' + (bMG ? ' (月將, doppia energia → basta da solo)' : timely(eB) ? ' (forte/timely)' : ' (rinforzato dal terzo)') + (bMG ? '' : ' e il terzo non ostacola') + ' → trend rifornito → confermato'); }
+        else { confirmed = false; T('trend ' + A + ' vuoto: ' + B + ' lo genera ma ' + (!bStrong ? B + ' è debole' : 'il terzo ostacola ' + B) + ' → nutrimento insufficiente → non confermato'); }
+      } else { confirmed = true; kind = 'help'; T(B + ' genera il trend ' + A + ' [生]' + (bMG ? ' (月將)' : '') + ' → confermato'); }
     }
-    else if (m2SameM1) {
-      if (effVoid1) { confirmed = false; kind = 'void'; T('M2 ' + M2 + ' 比和 con M1 vuoto ma non lo nutre (serve 生) → non confermato'); }
-      else { confirmed = true; kind = 'help'; T('M2 ' + M2 + ' stesso elemento di M1 [比和] → confermato'); }
+    else if (bSameA) {
+      if (voidA) { confirmed = false; kind = 'void'; T(B + ' 比和 col trend vuoto ma non lo nutre (serve 生) → non confermato'); }
+      else { confirmed = true; kind = 'help'; T(B + ' stesso elemento del trend [比和] → confermato'); }
     }
-    else if (m1GenM2) { confirmed = false; kind = 'harm'; T('M2 ' + M2 + ' drena M1 ' + M1 + (m2MG ? ' (月將, doppia)' : '') + ' → non confermato'); }
-    else if (m2CtrlM1) { confirmed = false; kind = 'harm'; T('M2 ' + M2 + ' controlla M1 ' + M1 + ' [剋]' + (m2MG ? ' (月將, doppia)' : '') + ' → non confermato'); }
-    else if (m1CtrlM2) {
-      if (effVoid1) { confirmed = false; kind = 'void'; T('M1 ' + M1 + ' controlla M2 ma M1 è vuoto (空) → non confermato'); }
-      else { confirmed = true; kind = 'help'; T('M1 ' + M1 + ' controlla M2 ' + M2 + ' [剋] → confermato'); }
+    else if (aGenB) { confirmed = false; kind = 'harm'; T(B + ' drena il trend ' + A + (bMG ? ' (月將, doppia)' : '') + ' → non confermato'); }
+    else if (bCtrlA) { confirmed = false; kind = 'harm'; T(B + ' controlla il trend ' + A + ' [剋]' + (bMG ? ' (月將, doppia)' : '') + ' → non confermato'); }
+    else if (aCtrlB) {
+      if (voidA) { confirmed = false; kind = 'void'; T('il trend ' + A + ' controlla ' + B + ' ma è vuoto (空) → non confermato'); }
+      else { confirmed = true; kind = 'help'; T('il trend ' + A + ' controlla ' + B + ' [剋] → confermato'); }
     }
-    else { confirmed = true; kind = 'none'; T('nessuna relazione forte M2→M1 → confermato di default'); }
+    else { confirmed = true; kind = 'none'; T('nessuna relazione forte su ' + A + ' → confermato di default'); }
 
-    if (kind === 'harm' && m3NeutralizesM2) { leanOnM1('M3 ' + M3 + ' neutralizza M2 (' + (m3ChongM2 ? '冲' : m3DrainM2 ? 'drena' : 'tomba') + ')'); }
-    else if (kind === 'help' && (m3NeutralizesM2 || (m3CtrlM2 && !m2MG))) { leanOnM1('M3 ' + M3 + ' ' + (m3CtrlM2 ? 'controlla' : 'neutralizza') + ' M2'); }
-    else if (kind === 'help' && m3GenM2) { T('M3 ' + M3 + ' genera M2 → sostegno rinforzato → resta confermato'); }
+    if (C) {
+      if (kind === 'harm' && cNeutralizesB) { leanOnA(C + ' neutralizza ' + B + ' (' + (cChongB ? '冲' : cDrainB ? 'drena' : 'tomba') + ')'); }
+      else if (kind === 'help' && (cNeutralizesB || (cCtrlB && !bMG))) { leanOnA(C + ' ' + (cCtrlB ? 'controlla' : 'neutralizza') + ' ' + B); }
+      else if (kind === 'help' && cGenB) { T(C + ' genera ' + B + ' → sostegno rinforzato → resta confermato'); }
+      if (cChongA && !isMG(A)) { confirmed = false; T(C + ' clasha il trend ' + A + ' [冲] → il trend è colpito → non confermato'); }
+      else if (cChongA && isMG(A)) { T(C + ' clasha il trend ma è il 月將 (sempre forte) → il trend regge'); }
+    }
 
-    if (m3ChongM1 && !isMG(M1)) { confirmed = false; T('M3 ' + M3 + ' clasha M1 ' + M1 + ' [冲] → il trend è colpito → non confermato'); }
-    else if (m3ChongM1 && isMG(M1)) { T('M3 ' + M3 + ' clasha M1 ma M1 è il 月將 (sempre forte) → il trend regge'); }
+    // ---- 三會 directional trio: final override ----
+    if (combo) {
+      if (combo.order === 'clockwise') {
+        T('三會 ' + combo.cn + ' (' + combo.en + ') in sequenza oraria → interpretazione normale');
+      } else {
+        confirmed = !confirmed;
+        T('三會 ' + combo.cn + ' (' + combo.en + ') in sequenza ANTIORARIA → interpretazione contraria → ' + (confirmed ? 'confermato' : 'non confermato'));
+      }
+    }
 
     return { confirmed: confirmed, trace: trace, M1: M1, M2: M2, M3: M3,
-             elements: { M1: e1, M2: e2, M3: e3 }, seasonElement: season, m1Void: effVoid1, monthGeneral: mg };
+             elements: { M1: WX[M1], M2: WX[M2], M3: WX[M3] }, seasonElement: season,
+             m1Void: isVoid(M1), monthGeneral: mg, trendMsg: A, substituted: substituted,
+             combo: combo };
   }
 
-  var API = { evaluateTrend: evaluateTrend, WX: WX, GEN: GEN, KE: KE, COMBINE: COMBINE, TOMB_SHA: TOMB_SHA, TOMB_OF_ELEM: TOMB_OF_ELEM, veryUntimely: veryUntimely };
+  var API = { evaluateTrend: evaluateTrend, directionalCombo: directionalCombo, WX: WX, GEN: GEN, KE: KE,
+              COMBINE: COMBINE, TOMB_SHA: TOMB_SHA, TOMB_OF_ELEM: TOMB_OF_ELEM, DIRECTIONAL: DIRECTIONAL,
+              veryUntimely: veryUntimely };
   if (typeof window !== 'undefined') window.XKDGTrend = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
 })();

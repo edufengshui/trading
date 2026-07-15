@@ -246,7 +246,9 @@ function renderTrend(cross, chart, dArr, row) {
 
   var msgs = '<div class="trendmsgs">初傳 M1 <b>' + v.M1 + '</b> (' + v.elements.M1 + ') → 中傳 M2 <b>' + v.M2 +
     '</b> (' + v.elements.M2 + ') → 末傳 M3 <b>' + v.M3 + '</b> (' + v.elements.M3 + ')' +
-    (season ? ' · season ' + season : '') + (v.m1Void ? ' · M1 空(void)' : '') + ' — ' + verdictBadge + '</div>';
+    (season ? ' · season ' + season : '') + (v.m1Void ? ' · M1 空(void)' : '') +
+    (v.combo ? ' · 三會 ' + v.combo.cn + ' ' + v.combo.en + ' (' + (v.combo.order === 'clockwise' ? 'clockwise' : 'anticlockwise → reversed') + ')' : '') +
+    (v.substituted ? ' · 月將 M2 takes over the trend' : '') + ' — ' + verdictBadge + '</div>';
   var trace = '<ul class="trendtrace">' + v.trace.map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul>';
   p.innerHTML = head + emaLine + msgs + trace;
   p.style.display = 'block';
