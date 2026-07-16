@@ -47,6 +47,7 @@
                '子': '卯', '卯': '子', '辰': '辰', '午': '午', '酉': '酉', '亥': '亥' };
   // earth branches advancing clockwise (辰→未→戌→丑→辰), three at a time
   var EARTH_ADVANCE = ['辰未戌', '未戌丑', '戌丑辰', '丑辰未'];
+  var SELF_XING = ['辰', '午', '酉', '亥'];   // 自刑
 
   function generates(a, b) { return GEN[a] === b; }
   function controls(a, b) { return KE[a] === b; }
@@ -160,18 +161,44 @@
       else if (cChongA && isMG(A)) { T(C + ' clasha il trend ma è il 月將 (sempre forte) → il trend regge'); }
     }
 
-    // ---- 刑 on an advancing earth sequence: cannot advance → does not follow ----
-    if (EARTH_ADVANCE.indexOf(M1 + M2 + M3) >= 0) {
-      var pen = null;
-      if (penalizes(M3, M2)) pen = 'M3 ' + M3 + ' 刑 M2 ' + M2;
-      else if (penalizes(M2, M1)) pen = 'M2 ' + M2 + ' 刑 M1 ' + M1;
-      else if (penalizes(M3, M1)) pen = 'M3 ' + M3 + ' 刑 M1 ' + M1;
-      else if (penalizes(M2, M3)) pen = 'M2 ' + M2 + ' 刑 M3 ' + M3;
-      else if (penalizes(M1, M2)) pen = 'M1 ' + M1 + ' 刑 M2 ' + M2;
-      if (pen) {
+    // ---- 刑 (Penalty Sha): "a spirit that hurts and brings disability" → does not follow ----
+    // Any penalty among the three messages is negative. Terminal.
+    var pens = [];
+    var msgs = [{ n: 'M1', b: M1 }, { n: 'M2', b: M2 }, { n: 'M3', b: M3 }];
+    for (var pi = 0; pi < 3; pi++) {
+      for (var pj = 0; pj < 3; pj++) {
+        if (pi === pj) continue;
+        if (penalizes(msgs[pi].b, msgs[pj].b)) {
+          var tag = msgs[pi].n + ' ' + msgs[pi].b + ' 刑 ' + msgs[pj].n + ' ' + msgs[pj].b;
+          if (pens.indexOf(tag) < 0) pens.push(tag);
+        }
+      }
+    }
+    // 自刑 (self-penalty): the same self-penalising branch appearing twice
+    for (var si = 0; si < 3; si++) {
+      for (var sj = si + 1; sj < 3; sj++) {
+        if (msgs[si].b === msgs[sj].b && SELF_XING.indexOf(msgs[si].b) >= 0) {
+          pens.push(msgs[si].n + '/' + msgs[sj].n + ' ' + msgs[si].b + ' 自刑 (self-penalty)');
+        }
+      }
+    }
+    if (pens.length) {
+      // if M2 penalises M1, ONLY a 冲 (clash) or 六合 (combination) from M3 can cancel the damage
+      var penM1M2 = penalizes(M1, M2) || penalizes(M2, M1);
+      var otherPens = pens.filter(function (p) {
+        return !(p.indexOf('M1') >= 0 && p.indexOf('M2') >= 0 && p.indexOf('M3') < 0);
+      });
+      var rescue = (chong(M2) === M3) ? '冲' : ((COMBINE[M2] === M3) ? '六合' : null);
+      if (penM1M2 && rescue && !otherPens.length) {
+        T('刑 (Penalty): ' + pens.join(' · ') + ' — ma M3 ' + M3 + ' ' + rescue + ' M2 ' + M2 +
+          ' → il danno del 刑 è annullato');
+      } else {
         confirmed = false;
-        T('sequenza oraria di rami di terra ' + M1 + M2 + M3 + ' con 刑 (penalty): ' + pen +
-          ' → la sequenza non può avanzare → non si segue il trend');
+        var isEarthSeq = EARTH_ADVANCE.indexOf(M1 + M2 + M3) >= 0;
+        T('刑 (Penalty): ' + pens.join(' · ') +
+          (isEarthSeq ? ' — sequenza oraria di terra ' + M1 + M2 + M3 + ': non può avanzare' : '') +
+          (penM1M2 && !rescue ? ' — nessun 冲/六合 da M3 che lo annulli' : '') +
+          ' → non si segue il trend');
       }
     }
 
@@ -188,7 +215,7 @@
     return { confirmed: confirmed, noTrade: false, trace: trace, M1: M1, M2: M2, M3: M3,
              elements: { M1: WX[M1], M2: WX[M2], M3: WX[M3] }, seasonElement: season,
              m1Void: isVoid(M1), monthGeneral: mg, trendMsg: A, substituted: substituted,
-             combo: combo };
+             combo: combo, penalties: pens || [] };
   }
 
   // ---- EMA(8+1) trend + consolidation filter (shared by the PWA and the backtest) ----
