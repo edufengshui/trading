@@ -163,21 +163,31 @@ function renderForexBar() {
   var errs = forexData.rows.filter(function (r) { return r.status !== 'ok'; }).map(function (r) { return r.cross; });
   var head = '<span class="fxdate">Forex · ' + forexData.date + ' 00:00 GMT · 0° Greenwich</span>';
   var pills = ok.map(function (r) {
+    var known = (r.emaConsolidated === true || r.emaConsolidated === false);
     var choppy = (r.emaConsolidated === false);
     var arrow = r.direction === 'up' ? '↑' : r.direction === 'down' ? '↓' : '';
-    var tip = choppy
-      ? 'EMA not consolidated — ' + r.emaChanges + ' reversals in the last 10 days. Filtered out, but still clickable.'
-      : 'EMA consolidated — ' + (r.emaChanges != null ? r.emaChanges : '?') + ' reversals in the last 10 days.';
-    return '<button class="pill' + (choppy ? ' choppy' : '') + '" data-cross="' + r.cross +
+    var tip = !known
+      ? 'Consolidation filter unavailable — the feed has no EMA history for this cross.'
+      : (choppy
+        ? 'EMA not consolidated — ' + r.emaChanges + ' reversals in the last 10 days. Filtered out, but still clickable.'
+        : 'EMA consolidated — ' + r.emaChanges + ' reversals in the last 10 days.');
+    var cls = !known ? ' unknown' : (choppy ? ' choppy' : '');
+    return '<button class="pill' + cls + '" data-cross="' + r.cross +
       '" data-branch="' + r.branch + '" data-choppy="' + (choppy ? '1' : '0') + '" title="' + tip + '">' +
       r.cross + ' <b>' + r.branch + '</b>' +
       (arrow ? ' <i class="dir ' + r.direction + '">' + arrow + '</i>' : '') +
-      (choppy ? ' <i class="warn">⚠</i>' : '') + '</button>';
+      (choppy ? ' <i class="warn">⚠</i>' : '') + (!known ? ' <i class="warn">?</i>' : '') + '</button>';
   }).join('');
   var nChoppy = ok.filter(function (r) { return r.emaConsolidated === false; }).length;
-  var legend = nChoppy
-    ? '<span class="fxlegend">⚠ = EMA not consolidated (3+ reversals in 10 days) — not recommended, but you can still open them.</span>'
-    : '';
+  var nUnknown = ok.filter(function (r) { return r.emaConsolidated !== true && r.emaConsolidated !== false; }).length;
+  var legend = '';
+  if (nUnknown) {
+    legend = '<span class="fxstale">⚠ Consolidation filter NOT ACTIVE — this feed was produced by an older Worker ' +
+      '(generated ' + (forexData.generatedAt || '?') + '). Redeploy the Worker and call /run. ' +
+      'Until then no cross is being filtered.</span>';
+  } else if (nChoppy) {
+    legend = '<span class="fxlegend">⚠ = EMA not consolidated (3+ reversals in 10 days) — not recommended, but you can still open them.</span>';
+  }
   bar.innerHTML = head + '<div class="pills">' + pills + '</div>' + legend +
     (errs.length ? '<span class="fxerr">no data (market closed?): ' + errs.join(', ') + '</span>' : '');
   bar.querySelectorAll('.pill').forEach(function (b) {
@@ -244,6 +254,7 @@ function renderTrend(cross, chart, dArr, row) {
       isFanYin: chart.transmission.special === '返吟' });
 
   var dir = row && row.direction ? row.direction : null;         // 'up' | 'down' | 'flat' | null
+  var filterKnown = row && (row.emaConsolidated === true || row.emaConsolidated === false);
   var choppy = row && row.emaConsolidated === false;             // consolidation filter
   var signal = null;
   if (v.noTrade) signal = 'NO TRADE';
@@ -263,12 +274,24 @@ function renderTrend(cross, chart, dArr, row) {
     : '<span class="sig na">signal n/a — EMA trend missing</span>';
   var head = '<div class="trendhead"><span>' + cross + ' — Level 1</span>' + signalBadge + '</div>';
 
+  // seed derivation, shown so it can be checked by hand
+  var seedLine = '';
+  if (row && row.price != null) {
+    var rem = ((row.seed % 12) + 12) % 12; rem = (rem === 0 ? 12 : rem);
+    seedLine = '<div class="trendmsgs seedline">00:00 GMT open <b class="px">' + row.price + '</b>' +
+      ' → first 3 significant digits <b class="px">' + row.digits + '</b>' +
+      ' → ' + row.digits + ' mod 12 = remainder <b class="px">' + rem + '</b>' +
+      ' → 地支 <b>' + row.branch + '</b> (' + row.branchPinyin + ')' +
+      ' <span class="hint">counting 子=1</span></div>';
+  }
+
   var arrow = dir === 'up' ? '↑ up (blue)' : dir === 'down' ? '↓ down (red)' : (dir ? dir : 'n/a');
   var emaLine = '<div class="trendmsgs">EMA(8+1) daily trend: <b class="' + (dir || '') + '">' + arrow + '</b>' +
     (row && row.ema != null ? ' · ema ' + row.ema + ' (prev ' + row.emaPrev + ')' : '') +
     (row && row.emaDirs ? ' · last 10 days ' + row.emaDirs.replace(/u/g, '↑').replace(/d/g, '↓').replace(/f/g, '–') +
       ' · ' + row.emaChanges + ' reversal' + (row.emaChanges === 1 ? '' : 's') +
-      (row.emaConsolidated ? ' → consolidated' : ' → NOT consolidated (filtered out)') : '') +
+      (row.emaConsolidated ? ' → consolidated' : ' → NOT consolidated (filtered out)')
+      : ' · <b class="down">consolidation filter unavailable (old feed — redeploy the Worker and call /run)</b>') +
     (row && (row.emaError || row.emaNote) ? ' · ' + (row.emaError || row.emaNote) : '') + '</div>';
 
   var msgs = '<div class="trendmsgs">初傳 M1 <b>' + v.M1 + '</b> (' + v.elements.M1 + ') → 中傳 M2 <b>' + v.M2 +
@@ -277,7 +300,7 @@ function renderTrend(cross, chart, dArr, row) {
     (v.combo ? ' · 三會 ' + v.combo.cn + ' ' + v.combo.en + ' (' + (v.combo.order === 'clockwise' ? 'clockwise' : 'anticlockwise → reversed') + ')' : '') +
     (v.substituted ? ' · 月將 M2 takes over the trend' : '') + ' — ' + verdictBadge + '</div>';
   var trace = '<ul class="trendtrace">' + v.trace.map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul>';
-  p.innerHTML = head + emaLine + msgs + trace;
+  p.innerHTML = head + seedLine + emaLine + msgs + trace;
   p.style.display = 'block';
 }
 

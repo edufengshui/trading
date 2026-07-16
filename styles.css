@@ -59,6 +59,9 @@ button.ghost:hover{border-color:var(--gold);color:var(--gold);}
 .forexbar .pill .dir.up{color:#6fa6e8;}
 .forexbar .pill .dir.down{color:var(--cinnabar);}
 .forexbar .pill .warn{font-style:normal;font-size:11px;color:var(--cinnabar);}
+.forexbar .pill.unknown{opacity:.6;border-style:dotted;}
+.forexbar .fxstale{display:block;margin-top:9px;font-size:11px;color:#e08a80;font-weight:600;
+  background:rgba(200,90,80,.12);border:1px solid var(--cinnabar);border-radius:7px;padding:7px 10px;}
 .forexbar .fxlegend{display:block;margin-top:9px;font-size:11px;color:var(--faint);font-style:italic;}
 .forexbar .fxerr{display:block;margin-top:9px;font-size:11px;color:var(--faint);font-style:italic;}
 
@@ -71,6 +74,8 @@ button.ghost:hover{border-color:var(--gold);color:var(--gold);}
 .trendpanel .tv.ok{background:rgba(120,180,120,.16);color:#8fce8f;border:1px solid #4f7d4f;}
 .trendpanel .tv.no{background:rgba(200,90,80,.16);color:#e08a80;border:1px solid var(--cinnabar);}
 .trendpanel .trendmsgs{font-size:12px;color:var(--faint);margin-bottom:8px;}
+.trendpanel .seedline b.px{font-family:var(--ui);font-size:13px;color:var(--parch);font-weight:700;}
+.trendpanel .seedline .hint{font-size:10px;color:var(--faint);font-style:italic;}
 .trendpanel .trendmsgs b{font-family:var(--cjk);font-size:15px;color:var(--gold);}
 .trendpanel .trendtrace{margin:0 0 8px;padding-left:18px;font-size:12px;line-height:1.55;color:var(--parch);}
 .trendpanel .trendtrace li{margin:2px 0;}
