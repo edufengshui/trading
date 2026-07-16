@@ -228,16 +228,20 @@ function renderTrend(cross, chart, dArr, row) {
       isFanYin: chart.transmission.special === '返吟' });
 
   var dir = row && row.direction ? row.direction : null;         // 'up' | 'down' | 'flat' | null
+  var choppy = row && row.emaConsolidated === false;             // consolidation filter
   var signal = null;
   if (v.noTrade) signal = 'NO TRADE';
+  else if (choppy) signal = 'NO TRADE';
   else if (dir === 'up') signal = v.confirmed ? 'LONG' : 'SHORT';
   else if (dir === 'down') signal = v.confirmed ? 'SHORT' : 'LONG';
 
   var verdictBadge = v.noTrade
     ? '<span class="tv no">返吟 FAN YIN · no trade</span>'
-    : (v.confirmed
-      ? '<span class="tv ok">CONFIRMED · follows EMA</span>'
-      : '<span class="tv no">NOT CONFIRMED · against EMA</span>');
+    : (choppy
+      ? '<span class="tv no">EMA not consolidated · no trade</span>'
+      : (v.confirmed
+        ? '<span class="tv ok">CONFIRMED · follows EMA</span>'
+        : '<span class="tv no">NOT CONFIRMED · against EMA</span>'));
   var signalBadge = signal
     ? '<span class="sig ' + (v.noTrade ? 'notrade' : signal.toLowerCase()) + '">' + signal + '</span>'
     : '<span class="sig na">signal n/a — EMA trend missing</span>';
@@ -246,6 +250,9 @@ function renderTrend(cross, chart, dArr, row) {
   var arrow = dir === 'up' ? '↑ up (blue)' : dir === 'down' ? '↓ down (red)' : (dir ? dir : 'n/a');
   var emaLine = '<div class="trendmsgs">EMA(8+1) daily trend: <b class="' + (dir || '') + '">' + arrow + '</b>' +
     (row && row.ema != null ? ' · ema ' + row.ema + ' (prev ' + row.emaPrev + ')' : '') +
+    (row && row.emaDirs ? ' · last 10 days ' + row.emaDirs.replace(/u/g, '↑').replace(/d/g, '↓').replace(/f/g, '–') +
+      ' · ' + row.emaChanges + ' reversal' + (row.emaChanges === 1 ? '' : 's') +
+      (row.emaConsolidated ? ' → consolidated' : ' → NOT consolidated (filtered out)') : '') +
     (row && (row.emaError || row.emaNote) ? ' · ' + (row.emaError || row.emaNote) : '') + '</div>';
 
   var msgs = '<div class="trendmsgs">初傳 M1 <b>' + v.M1 + '</b> (' + v.elements.M1 + ') → 中傳 M2 <b>' + v.M2 +

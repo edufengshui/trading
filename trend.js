@@ -191,7 +191,54 @@
              combo: combo };
   }
 
-  var API = { evaluateTrend: evaluateTrend, directionalCombo: directionalCombo, WX: WX, GEN: GEN, KE: KE,
+  // ---- EMA(8+1) trend + consolidation filter (shared by the PWA and the backtest) ----
+  var EMA_PERIOD = 8;
+  var EMA_WINDOW = 10;        // days of EMA direction looked at
+  var EMA_MAX_CHANGES = 2;    // more reversals than this in the window → choppy → no trade
+
+  function emaSeries(closes, period) {
+    period = period || EMA_PERIOD;
+    if (!closes || closes.length < period) return [];
+    var k = 2 / (period + 1), prev = null, out = [];
+    for (var i = 0; i < closes.length; i++) {
+      if (i < period - 1) continue;
+      if (i === period - 1) { var s = 0; for (var j = 0; j < period; j++) s += closes[j]; prev = s / period; out.push(prev); continue; }
+      prev = closes[i] * k + prev * (1 - k); out.push(prev);
+    }
+    return out;
+  }
+  function emaDirs(series) {
+    var d = [];
+    for (var i = 1; i < series.length; i++) d.push(series[i] > series[i - 1] ? 'u' : (series[i] < series[i - 1] ? 'd' : 'f'));
+    return d;
+  }
+  function countChanges(dirs) {           // flat steps don't break a leg
+    var n = 0, prev = null;
+    for (var i = 0; i < dirs.length; i++) {
+      var x = dirs[i]; if (x === 'f') continue;
+      if (prev !== null && x !== prev) n++;
+      prev = x;
+    }
+    return n;
+  }
+  // closes = completed daily closes up to (and including) the day BEFORE the trading day
+  function emaTrend(closes) {
+    var series = emaSeries(closes, EMA_PERIOD);
+    var dirs = emaDirs(series);
+    if (!dirs.length) return { direction: null, consolidated: false, note: 'insufficient history' };
+    var win = dirs.slice(-EMA_WINDOW), last = win[win.length - 1];
+    var changes = countChanges(win);
+    return {
+      direction: last === 'u' ? 'up' : (last === 'd' ? 'down' : 'flat'),
+      ema: series[series.length - 1], emaPrev: series[series.length - 2],
+      dirs: win.join(''), changes: changes, consolidated: changes <= EMA_MAX_CHANGES,
+      window: EMA_WINDOW, maxChanges: EMA_MAX_CHANGES
+    };
+  }
+
+  var API = { evaluateTrend: evaluateTrend, directionalCombo: directionalCombo,
+    emaSeries: emaSeries, emaDirs: emaDirs, countChanges: countChanges, emaTrend: emaTrend,
+    EMA_PERIOD: EMA_PERIOD, EMA_WINDOW: EMA_WINDOW, EMA_MAX_CHANGES: EMA_MAX_CHANGES, WX: WX, GEN: GEN, KE: KE,
               COMBINE: COMBINE, TOMB_SHA: TOMB_SHA, TOMB_OF_ELEM: TOMB_OF_ELEM, DIRECTIONAL: DIRECTIONAL,
               veryUntimely: veryUntimely };
   if (typeof window !== 'undefined') window.XKDGTrend = API;
