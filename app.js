@@ -163,15 +163,31 @@ function renderForexBar() {
   var errs = forexData.rows.filter(function (r) { return r.status !== 'ok'; }).map(function (r) { return r.cross; });
   var head = '<span class="fxdate">Forex · ' + forexData.date + ' 00:00 GMT · 0° Greenwich</span>';
   var pills = ok.map(function (r) {
-    return '<button class="pill" data-cross="' + r.cross + '" data-branch="' + r.branch + '">' +
-      r.cross + ' <b>' + r.branch + '</b></button>';
+    var choppy = (r.emaConsolidated === false);
+    var arrow = r.direction === 'up' ? '↑' : r.direction === 'down' ? '↓' : '';
+    var tip = choppy
+      ? 'EMA not consolidated — ' + r.emaChanges + ' reversals in the last 10 days. Filtered out, but still clickable.'
+      : 'EMA consolidated — ' + (r.emaChanges != null ? r.emaChanges : '?') + ' reversals in the last 10 days.';
+    return '<button class="pill' + (choppy ? ' choppy' : '') + '" data-cross="' + r.cross +
+      '" data-branch="' + r.branch + '" data-choppy="' + (choppy ? '1' : '0') + '" title="' + tip + '">' +
+      r.cross + ' <b>' + r.branch + '</b>' +
+      (arrow ? ' <i class="dir ' + r.direction + '">' + arrow + '</i>' : '') +
+      (choppy ? ' <i class="warn">⚠</i>' : '') + '</button>';
   }).join('');
-  bar.innerHTML = head + '<div class="pills">' + pills + '</div>' +
+  var nChoppy = ok.filter(function (r) { return r.emaConsolidated === false; }).length;
+  var legend = nChoppy
+    ? '<span class="fxlegend">⚠ = EMA not consolidated (3+ reversals in 10 days) — not recommended, but you can still open them.</span>'
+    : '';
+  bar.innerHTML = head + '<div class="pills">' + pills + '</div>' + legend +
     (errs.length ? '<span class="fxerr">no data (market closed?): ' + errs.join(', ') + '</span>' : '');
   bar.querySelectorAll('.pill').forEach(function (b) {
     b.addEventListener('click', function () { selectForexCross(b.dataset.cross, b.dataset.branch, b); });
   });
-  var first = bar.querySelector('.pill');
+  // prefer the first tradable (consolidated) cross for the initial view
+  var pillsEls = bar.querySelectorAll('.pill');
+  var first = null;
+  for (var i = 0; i < pillsEls.length; i++) { if (pillsEls[i].dataset.choppy === '0') { first = pillsEls[i]; break; } }
+  if (!first) first = pillsEls[0];
   if (first) selectForexCross(first.dataset.cross, first.dataset.branch, first);
 }
 

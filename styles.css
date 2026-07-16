@@ -53,6 +53,13 @@ button.ghost:hover{border-color:var(--gold);color:var(--gold);}
 .forexbar .pill b{font-family:var(--cjk);font-size:16px;color:var(--gold);}
 .forexbar .pill:hover{border-color:var(--gold);}
 .forexbar .pill.active{border-color:var(--gold);background:rgba(217,177,94,.14);}
+.forexbar .pill.choppy{opacity:.42;border-style:dashed;}
+.forexbar .pill.choppy:hover{opacity:.8;border-color:var(--cinnabar);}
+.forexbar .pill .dir{font-style:normal;font-size:12px;}
+.forexbar .pill .dir.up{color:#6fa6e8;}
+.forexbar .pill .dir.down{color:var(--cinnabar);}
+.forexbar .pill .warn{font-style:normal;font-size:11px;color:var(--cinnabar);}
+.forexbar .fxlegend{display:block;margin-top:9px;font-size:11px;color:var(--faint);font-style:italic;}
 .forexbar .fxerr{display:block;margin-top:9px;font-size:11px;color:var(--faint);font-style:italic;}
 
 .trendpanel{background:var(--panel);border:1px solid var(--line);border-radius:10px;
