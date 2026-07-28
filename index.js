@@ -171,6 +171,34 @@ async function fetchHistory(cross, size, apiKey) {
   });
 }
 
+// raw hourly bars for one cross (ascending), for intraday-exit backtesting
+async function fetchHourly(cross, size, apiKey) {
+  var pair = toPair(cross);
+  var url = ENDPOINT + '?symbol=' + encodeURIComponent(pair) +
+    '&interval=1h&outputsize=' + size + '&timezone=UTC&format=JSON&apikey=' + encodeURIComponent(apiKey);
+  var res = await fetch(url); var text = await res.text(); var json;
+  try { json = JSON.parse(text); } catch (e) { throw new Error('non-JSON: ' + text.slice(0, 140)); }
+  if (json.status === 'error') { var err = new Error(json.message || 'error'); err.code = json.code; throw err; }
+  var vals = (json.values || []).slice();
+  vals.sort(function (a, b) { return (a.datetime || '') < (b.datetime || '') ? -1 : 1; });
+  // keep it compact: datetime + open + close only (that is all the backtest needs)
+  return vals.map(function (v) { return { t: v.datetime, o: Number(v.open), c: Number(v.close) }; });
+}
+
+async function computeHourly(env, size) {
+  var apiKey = env.TWELVEDATA_API_KEY;
+  if (!apiKey) throw new Error('Missing TWELVEDATA_API_KEY secret');
+  var delayMs = Number(env.DELAY_MS != null ? env.DELAY_MS : 8000);
+  var out = { generatedAt: new Date().toISOString(), interval: '1h', outputsize: size, crosses: {} };
+  for (var i = 0; i < CROSSES.length; i++) {
+    var cross = CROSSES[i];
+    try { out.crosses[cross] = await withRetry((function (c) { return function () { return fetchHourly(c, size, apiKey); }; })(cross)); }
+    catch (e) { out.crosses[cross] = { error: String((e && e.message) || e) }; }
+    if (i < CROSSES.length - 1 && delayMs > 0) await sleep(delayMs);
+  }
+  return out;
+}
+
 async function computeHistory(env, size) {
   var apiKey = env.TWELVEDATA_API_KEY;
   if (!apiKey) throw new Error('Missing TWELVEDATA_API_KEY secret');
@@ -217,6 +245,19 @@ export default {
       try {
         var hist = await computeHistory(env, size);
         return new Response(JSON.stringify(hist), { headers: headers });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: String((e && e.message) || e) }), { status: 500, headers: headers });
+      }
+    }
+
+    if (url.pathname === '/hourly') {
+      if (env.RUN_TOKEN && url.searchParams.get('token') !== env.RUN_TOKEN) {
+        return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: headers });
+      }
+      var hsize = Math.min(Math.max(parseInt(url.searchParams.get('size') || '5000', 10) || 5000, 100), 5000);
+      try {
+        var hr = await computeHourly(env, hsize);
+        return new Response(JSON.stringify(hr), { headers: headers });
       } catch (e) {
         return new Response(JSON.stringify({ error: String((e && e.message) || e) }), { status: 500, headers: headers });
       }
