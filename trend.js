@@ -21,6 +21,19 @@
  *   三會 (directional trio): 寅卯辰 Wood · 巳午未 Fire · 申酉戌 Metal · 亥子丑 Water.
  *               Clockwise (ascending) → normal reading. Anticlockwise (descending) → the
  *               reading is REVERSED (final override).
+ *   冲 clash vs 剋 control (validated 15/07/2026, USDCAD 庚寅 day, 未 month, 三傳 申寅巳):
+ *               when the trend (A) and its judge (B) are BOTH a 冲 (clash, 6 apart) pair AND a
+ *               五行 control pair, B is always read as the one clashing A (independent of which
+ *               direction the five-element control points). Strength decides: 墓(tomb this
+ *               month, weakest,0) < 囚/死(1) < normal(2) < 相(month-branch's own element, or
+ *               the broad season, generates it,3) < 旺(matches the broad season,4). If B (the
+ *               clasher) is stronger than A, the clash breaks the trend → not confirmed. If B is
+ *               weaker, the clash alone fails; a 六合 of C onto A then actively protects the
+ *               trend (confirmed) — and that same bond also shields it from 刑 (Penalty). If B is
+ *               weaker and there is no such bond, the clash does not participate further and the
+ *               ordinary 五行 chain decides unmodified.
+ *   刑 (Penalty Sha): any penalty among the three messages → not confirmed (terminal), except
+ *               a lone M2-penalises-M1 case which a M3 冲/六合 on M2 can cancel.
  */
 (function () {
   'use strict';
@@ -56,6 +69,18 @@
   function tombOfBranch(br) { return TOMB_OF_ELEM[WX[br]] || null; }
   function veryUntimely(elem, season) { if (!season) return false; return controls(elem, season) || controls(season, elem); }
 
+  // strength rank for the clash tie-break: 墓(0) < 囚死(1) < normal(2) < 相(3) < 旺(4).
+  // Priority: being in one's own tomb THIS month is checked first (most specific, overrides
+  // everything); then support from the month branch's own element or the broad season (相);
+  // then matching the broad season outright (旺); then the broad-season 囚/死 penalty; else normal.
+  function strengthRank(elem, season, monthBranch, monthElem) {
+    if (monthBranch && TOMB_OF_ELEM[elem] === monthBranch) return 0;                    // 墓
+    if ((monthElem && generates(monthElem, elem)) || (season && generates(season, elem))) return 3; // 相
+    if (season && elem === season) return 4;                                            // 旺
+    if (veryUntimely(elem, season)) return 1;                                            // 囚/死
+    return 2;                                                                            // normal
+  }
+
   // exact ascending trio → clockwise; exact descending trio → anticlockwise; else null
   function directionalCombo(a, b, c) {
     var seq = a + b + c;
@@ -69,7 +94,9 @@
 
   function evaluateTrend(M1, M2, M3, opts) {
     opts = opts || {};
-    var dayStem = opts.dayStem, voids = opts.voidBranches || [], season = opts.seasonElement || null, mg = opts.monthGeneral || null;
+    var dayStem = opts.dayStem, voids = opts.voidBranches || [], season = opts.seasonElement || null,
+        mg = opts.monthGeneral || null, monthBranch = opts.monthBranch || null;
+    var monthElem = monthBranch ? WX[monthBranch] : null;
     var trace = []; function T(s) { trace.push(s); }
 
     // 返吟 (Fan Yin / Clashing chart): do not trade
@@ -115,13 +142,42 @@
     if ((tombOfBranch(A) === B) && voidB) T('M2 ' + B + ' sarebbe la tomba del trend ma è vuoto (空) → non seppellisce');
 
     var confirmed = null, kind = '';
+
+    // ---- A/B 冲 clash coinciding with a 五行 control relation: strength decides ----
+    // B (the judge, M2) is always cast as the one clashing the trend A — independent of
+    // which side happens to control the other by the five elements.
+    var abClash = (chong(A) === B);
+    var clashOverride = null;
+    if (abClash && (bCtrlA || aCtrlB)) {
+      var rA = strengthRank(eA, season, monthBranch, monthElem);
+      var rB = strengthRank(eB, season, monthBranch, monthElem);
+      if (rB > rA) {
+        clashOverride = 'attack';
+        T(B + ' 冲 ' + A + ' [clash] ed è più forte del trend (rango ' + rB + ' vs ' + rA + ') → il clash sfonda → non confermato');
+      } else {
+        var rescueByC = C && (COMBINE[C] === A);
+        if (rescueByC) {
+          clashOverride = 'rescued';
+          T(B + ' 冲 ' + A + ' [clash], ma è più debole (rango ' + rB + ' vs ' + rA + ') e ' + C + ' 六合 ' + A + ' → il trend è protetto (anche dal 刑) → confermato');
+        } else {
+          T(B + ' 冲 ' + A + ' [clash], ma è più debole (rango ' + rB + ' vs ' + rA + ') e senza protezione di M3 → il clash non sfonda, segue la relazione dei cinque elementi');
+          // no override: let the ordinary 五行 chain decide, unmodified
+        }
+      }
+    }
+    if (clashOverride === 'attack') { confirmed = false; kind = 'harm'; }
+    else if (clashOverride === 'rescued') { confirmed = true; kind = 'help'; }
+
     function leanOnA(reason) {
       if (voidA) { confirmed = false; T(reason + ' → si appoggia al trend, ma è vuoto (空) e non nutrito → non confermato'); }
       else if (veryUntimely(eA, season) && !isMG(A)) { confirmed = false; T(reason + ' → si appoggia al trend, ma è senza energia (囚/死) → non confermato'); }
       else { confirmed = true; T(reason + ' → si appoggia al trend → confermato'); }
     }
 
-    if (dayStem && TOMB_SHA[dayStem] === A) {
+    if (clashOverride) {
+      // already decided above by clash-strength; the ordinary 五行 chain is skipped.
+    }
+    else if (dayStem && TOMB_SHA[dayStem] === A) {
       kind = 'daystomb';
       if (bCtrlA || aGenB) { confirmed = true; T('trend ' + A + ' è la tomba del tronco-giorno ' + dayStem + ', ma ' + B + ' la ' + (bCtrlA ? 'controlla' : 'drena') + ' → tomba aperta → confermato'); }
       else { confirmed = false; T('trend ' + A + ' è la tomba del tronco-giorno ' + dayStem + ' → sepolto → non confermato'); }
@@ -153,53 +209,60 @@
     }
     else { confirmed = true; kind = 'none'; T('nessuna relazione forte su ' + A + ' → confermato di default'); }
 
-    if (C) {
+    if (C && !clashOverride) {
       if (kind === 'harm' && cNeutralizesB) { leanOnA(C + ' neutralizza ' + B + ' (' + (cChongB ? '冲' : cDrainB ? 'drena' : 'tomba') + ')'); }
       else if (kind === 'help' && (cNeutralizesB || (cCtrlB && !bMG))) { leanOnA(C + ' ' + (cCtrlB ? 'controlla' : 'neutralizza') + ' ' + B); }
       else if (kind === 'help' && cGenB) { T(C + ' genera ' + B + ' → sostegno rinforzato → resta confermato'); }
-      if (cChongA && !isMG(A)) { confirmed = false; T(C + ' clasha il trend ' + A + ' [冲] → il trend è colpito → non confermato'); }
+    }
+    if (C) {
+      if (cChongA && !isMG(A) && clashOverride !== 'rescued') { confirmed = false; T(C + ' clasha il trend ' + A + ' [冲] → il trend è colpito → non confermato'); }
       else if (cChongA && isMG(A)) { T(C + ' clasha il trend ma è il 月將 (sempre forte) → il trend regge'); }
     }
 
     // ---- 刑 (Penalty Sha): "a spirit that hurts and brings disability" → does not follow ----
-    // Any penalty among the three messages is negative. Terminal.
+    // Skipped entirely when a clash-rescue (六合 of C onto A) already protects the trend —
+    // the same bond that shields the trend from the clash also shields it from the penalty.
     var pens = [];
-    var msgs = [{ n: 'M1', b: M1 }, { n: 'M2', b: M2 }, { n: 'M3', b: M3 }];
-    for (var pi = 0; pi < 3; pi++) {
-      for (var pj = 0; pj < 3; pj++) {
-        if (pi === pj) continue;
-        if (penalizes(msgs[pi].b, msgs[pj].b)) {
-          var tag = msgs[pi].n + ' ' + msgs[pi].b + ' 刑 ' + msgs[pj].n + ' ' + msgs[pj].b;
-          if (pens.indexOf(tag) < 0) pens.push(tag);
+    if (clashOverride !== 'rescued') {
+      var msgs = [{ n: 'M1', b: M1 }, { n: 'M2', b: M2 }, { n: 'M3', b: M3 }];
+      for (var pi = 0; pi < 3; pi++) {
+        for (var pj = 0; pj < 3; pj++) {
+          if (pi === pj) continue;
+          if (penalizes(msgs[pi].b, msgs[pj].b)) {
+            var tag = msgs[pi].n + ' ' + msgs[pi].b + ' 刑 ' + msgs[pj].n + ' ' + msgs[pj].b;
+            if (pens.indexOf(tag) < 0) pens.push(tag);
+          }
         }
       }
-    }
-    // 自刑 (self-penalty): the same self-penalising branch appearing twice
-    for (var si = 0; si < 3; si++) {
-      for (var sj = si + 1; sj < 3; sj++) {
-        if (msgs[si].b === msgs[sj].b && SELF_XING.indexOf(msgs[si].b) >= 0) {
-          pens.push(msgs[si].n + '/' + msgs[sj].n + ' ' + msgs[si].b + ' 自刑 (self-penalty)');
+      // 自刑 (self-penalty): the same self-penalising branch appearing twice
+      for (var si = 0; si < 3; si++) {
+        for (var sj = si + 1; sj < 3; sj++) {
+          if (msgs[si].b === msgs[sj].b && SELF_XING.indexOf(msgs[si].b) >= 0) {
+            pens.push(msgs[si].n + '/' + msgs[sj].n + ' ' + msgs[si].b + ' 自刑 (self-penalty)');
+          }
         }
       }
-    }
-    if (pens.length) {
-      // if M2 penalises M1, ONLY a 冲 (clash) or 六合 (combination) from M3 can cancel the damage
-      var penM1M2 = penalizes(M1, M2) || penalizes(M2, M1);
-      var otherPens = pens.filter(function (p) {
-        return !(p.indexOf('M1') >= 0 && p.indexOf('M2') >= 0 && p.indexOf('M3') < 0);
-      });
-      var rescue = (chong(M2) === M3) ? '冲' : ((COMBINE[M2] === M3) ? '六合' : null);
-      if (penM1M2 && rescue && !otherPens.length) {
-        T('刑 (Penalty): ' + pens.join(' · ') + ' — ma M3 ' + M3 + ' ' + rescue + ' M2 ' + M2 +
-          ' → il danno del 刑 è annullato');
-      } else {
-        confirmed = false;
-        var isEarthSeq = EARTH_ADVANCE.indexOf(M1 + M2 + M3) >= 0;
-        T('刑 (Penalty): ' + pens.join(' · ') +
-          (isEarthSeq ? ' — sequenza oraria di terra ' + M1 + M2 + M3 + ': non può avanzare' : '') +
-          (penM1M2 && !rescue ? ' — nessun 冲/六合 da M3 che lo annulli' : '') +
-          ' → non si segue il trend');
+      if (pens.length) {
+        // if M2 penalises M1, ONLY a 冲 (clash) or 六合 (combination) from M3 can cancel the damage
+        var penM1M2 = penalizes(M1, M2) || penalizes(M2, M1);
+        var otherPens = pens.filter(function (p) {
+          return !(p.indexOf('M1') >= 0 && p.indexOf('M2') >= 0 && p.indexOf('M3') < 0);
+        });
+        var rescue = (chong(M2) === M3) ? '冲' : ((COMBINE[M2] === M3) ? '六合' : null);
+        if (penM1M2 && rescue && !otherPens.length) {
+          T('刑 (Penalty): ' + pens.join(' · ') + ' — ma M3 ' + M3 + ' ' + rescue + ' M2 ' + M2 +
+            ' → il danno del 刑 è annullato');
+        } else {
+          confirmed = false;
+          var isEarthSeq = EARTH_ADVANCE.indexOf(M1 + M2 + M3) >= 0;
+          T('刑 (Penalty): ' + pens.join(' · ') +
+            (isEarthSeq ? ' — sequenza oraria di terra ' + M1 + M2 + M3 + ': non può avanzare' : '') +
+            (penM1M2 && !rescue ? ' — nessun 冲/六合 da M3 che lo annulli' : '') +
+            ' → non si segue il trend');
+        }
       }
+    } else {
+      T('刑: eventuali penalità fra i tre messaggi sono protette dal legame ' + C + ' 六合 ' + A + ' → ignorate');
     }
 
     // ---- 三會 directional trio: final override ----
@@ -215,8 +278,12 @@
     return { confirmed: confirmed, noTrade: false, trace: trace, M1: M1, M2: M2, M3: M3,
              elements: { M1: WX[M1], M2: WX[M2], M3: WX[M3] }, seasonElement: season,
              m1Void: isVoid(M1), monthGeneral: mg, trendMsg: A, substituted: substituted,
-             combo: combo, penalties: pens || [] };
+             combo: combo, penalties: pens };
   }
+
+  var API = { evaluateTrend: evaluateTrend, directionalCombo: directionalCombo, strengthRank: strengthRank,
+              WX: WX, GEN: GEN, KE: KE, COMBINE: COMBINE, TOMB_SHA: TOMB_SHA, TOMB_OF_ELEM: TOMB_OF_ELEM,
+              DIRECTIONAL: DIRECTIONAL, veryUntimely: veryUntimely };
 
   // ---- EMA(8+1) trend + consolidation filter (shared by the PWA and the backtest) ----
   var EMA_PERIOD = 8;
@@ -248,7 +315,6 @@
     }
     return n;
   }
-  // closes = completed daily closes up to (and including) the day BEFORE the trading day
   function emaTrend(closes) {
     var series = emaSeries(closes, EMA_PERIOD);
     var dirs = emaDirs(series);
@@ -263,11 +329,9 @@
     };
   }
 
-  var API = { evaluateTrend: evaluateTrend, directionalCombo: directionalCombo,
-    emaSeries: emaSeries, emaDirs: emaDirs, countChanges: countChanges, emaTrend: emaTrend,
-    EMA_PERIOD: EMA_PERIOD, EMA_WINDOW: EMA_WINDOW, EMA_MAX_CHANGES: EMA_MAX_CHANGES, WX: WX, GEN: GEN, KE: KE,
-              COMBINE: COMBINE, TOMB_SHA: TOMB_SHA, TOMB_OF_ELEM: TOMB_OF_ELEM, DIRECTIONAL: DIRECTIONAL,
-              veryUntimely: veryUntimely };
+  API.emaSeries = emaSeries; API.emaDirs = emaDirs; API.countChanges = countChanges; API.emaTrend = emaTrend;
+  API.EMA_PERIOD = EMA_PERIOD; API.EMA_WINDOW = EMA_WINDOW; API.EMA_MAX_CHANGES = EMA_MAX_CHANGES;
+
   if (typeof window !== 'undefined') window.XKDGTrend = API;
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
 })();

@@ -442,7 +442,8 @@
     var mg = MONTH_GENERAL_BY_ZHONGQI[zhongQi];
 
     var chart = buildChartFromPrimitives(dayStem, dayBranch, hourBranch, mg, p.hour.charAt(0));
-    chart.source = { dayPillar: p.day, hourPillar: p.hour, zhongQi: zhongQi, tst: tst };
+    chart.source = { dayPillar: p.day, hourPillar: p.hour, monthPillar: p.month, yearPillar: p.year, zhongQi: zhongQi, tst: tst };
+    chart.monthBranch = p.month ? p.month.slice(1) : null;
     return chart;
   }
 

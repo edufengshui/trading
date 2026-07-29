@@ -29,6 +29,8 @@ function setNow() {
 function build() {
   clearErr();
   var _tp = $('trendpanel'); if (_tp) _tp.style.display = 'none';
+  var _fb = $('forexbar'); if (_fb) _fb.style.display = 'none';
+  var _di = $('date'); if (_di) { _di.readOnly = false; _di.title = ''; }
   if (!window.XKDGSolarTime || !window.XKDGJieQiGMT || !window.XKDGDaLiuRen || !(window.Solar || window.Lunar)) {
     return showErr('<b>Engine not loaded.</b> This page needs lunar.js, solar-time.js, jieqi-gmt.js and daliuren.js (in that order) in the same folder.');
   }
@@ -161,7 +163,11 @@ function renderForexBar() {
   var bar = $('forexbar');
   var ok = forexData.rows.filter(function (r) { return r.status === 'ok'; });
   var errs = forexData.rows.filter(function (r) { return r.status !== 'ok'; }).map(function (r) { return r.cross; });
-  var head = '<span class="fxdate">Forex · ' + forexData.date + ' 00:00 GMT · 0° Greenwich</span>';
+  // keep the DATE field honest: in forex mode the date comes from the feed, not from the input
+  var fd = forexData.date.split('-');
+  var di = $('date');
+  if (di) { di.value = fd[2] + '/' + fd[1] + '/' + fd[0]; di.readOnly = true; di.title = 'In Forex mode the date comes from the feed (00:00 GMT of the trading day). Press "Build chart" to go back to manual mode.'; }
+  var head = '<span class="fxdate">Forex · ' + forexData.date + ' 00:00 GMT · 0° Greenwich · date driven by the feed</span>';
   var pills = ok.map(function (r) {
     var known = (r.emaConsolidated === true || r.emaConsolidated === false);
     var choppy = (r.emaConsolidated === false);
@@ -251,6 +257,7 @@ function renderTrend(cross, chart, dArr, row) {
   var v = window.XKDGTrend.evaluateTrend(t3.chu, t3.zhong, t3.mo,
     { dayStem: chart.dayStem, voidBranches: chart.hourVoid, seasonElement: season,
       monthGeneral: chart.monthGeneral && chart.monthGeneral.branch,
+      monthBranch: chart.monthBranch,
       isFanYin: chart.transmission.special === '返吟' });
 
   var dir = row && row.direction ? row.direction : null;         // 'up' | 'down' | 'flat' | null
