@@ -257,7 +257,7 @@ function renderTrend(cross, chart, dArr, row) {
   var v = window.XKDGTrend.evaluateTrend(t3.chu, t3.zhong, t3.mo,
     { dayStem: chart.dayStem, voidBranches: chart.hourVoid, seasonElement: season,
       monthGeneral: chart.monthGeneral && chart.monthGeneral.branch,
-      monthBranch: chart.monthBranch, dayBranch: chart.dayBranch, fourLessons: chart.fourLessons,
+      monthBranch: chart.monthBranch, dayBranch: chart.dayBranch, hourBranch: chart.hourBranch, fourLessons: chart.fourLessons,
       isFanYin: chart.transmission.special === '返吟' });
 
   var dir = row && row.direction ? row.direction : null;         // 'up' | 'down' | 'flat' | null

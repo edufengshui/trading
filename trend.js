@@ -48,6 +48,8 @@
   var TOMB_SHA = { '甲': '未', '乙': '戌', '丙': '戌', '丁': '丑', '戊': '戌',
                    '己': '丑', '庚': '丑', '辛': '辰', '壬': '辰', '癸': '未' };
   var TOMB_OF_ELEM = { Water: '辰', Wood: '未', Fire: '戌', Metal: '丑' }; // earth: none
+  // ogni ramo di terra È la tomba di un elemento: clashata, lo libera
+  var TOMB_CONTENT = { '辰': 'Water', '未': 'Wood', '戌': 'Fire', '丑': 'Metal' };
   // 三會方局 (directional trios) — no Earth trio
   var DIRECTIONAL = [
     { elem: 'Wood',  trio: ['寅', '卯', '辰'], en: 'Wood/East' },
@@ -139,7 +141,8 @@
     opts = opts || {};
     var dayStem = opts.dayStem, voids = opts.voidBranches || [], season = opts.seasonElement || null,
         mg = opts.monthGeneral || null, monthBranch = opts.monthBranch || null,
-        dayBranch = opts.dayBranch || null, lessons = opts.fourLessons || null;
+        dayBranch = opts.dayBranch || null, lessons = opts.fourLessons || null,
+        hourBranch = opts.hourBranch || null;
     var monthElem = monthBranch ? WX[monthBranch] : null;
     var trace = []; function T(s) { trace.push(s); }
 
@@ -353,6 +356,35 @@
     if (C) {
       if (cChongA && cCanReachA && !isMG(A) && clashOverride !== 'rescued') { confirmed = false; T(C + ' clasha il trend ' + A + ' [冲] → il trend è colpito → non confermato'); }
       else if (cChongA && isMG(A)) { T(C + ' clasha il trend ma è il 月將 (sempre forte) → il trend regge'); }
+    }
+
+    // ---- 墓庫破: una tomba di terra clashata libera ciò che custodisce -----------------
+    // Se M1 è un ramo di terra e viene clashato, l'elemento in tomba esce. Se quell'elemento è
+    // abbondante nel mese, si riversa: quando controlla M2 e M2 è untimely, lo spegne. M3 che
+    // genera lo stesso elemento (o gli appartiene) ingrossa il flusso. Senza più sostegno e con
+    // la propria tomba sfondata, il trend è distrutto.
+    var relElem = TOMB_CONTENT[A] || null;
+    if (relElem && !isMG(A)) {
+      var breakers = [];
+      if (hourBranch && chong(hourBranch) === A) breakers.push(dayBranch === A ? "dall'ora " + hourBranch + ' (che clasha il giorno, diventato il trend)' : "dall'ora " + hourBranch);
+      if (dayBranch && chong(dayBranch) === A && dayBranch !== hourBranch) breakers.push('dal giorno ' + dayBranch);
+      if (B && chong(B) === A) breakers.push('da M2 ' + B);
+      if (C && chong(C) === A) breakers.push('da M3 ' + C);
+      if (breakers.length) {
+        var relRank = elemRank(relElem, monthBranch, tombOpened);
+        if (relRank >= 5) {
+          var floods = controls(relElem, eB) && !energetic(B);
+          var swollen = C && (generates(eC, relElem) || eC === relElem);
+          T('la tomba ' + A + ' è clashata ' + breakers.join(' e ') + ' → libera ' + relElem +
+            ', abbondante nel mese ' + (monthBranch || '?') +
+            (swollen ? ' e ingrossato da M3 ' + C : ''));
+          if (floods) {
+            confirmed = false;
+            T(relElem + ' liberato si riversa su ' + describe(B) + ', che è untimely, e lo spegne' +
+              ' → il trend ' + A + ' resta senza sostegno e con la tomba sfondata → distrutto');
+          }
+        }
+      }
     }
 
     // ---- 刑 (Penalty Sha): "a spirit that hurts and brings disability" → does not follow ----
