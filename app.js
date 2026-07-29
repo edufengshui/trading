@@ -286,7 +286,7 @@ function renderTrend(cross, chart, dArr, row) {
   if (row && row.price != null) {
     var rem = ((row.seed % 12) + 12) % 12; rem = (rem === 0 ? 12 : rem);
     seedLine = '<div class="trendmsgs seedline">00:00 GMT open <b class="px">' + row.price + '</b>' +
-      ' → first 3 significant digits <b class="px">' + row.digits + '</b>' +
+      ' → first ' + String(row.digits).length + ' significant digits <b class="px">' + row.digits + '</b>' +
       ' → ' + row.digits + ' mod 12 = remainder <b class="px">' + rem + '</b>' +
       ' → 地支 <b>' + row.branch + '</b> (' + row.branchPinyin + ')' +
       ' <span class="hint">counting 子=1</span></div>';
