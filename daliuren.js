@@ -45,6 +45,10 @@
   var KE = { '木': '土', '土': '水', '水': '火', '火': '金', '金': '木' };
   function controls(a, b) { return KE[a] === b; }              // wuxing a 克 wuxing b
   function branchControls(x, y) { return controls(BRANCH_WUXING[x], BRANCH_WUXING[y]); }
+  // control test between the two halves of a lesson, honouring a stem bottom
+  function lessonElemBottom(L) { return L.elem || BRANCH_WUXING[L.bottom]; }
+  function lessonZei(L) { return controls(lessonElemBottom(L), BRANCH_WUXING[L.top]); }  // 下克上
+  function lessonKe(L)  { return controls(BRANCH_WUXING[L.top], lessonElemBottom(L)); }  // 上克下
 
   // 天干寄宮 (stem parking palace)
   var STEM_JIGONG = {
@@ -118,7 +122,10 @@
     var L = [];
     var b1 = STEM_JIGONG[dayStem];                 // 1課下 = 干寄宮
     var t1 = plates.heavenAbove(b1);               // 1課上
-    L.push({ top: t1, bottom: b1, base: 'stem' });
+    // The bottom of the 1st lesson IS the day stem. Its 五行 is the stem's own — NOT that of
+    // the palace it lodges in. 癸 is Water even though it parks in 丑 (Earth); using the palace
+    // element invents 賊/克 that are not there and corrupts the 三傳.
+    L.push({ top: t1, bottom: b1, base: 'stem', stem: dayStem, elem: stemWuXing(dayStem) });
     var t2 = plates.heavenAbove(t1);               // 2課: 下=1課上
     L.push({ top: t2, bottom: t1, base: 'stem' });
     var t3 = plates.heavenAbove(dayBranch);        // 3課下 = 日支
@@ -141,8 +148,8 @@
 
     var xiaKeShang = [], shangKeXia = [];
     lessons.forEach(function (L, i) {
-      if (branchControls(L.bottom, L.top)) xiaKeShang.push(i); // 下克上 (賊 / Zei)
-      if (branchControls(L.top, L.bottom)) shangKeXia.push(i); // 上克下 (克 / Ke)
+      if (lessonZei(L)) xiaKeShang.push(i);                   // 下克上 (賊 / Zei)
+      if (lessonKe(L)) shangKeXia.push(i);                    // 上克下 (克 / Ke)
     });
     var hasKe = xiaKeShang.length > 0 || shangKeXia.length > 0;
 
@@ -353,7 +360,7 @@
 
     var withGen = lessons.map(function (L) {
       return { top: decorate(L.top), bottom: L.bottom, base: L.base,
-               zei: branchControls(L.bottom, L.top), ke: branchControls(L.top, L.bottom) };
+               zei: lessonZei(L), ke: lessonKe(L), stem: L.stem || null };
     });
     var threeWithGen = null;
     if (trans.three) {

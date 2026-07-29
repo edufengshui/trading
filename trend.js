@@ -245,7 +245,7 @@
     if (isMG(A)) T('trend ' + A + ' è il 月將 → mai vuoto, sempre forte (doppia energia)');
     if ((tombOfBranch(A) === B) && voidB) T('M2 ' + B + ' sarebbe la tomba del trend ma è vuoto (空) → non seppellisce');
 
-    var confirmed = null, kind = '';
+    var confirmed = null, kind = '', drainHarm = false;
 
     // ---- A/B 冲 clash coinciding with a 五行 control relation: strength decides ----
     // B (the judge, M2) is always cast as the one clashing the trend A — independent of
@@ -285,11 +285,6 @@
     if (clashOverride) {
       // already decided above by clash-strength; the ordinary 五行 chain is skipped.
     }
-    else if (dayStem && TOMB_SHA[dayStem] === A) {
-      kind = 'daystomb';
-      if (bCtrlA || aGenB) { confirmed = true; T('trend ' + A + ' è la tomba del tronco-giorno ' + dayStem + ', ma ' + B + ' la ' + (bCtrlA ? 'controlla' : 'drena') + ' → tomba aperta → confermato'); }
-      else { confirmed = false; T('trend ' + A + ' è la tomba del tronco-giorno ' + dayStem + ' → sepolto → non confermato'); }
-    }
     else if (bCombA) { confirmed = false; kind = 'combine'; T(B + ' lega il trend ' + A + ' [六合]' + (bMG ? ' (月將, doppia)' : '') + ' → non confermato'); }
     else if (bIsTombA) {
       kind = 'tombA';
@@ -310,14 +305,18 @@
       else { confirmed = true; kind = 'help'; T(B + ' stesso elemento del trend [比和] → confermato'); }
     }
     else if (aGenB) {
-      if (bMG || energetic(B)) { confirmed = false; kind = 'harm'; T(describe(B) + ' drena il trend ' + A + (bMG ? ' (月將, doppia)' : '') + ' → non confermato'); }
+      if (bMG || energetic(B)) { confirmed = false; kind = 'harm'; drainHarm = true; T(describe(B) + ' drena il trend ' + A + (bMG ? ' (月將, doppia)' : '') + ' → non confermato'); }
       else { confirmed = true; kind = 'none'; T(describe(B) + ' drenerebbe il trend ' + A + ', ma è senza energia → drenaggio inefficace → confermato'); }
     }
     else if (bCtrlA) { confirmed = false; kind = 'harm'; T(B + ' controlla il trend ' + A + ' [剋]' + (bMG ? ' (月將, doppia)' : '') + ' → non confermato'); }
     else { confirmed = true; kind = 'none'; T('nessuna relazione forte su ' + A + ' → confermato di default'); }
 
     if (C && !clashOverride) {
-      if (kind === 'harm' && cNeutralizesB) { leanOnA(C + ' neutralizza ' + B + ' (' + (cChongB ? '冲' : cDrainB ? 'drena' : 'tomba') + ')'); }
+      if (kind === 'harm' && drainHarm && cDrainB && !cChongB && !cIsTombB && !cCombB) {
+        // 未 → 酉 → 亥: l'energia continua a scorrere via da M1, non torna indietro
+        T(describe(C) + ' drena a sua volta ' + B + ' → il deflusso da ' + A + ' prosegue lungo la catena → resta non confermato');
+      }
+      else if (kind === 'harm' && cNeutralizesB) { leanOnA(C + ' neutralizza ' + B + ' (' + (cChongB ? '冲' : cCombB ? '六合' : cDrainB ? 'drena' : 'tomba') + ')'); }
       else if (kind === 'help' && (cNeutralizesB || (cCtrlB && !bMG))) { leanOnA(C + ' ' + (cCtrlB ? 'controlla' : 'neutralizza') + ' ' + B); }
       else if (kind === 'help' && cGenB) { T(C + ' genera ' + B + ' → sostegno rinforzato → resta confermato'); }
     }

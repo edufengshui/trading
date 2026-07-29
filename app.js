@@ -94,7 +94,7 @@ function render(pillars, c) {
     var col = (bird ? 'color:var(--cinnabar)' : '') + (L.top.isVoid ? ';color:var(--void)' : '');
     return '<div class="lesson"><div class="lgen">' + L.top.general.cn + '<em>' + L.top.general.en + '</em></div>' +
       '<div class="ltop" style="' + col + '">' + L.top.branch + '</div>' +
-      '<div class="lbot">' + L.bottom + '</div>' +
+      '<div class="lbot">' + (L.stem || L.bottom) + '</div>' +
       '<div class="lnum">' + labels[i] + ' ' + mark + '</div></div>';
   }).join('');
 
