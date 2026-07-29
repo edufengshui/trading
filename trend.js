@@ -311,7 +311,10 @@
           ' [六合] nella sua lettura: legato, non regge da solo → non confermato');
       }
       else if (voidA) { confirmed = false; T(reason + ' → si appoggia al trend, ma è vuoto (空) e non nutrito → non confermato'); }
-      else if (!energetic(A) && !isMG(A)) { confirmed = false; T(reason + ' → si appoggia al trend, ma il trend ' + describe(A) + ' è senza energia → non confermato'); }
+      // NESSUN veto assoluto sulla forza del trend: un ramo untimely non smette di esistere,
+      // è solo destinato a perdere il confronto con un ramo più forte. La stagione pesa nei
+      // confronti fra rami, non come dichiarazione di inesistenza. (Restano fuori il vuoto e il
+      // clash del giorno, che sono meccanismi diversi.)
       else { confirmed = true; T(reason + ' → si appoggia al trend → confermato'); }
     }
 
@@ -439,12 +442,18 @@
     }
 
     // ---- 三會 directional trio: final override ----
+    // Nel trio i tre rami sono un solo elemento (anche il ramo di terra collabora con esso),
+    // quindi NON c'è nessun elemento rivale con cui confrontarsi: la forza stagionale, che serve
+    // a decidere fra elementi diversi, qui non ha nulla da arbitrare. Restano tre rami omogenei
+    // che avanzano in ordine → caso semplice, il trend si segue.
     if (combo) {
       if (combo.order === 'clockwise') {
-        T('三會 ' + combo.cn + ' (' + combo.en + ') in sequenza oraria → interpretazione normale');
+        confirmed = true;
+        T('三會 ' + combo.cn + ' (' + combo.en + ') in sequenza oraria: un solo elemento, nessun rivale, ' +
+          'e i tre rami procedono in avanti → si segue il trend');
       } else {
-        confirmed = !confirmed;
-        T('三會 ' + combo.cn + ' (' + combo.en + ') in sequenza ANTIORARIA → interpretazione contraria → ' + (confirmed ? 'confermato' : 'non confermato'));
+        confirmed = false;
+        T('三會 ' + combo.cn + ' (' + combo.en + ') in sequenza ANTIORARIA: un solo elemento che retrocede → non si segue il trend');
       }
     }
 
