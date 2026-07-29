@@ -151,7 +151,7 @@
       for (var li = 0; li < lessons.length; li++) {
         var lt = lessons[li].top && lessons[li].top.branch ? lessons[li].top.branch : lessons[li].top;
         var lb = lessons[li].bottom;
-        if (lt === M1 && COMBINE[M1] === lb) { m1Seat = lb; m1BornCombined = true; break; }
+        if (lt === M1 && COMBINE[M1] === lb && !(dayBranch && chong(dayBranch) === lb)) { m1Seat = lb; m1BornCombined = true; break; }
       }
     }
     // A clash on the branch that binds M1 breaks the bond and frees the trend.
@@ -170,17 +170,38 @@
     // making it available for that day only.
     var tombOpened = !!(dayBranch && monthBranch && chong(monthBranch) === dayBranch);
     function stOf(b) { return lifeStage(WX[b], monthBranch); }
-    function rankOf(b) { return elemRank(WX[b], monthBranch, tombOpened); }
+    function isMGearly(b) { return !!(mg && b === mg); }
+    function voidRaw(b) { return voids.indexOf(b) >= 0 && !isMGearly(b); }
+    // Il ramo del giorno può clashare un messaggio. Se il messaggio ha energia il clash NON lo
+    // elimina: lo eccita. Se è già debole, lo spazza via. In entrambi i casi lo "sgancia" da
+    // qualsiasi 六合 in cui fosse impegnato.
+    function dayClash(b) { return !!(dayBranch && chong(dayBranch) === b); }
+    function baseRank(b) { return elemRank(WX[b], monthBranch, tombOpened); }
+    function rankOf(b) {
+      var r = baseRank(b);
+      if (dayClash(b) && r >= 5) r = Math.min(9, r + 1);            // clashato ma forte → eccitato
+      if (dayClash(b) && r < 5) r = 0;                              // clashato e debole → spazzato via
+      if (voidRaw(b) && r > 0) r = Math.floor(r / 2);               // vuoto → energia dimezzata
+      return r;
+    }
     function energetic(b) { return rankOf(b) >= 5; }
+    // vuoto E untimely: praticamente non esiste. Vuoto ma timely: dimezzato, ancora funzionale.
+    function nonExistent(b) { return (voidRaw(b) && baseRank(b) < 5) || (dayClash(b) && baseRank(b) < 5); }
+    function excited(b) { return dayClash(b) && baseRank(b) >= 5; }
+    // un 六合 si scioglie se il giorno clasha uno dei due rami
+    function bonded(x, y) { return COMBINE[x] === y && !dayClash(x) && !dayClash(y); }
     function describe(b) {
       if (WX[b] === 'Earth') {
         if (!monthBranch) return b;
         return b + ' (terra, ' + (EARTH_MONTHS.indexOf(monthBranch) >= 0 ? 'mese di terra' :
                energetic(b) ? 'sostenuta dal fuoco' : 'senza sostegno') + ')';
       }
-      var st = stOf(b);
-      if (!st) return b;
-      return b + ' (' + stageName(st) + (st === 9 && tombOpened ? ', tomba aperta dal giorno' : '') + ')';
+      var st = stOf(b), extra = '';
+      if (excited(b)) extra += ', eccitato dal clash del giorno';
+      else if (dayClash(b)) extra += ', spazzato via dal clash del giorno';
+      if (voidRaw(b)) extra += nonExistent(b) ? ', vuoto e senza energia' : ', vuoto (energia dimezzata)';
+      if (!st) return b + (extra ? ' (' + extra.slice(2) + ')' : '');
+      return b + ' (' + stageName(st) + (st === 9 && tombOpened ? ', tomba aperta dal giorno' : '') + extra + ')';
     }
 
     // 返吟 (Fan Yin / Clashing chart): do not trade
@@ -206,6 +227,11 @@
       A = M2; B = M3; C = null; substituted = true;
       T('M1 ' + M1 + ' è vuoto (空) e M2 ' + M2 + ' è il 月將 (Month General) → è M2 a rappresentare il trend, giudicato da M3 ' + M3);
     }
+    else if (nonExistent(M1) && M2 && !nonExistent(M2)) {
+      A = M2; B = M3; C = null; substituted = true;
+      T('M1 ' + describe(M1) + ' → praticamente non esiste: il trend passa a M2 ' + describe(M2) +
+        ', giudicato da M3 ' + M3);
+    }
 
     // ---- core assessment: A = trend, B = judge, C = third (may be null) ----
     var eA = WX[A], eB = WX[B], eC = C ? WX[C] : null;
@@ -214,13 +240,13 @@
 
     var bGenA = generates(eB, eA), bSameA = (eB === eA), aGenB = generates(eA, eB);
     var bCtrlA = controls(eB, eA), aCtrlB = controls(eA, eB);
-    var bCombA = (COMBINE[B] === A);
+    var bCombA = bonded(B, A);
     var bIsTombA = (tombOfBranch(A) === B) && !voidB;                       // empty tomb doesn't bury
     var cChongB = C ? (chong(B) === C) : false, cDrainB = C ? generates(eB, eC) : false;
     var cIsTombB = C ? ((tombOfBranch(B) === C) && !voidC) : false;
     var cCtrlB = C ? controls(eC, eB) : false, cGenB = C ? generates(eC, eB) : false;
     var cChongA = C ? (chong(A) === C) : false;
-    var cCombB = C ? (COMBINE[C] === B) : false;                            // 六合 M3–M2
+    var cCombB = C ? bonded(C, B) : false;                            // 六合 M3–M2
     var cNeutralizesB = (cChongB || cDrainB || cIsTombB || cCombB) && !bMG; // 月將 B is immovable
     var cObstructsB = (cCtrlB || cChongB || cDrainB || cIsTombB || cCombB) && !bMG;
     var bStrong = strongMsg(B) || (cGenB && C && strongMsg(C));
@@ -240,8 +266,8 @@
       T('M3 ' + C + ' è legato a M2 ' + B + ' [六合] → impegnato, non agisce su M1 (貪合忘冲)');
     }
 
-    if (m1BornCombined) T('trend ' + M1 + ' nasce combinato con ' + m1Seat + ' [六合] nella sua lettura → capacità ridotta');
-    else if (m1Freed) T('trend ' + M1 + ' nasceva combinato con ' + m1Seat + ', ma ' + m1Freed + ' clasha il legame → trend liberato');
+    if (m1BornCombined && !substituted) T('trend ' + M1 + ' nasce combinato con ' + m1Seat + ' [六合] nella sua lettura → capacità ridotta');
+    else if (m1Freed && !substituted) T('trend ' + M1 + ' nasceva combinato con ' + m1Seat + ', ma ' + m1Freed + ' clasha il legame → trend liberato');
     if (isMG(A)) T('trend ' + A + ' è il 月將 → mai vuoto, sempre forte (doppia energia)');
     if ((tombOfBranch(A) === B) && voidB) T('M2 ' + B + ' sarebbe la tomba del trend ma è vuoto (空) → non seppellisce');
 
@@ -258,7 +284,7 @@
         clashOverride = 'attack';
         T(B + ' 冲 ' + A + ' [clash]: ' + describe(B) + ' è più forte del trend ' + describe(A) + ' → il clash sfonda → non confermato');
       } else {
-        var rescueByC = C && (COMBINE[C] === A);
+        var rescueByC = C && bonded(C, A);
         if (rescueByC) {
           clashOverride = 'rescued';
           T(B + ' 冲 ' + A + ' [clash]: ' + describe(B) + ' è più debole del trend ' + describe(A) + ' e ' + C + ' 六合 ' + A + ' → il trend è protetto (anche dal 刑) → confermato');
@@ -272,7 +298,7 @@
     else if (clashOverride === 'rescued') { confirmed = true; kind = 'help'; }
 
     function leanOnA(reason) {
-      if (m1BornCombined && A === M1) {
+      if (m1BornCombined && A === M1 && !substituted) {
         confirmed = false;
         T(reason + ' → si dovrebbe appoggiare al trend, ma ' + M1 + ' nasce combinato con ' + m1Seat +
           ' [六合] nella sua lettura: legato, non regge da solo → non confermato');
@@ -333,9 +359,11 @@
       // M1 is the trend: it is acted upon, it never acts. M2 strikes M1; M3 strikes M2, and
       // reaches M1 only when very timely and unobstructed. A 六合-bound M3 is disarmed.
       var acts = [];
-      if (M2 && M1) acts.push({ a: 'M2', ab: M2, t: 'M1', tb: M1 });
-      if (M3 && M2) acts.push({ a: 'M3', ab: M3, t: 'M2', tb: M2 });
-      if (M3 && M1 && cCanReachA) acts.push({ a: 'M3', ab: M3, t: 'M1', tb: M1 });
+      if (B && A) acts.push({ a: 'il giudice', ab: B, t: 'il trend', tb: A });
+      if (C && B) acts.push({ a: 'il terzo', ab: C, t: 'il giudice', tb: B });
+      if (C && A && cCanReachA) acts.push({ a: 'il terzo', ab: C, t: 'il trend', tb: A });
+      // un ramo che non esiste non colpisce e non può essere colpito
+      acts = acts.filter(function (x) { return !nonExistent(x.ab) && !nonExistent(x.tb); });
       for (var pi = 0; pi < acts.length; pi++) {
         var ac = acts[pi];
         if (penalizes(ac.ab, ac.tb)) {
@@ -357,7 +385,7 @@
         var otherPens = pens.filter(function (p) {
           return !(p.indexOf('M1') >= 0 && p.indexOf('M2') >= 0 && p.indexOf('M3') < 0);
         });
-        var rescue = (chong(M2) === M3) ? '冲' : ((COMBINE[M2] === M3) ? '六合' : null);
+        var rescue = (chong(M2) === M3) ? '冲' : (bonded(M2, M3) ? '六合' : null);
         if (penM1M2 && rescue && !otherPens.length) {
           T('刑 (Penalty): ' + pens.join(' · ') + ' — ma M3 ' + M3 + ' ' + rescue + ' M2 ' + M2 +
             ' → il danno del 刑 è annullato');
