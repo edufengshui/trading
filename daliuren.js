@@ -412,8 +412,9 @@
 
     var hourStem = hourStemFor(dayStem, seedBranch);
     var chart = buildChartFromPrimitives(dayStem, dayBranch, seedBranch, mg, hourStem);
+    chart.monthBranch = p.month ? p.month.slice(1) : null;
     chart.source = {
-      mode: 'forex', dayPillar: p.day, hourPillar: hourStem + seedBranch,
+      mode: 'forex', dayPillar: p.day, hourPillar: hourStem + seedBranch, monthPillar: p.month || null,
       seedBranch: seedBranch, zhongQi: zhongQi, tst: tst, longitude: lonDeg
     };
     return chart;

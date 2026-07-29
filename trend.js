@@ -67,19 +67,62 @@
   function penalizes(a, b) { return XING[a] === b && a !== b; }   // 刑 between two different branches
   function chong(b) { return BRANCHES[(BRANCHES.indexOf(b) + 6) % 12]; }
   function tombOfBranch(br) { return TOMB_OF_ELEM[WX[br]] || null; }
-  function veryUntimely(elem, season) { if (!season) return false; return controls(elem, season) || controls(season, elem); }
 
-  // strength rank for the clash tie-break: 墓(0) < 囚死(1) < normal(2) < 相(3) < 旺(4).
-  // Priority: being in one's own tomb THIS month is checked first (most specific, overrides
-  // everything); then support from the month branch's own element or the broad season (相);
-  // then matching the broad season outright (旺); then the broad-season 囚/死 penalty; else normal.
-  function strengthRank(elem, season, monthBranch, monthElem) {
-    if (monthBranch && TOMB_OF_ELEM[elem] === monthBranch) return 0;                    // 墓
-    if ((monthElem && generates(monthElem, elem)) || (season && generates(season, elem))) return 3; // 相
-    if (season && elem === season) return 4;                                            // 旺
-    if (veryUntimely(elem, season)) return 1;                                            // 囚/死
-    return 2;                                                                            // normal
+  // ---- 十二長生 (the twelve life stages) -------------------------------------------------
+  // Strength is read as the stage of a branch's element against the MONTH branch.
+  // 1 長生 Birth · 2 沐浴 Bathing · 3 冠帶 Schooling · 4 臨官 Office · 5 帝旺 Peak · 6 衰 Decline
+  // 7 病 Sick · 8 死 Dead · 9 墓 Tomb · 10 絕 Vanishing · 11 胎 Embryo · 12 養 Preparation
+  //
+  // Energy: full up to stage 6; from 7 it starts draining; 8 lower still; 9 is the tomb — the
+  // element is locked away but AVAILABLE if the day branch clashes the month branch; only at
+  // 10 絕 is the element truly ineffective. 11 and 12 are very weak but accumulating.
+  //
+  // EARTH HAS NO TWELVE STAGES. For Earth the seasonal influence rules instead: it is strong in
+  // the four Earth months (辰未戌丑) and strong whenever Fire is strong. Having no cycle, Earth
+  // has no 絕 either — it never becomes truly ineffective, so its rank is floored.
+  //
+  // ASSUMPTION — one sequence per ELEMENT, in the yang order. Yin branches (酉 as 辛, 卯 as 乙…)
+  //              are NOT run backwards on their own reversed sequence.
+  var SHENG_START = { Wood: '亥', Fire: '寅', Metal: '巳', Water: '申' };
+  var EARTH_MONTHS = ['辰', '未', '戌', '丑'];
+  var EARTH_STRONG_RANK = 8;   // in an Earth month
+  var EARTH_FLOOR_RANK = 2;    // no 絕: Earth never vanishes entirely
+  var STAGE_CN = ['長生', '沐浴', '冠帶', '臨官', '帝旺', '衰', '病', '死', '墓', '絕', '胎', '養'];
+  var STAGE_EN = ['Birth', 'Bathing', 'Schooling', 'Office', 'Peak', 'Decline',
+                  'Sick', 'Dead', 'Tomb', 'Vanishing', 'Embryo', 'Preparation'];
+
+  // stage 1..12 of an element in a given month branch, or null when the month is unknown
+  function lifeStage(elem, monthBranch) {
+    if (!elem || !monthBranch || !SHENG_START[elem]) return null;
+    var s = BRANCHES.indexOf(SHENG_START[elem]), m = BRANCHES.indexOf(monthBranch);
+    if (s < 0 || m < 0) return null;
+    return ((m - s) % 12 + 12) % 12 + 1;
   }
+  function stageName(st) { return st ? STAGE_CN[st - 1] + ' ' + STAGE_EN[st - 1] : '?'; }
+
+  // Strength rank 0..9 derived from the stage. Used both for the clash tie-break and for the
+  // "has energy" test. A tomb (9) that the day has unlocked is read as an ordinary stage.
+  var STAGE_RANK = { 1: 6, 2: 6, 3: 7, 4: 8, 5: 9, 6: 5, 7: 4, 8: 3, 9: 1, 10: 0, 11: 2, 12: 2 };
+  var TOMB_OPENED_RANK = 5;
+  function stageRank(st, tombOpened) {
+    if (!st) return 5;                                   // no month known → neutral
+    if (st === 9 && tombOpened) return TOMB_OPENED_RANK;
+    return STAGE_RANK[st];
+  }
+  // Earth: strong in an Earth month, otherwise it borrows the Fire strength of that month,
+  // never falling below the floor.
+  function earthRank(monthBranch) {
+    if (!monthBranch) return 5;
+    if (EARTH_MONTHS.indexOf(monthBranch) >= 0) return EARTH_STRONG_RANK;
+    var fire = stageRank(lifeStage('Fire', monthBranch), false);
+    return Math.max(fire, EARTH_FLOOR_RANK);
+  }
+  function elemRank(elem, monthBranch, tombOpened) {
+    if (elem === 'Earth') return earthRank(monthBranch);
+    return stageRank(lifeStage(elem, monthBranch), tombOpened);
+  }
+  // "has energy" = stages 1..6 (rank >= 5). A released tomb counts as having energy.
+  function hasEnergy(st, tombOpened) { return stageRank(st, tombOpened) >= 5; }
 
   // exact ascending trio → clockwise; exact descending trio → anticlockwise; else null
   function directionalCombo(a, b, c) {
@@ -95,9 +138,27 @@
   function evaluateTrend(M1, M2, M3, opts) {
     opts = opts || {};
     var dayStem = opts.dayStem, voids = opts.voidBranches || [], season = opts.seasonElement || null,
-        mg = opts.monthGeneral || null, monthBranch = opts.monthBranch || null;
+        mg = opts.monthGeneral || null, monthBranch = opts.monthBranch || null,
+        dayBranch = opts.dayBranch || null;
     var monthElem = monthBranch ? WX[monthBranch] : null;
     var trace = []; function T(s) { trace.push(s); }
+
+    // The day branch clashing the month branch unlocks whatever element is entombed there,
+    // making it available for that day only.
+    var tombOpened = !!(dayBranch && monthBranch && chong(monthBranch) === dayBranch);
+    function stOf(b) { return lifeStage(WX[b], monthBranch); }
+    function rankOf(b) { return elemRank(WX[b], monthBranch, tombOpened); }
+    function energetic(b) { return rankOf(b) >= 5; }
+    function describe(b) {
+      if (WX[b] === 'Earth') {
+        if (!monthBranch) return b;
+        return b + ' (terra, ' + (EARTH_MONTHS.indexOf(monthBranch) >= 0 ? 'mese di terra' :
+               energetic(b) ? 'sostenuta dal fuoco' : 'senza sostegno') + ')';
+      }
+      var st = stOf(b);
+      if (!st) return b;
+      return b + ' (' + stageName(st) + (st === 9 && tombOpened ? ', tomba aperta dal giorno' : '') + ')';
+    }
 
     // 返吟 (Fan Yin / Clashing chart): do not trade
     if (opts.isFanYin) {
@@ -108,9 +169,11 @@
     }
 
     function isMG(b) { return !!(mg && b === mg); }
-    function timely(elem) { if (!season) return true; return elem === season || generates(season, elem); } // 旺 or 相
     function isVoid(b) { return voids.indexOf(b) >= 0 && !isMG(b); }        // 月將 is never void
-    function strongMsg(b) { return isMG(b) || timely(WX[b]); }
+    function strongMsg(b) { return isMG(b) || energetic(b); }
+    // "very timely" gate for M3 reaching past M2 onto M1: 臨官/帝旺 territory, i.e. rank >= 8.
+    // Loosen to `energetic(b)` (stages 1-6) if this proves too strict.
+    function veryTimely(b) { return isMG(b) || rankOf(b) >= 8; }
 
     var combo = directionalCombo(M1, M2, M3);   // computed first, applied as final override
 
@@ -134,9 +197,25 @@
     var cIsTombB = C ? ((tombOfBranch(B) === C) && !voidC) : false;
     var cCtrlB = C ? controls(eC, eB) : false, cGenB = C ? generates(eC, eB) : false;
     var cChongA = C ? (chong(A) === C) : false;
-    var cNeutralizesB = (cChongB || cDrainB || cIsTombB) && !bMG;           // 月將 B is immovable
-    var cObstructsB = (cCtrlB || cChongB || cDrainB || cIsTombB) && !bMG;
+    var cCombB = C ? (COMBINE[C] === B) : false;                            // 六合 M3–M2
+    var cNeutralizesB = (cChongB || cDrainB || cIsTombB || cCombB) && !bMG; // 月將 B is immovable
+    var cObstructsB = (cCtrlB || cChongB || cDrainB || cIsTombB || cCombB) && !bMG;
     var bStrong = strongMsg(B) || (cGenB && C && strongMsg(C));
+
+    // ---- 貪合忘冲: a branch tied up in a 六合 is occupied and loses its operativity ----
+    // C bonded to B cannot also reach across and strike A.
+    var cBound = cCombB;
+    // ---- M3 reaching past M2 onto M1: only if very timely AND not obstructed by M2 ----
+    // M2 obstructs M3 by controlling, clashing, draining or bonding it.
+    var bObstructsC = C ? (controls(eB, eC) || chong(B) === C || generates(eC, eB) || COMBINE[B] === C) : false;
+    var cCanReachA = !!C && !cBound && veryTimely(C) && !bObstructsC;
+    if (C && !cBound && cChongA && !cCanReachA) {
+      T('M3 ' + describe(C) + ' clasherebbe il trend, ma ' +
+        (!veryTimely(C) ? 'non è abbastanza timely' : 'M2 ' + B + ' lo ostacola') + ' → non arriva su M1');
+    }
+    if (cBound && (cChongA || penalizes(C, A))) {
+      T('M3 ' + C + ' è legato a M2 ' + B + ' [六合] → impegnato, non agisce su M1 (貪合忘冲)');
+    }
 
     if (isMG(A)) T('trend ' + A + ' è il 月將 → mai vuoto, sempre forte (doppia energia)');
     if ((tombOfBranch(A) === B) && voidB) T('M2 ' + B + ' sarebbe la tomba del trend ma è vuoto (空) → non seppellisce');
@@ -149,18 +228,17 @@
     var abClash = (chong(A) === B);
     var clashOverride = null;
     if (abClash && (bCtrlA || aCtrlB)) {
-      var rA = strengthRank(eA, season, monthBranch, monthElem);
-      var rB = strengthRank(eB, season, monthBranch, monthElem);
+      var rA = rankOf(A), rB = rankOf(B);
       if (rB > rA) {
         clashOverride = 'attack';
-        T(B + ' 冲 ' + A + ' [clash] ed è più forte del trend (rango ' + rB + ' vs ' + rA + ') → il clash sfonda → non confermato');
+        T(B + ' 冲 ' + A + ' [clash]: ' + describe(B) + ' è più forte del trend ' + describe(A) + ' → il clash sfonda → non confermato');
       } else {
         var rescueByC = C && (COMBINE[C] === A);
         if (rescueByC) {
           clashOverride = 'rescued';
-          T(B + ' 冲 ' + A + ' [clash], ma è più debole (rango ' + rB + ' vs ' + rA + ') e ' + C + ' 六合 ' + A + ' → il trend è protetto (anche dal 刑) → confermato');
+          T(B + ' 冲 ' + A + ' [clash]: ' + describe(B) + ' è più debole del trend ' + describe(A) + ' e ' + C + ' 六合 ' + A + ' → il trend è protetto (anche dal 刑) → confermato');
         } else {
-          T(B + ' 冲 ' + A + ' [clash], ma è più debole (rango ' + rB + ' vs ' + rA + ') e senza protezione di M3 → il clash non sfonda, segue la relazione dei cinque elementi');
+          T(B + ' 冲 ' + A + ' [clash]: ' + describe(B) + ' è più debole del trend ' + describe(A) + ' e senza protezione di M3 → il clash non sfonda, segue la relazione dei cinque elementi');
           // no override: let the ordinary 五行 chain decide, unmodified
         }
       }
@@ -170,7 +248,7 @@
 
     function leanOnA(reason) {
       if (voidA) { confirmed = false; T(reason + ' → si appoggia al trend, ma è vuoto (空) e non nutrito → non confermato'); }
-      else if (veryUntimely(eA, season) && !isMG(A)) { confirmed = false; T(reason + ' → si appoggia al trend, ma è senza energia (囚/死) → non confermato'); }
+      else if (!energetic(A) && !isMG(A)) { confirmed = false; T(reason + ' → si appoggia al trend, ma il trend ' + describe(A) + ' è senza energia → non confermato'); }
       else { confirmed = true; T(reason + ' → si appoggia al trend → confermato'); }
     }
 
@@ -193,7 +271,7 @@
       if (voidA) {
         kind = 'void';
         var nourished = bMG || (bStrong && !cObstructsB);
-        if (nourished) { confirmed = true; T('trend ' + A + ' vuoto ma ' + B + ' lo genera' + (bMG ? ' (月將, doppia energia → basta da solo)' : timely(eB) ? ' (forte/timely)' : ' (rinforzato dal terzo)') + (bMG ? '' : ' e il terzo non ostacola') + ' → trend rifornito → confermato'); }
+        if (nourished) { confirmed = true; T('trend ' + A + ' vuoto ma ' + B + ' lo genera' + (bMG ? ' (月將, doppia energia → basta da solo)' : energetic(B) ? ' (forte/timely)' : ' (rinforzato dal terzo)') + (bMG ? '' : ' e il terzo non ostacola') + ' → trend rifornito → confermato'); }
         else { confirmed = false; T('trend ' + A + ' vuoto: ' + B + ' lo genera ma ' + (!bStrong ? B + ' è debole' : 'il terzo ostacola ' + B) + ' → nutrimento insufficiente → non confermato'); }
       } else { confirmed = true; kind = 'help'; T(B + ' genera il trend ' + A + ' [生]' + (bMG ? ' (月將)' : '') + ' → confermato'); }
     }
@@ -201,12 +279,11 @@
       if (voidA) { confirmed = false; kind = 'void'; T(B + ' 比和 col trend vuoto ma non lo nutre (serve 生) → non confermato'); }
       else { confirmed = true; kind = 'help'; T(B + ' stesso elemento del trend [比和] → confermato'); }
     }
-    else if (aGenB) { confirmed = false; kind = 'harm'; T(B + ' drena il trend ' + A + (bMG ? ' (月將, doppia)' : '') + ' → non confermato'); }
-    else if (bCtrlA) { confirmed = false; kind = 'harm'; T(B + ' controlla il trend ' + A + ' [剋]' + (bMG ? ' (月將, doppia)' : '') + ' → non confermato'); }
-    else if (aCtrlB) {
-      if (voidA) { confirmed = false; kind = 'void'; T('il trend ' + A + ' controlla ' + B + ' ma è vuoto (空) → non confermato'); }
-      else { confirmed = true; kind = 'help'; T('il trend ' + A + ' controlla ' + B + ' [剋] → confermato'); }
+    else if (aGenB) {
+      if (bMG || energetic(B)) { confirmed = false; kind = 'harm'; T(describe(B) + ' drena il trend ' + A + (bMG ? ' (月將, doppia)' : '') + ' → non confermato'); }
+      else { confirmed = true; kind = 'none'; T(describe(B) + ' drenerebbe il trend ' + A + ', ma è senza energia → drenaggio inefficace → confermato'); }
     }
+    else if (bCtrlA) { confirmed = false; kind = 'harm'; T(B + ' controlla il trend ' + A + ' [剋]' + (bMG ? ' (月將, doppia)' : '') + ' → non confermato'); }
     else { confirmed = true; kind = 'none'; T('nessuna relazione forte su ' + A + ' → confermato di default'); }
 
     if (C && !clashOverride) {
@@ -215,7 +292,7 @@
       else if (kind === 'help' && cGenB) { T(C + ' genera ' + B + ' → sostegno rinforzato → resta confermato'); }
     }
     if (C) {
-      if (cChongA && !isMG(A) && clashOverride !== 'rescued') { confirmed = false; T(C + ' clasha il trend ' + A + ' [冲] → il trend è colpito → non confermato'); }
+      if (cChongA && cCanReachA && !isMG(A) && clashOverride !== 'rescued') { confirmed = false; T(C + ' clasha il trend ' + A + ' [冲] → il trend è colpito → non confermato'); }
       else if (cChongA && isMG(A)) { T(C + ' clasha il trend ma è il 月將 (sempre forte) → il trend regge'); }
     }
 
@@ -224,22 +301,25 @@
     // the same bond that shields the trend from the clash also shields it from the penalty.
     var pens = [];
     if (clashOverride !== 'rescued') {
-      var msgs = [{ n: 'M1', b: M1 }, { n: 'M2', b: M2 }, { n: 'M3', b: M3 }];
-      for (var pi = 0; pi < 3; pi++) {
-        for (var pj = 0; pj < 3; pj++) {
-          if (pi === pj) continue;
-          if (penalizes(msgs[pi].b, msgs[pj].b)) {
-            var tag = msgs[pi].n + ' ' + msgs[pi].b + ' 刑 ' + msgs[pj].n + ' ' + msgs[pj].b;
-            if (pens.indexOf(tag) < 0) pens.push(tag);
-          }
+      // M1 is the trend: it is acted upon, it never acts. M2 strikes M1; M3 strikes M2, and
+      // reaches M1 only when very timely and unobstructed. A 六合-bound M3 is disarmed.
+      var acts = [];
+      if (M2 && M1) acts.push({ a: 'M2', ab: M2, t: 'M1', tb: M1 });
+      if (M3 && M2) acts.push({ a: 'M3', ab: M3, t: 'M2', tb: M2 });
+      if (M3 && M1 && cCanReachA) acts.push({ a: 'M3', ab: M3, t: 'M1', tb: M1 });
+      for (var pi = 0; pi < acts.length; pi++) {
+        var ac = acts[pi];
+        if (penalizes(ac.ab, ac.tb)) {
+          var tag = ac.a + ' ' + ac.ab + ' 刑 ' + ac.t + ' ' + ac.tb;
+          if (pens.indexOf(tag) < 0) pens.push(tag);
         }
       }
-      // 自刑 (self-penalty): the same self-penalising branch appearing twice
-      for (var si = 0; si < 3; si++) {
-        for (var sj = si + 1; sj < 3; sj++) {
-          if (msgs[si].b === msgs[sj].b && SELF_XING.indexOf(msgs[si].b) >= 0) {
-            pens.push(msgs[si].n + '/' + msgs[sj].n + ' ' + msgs[si].b + ' 自刑 (self-penalty)');
-          }
+      // 自刑 (self-penalty): the same self-penalising branch appearing twice, on an allowed act
+      for (var si = 0; si < acts.length; si++) {
+        var sa = acts[si];
+        if (sa.ab === sa.tb && SELF_XING.indexOf(sa.ab) >= 0) {
+          var stag = sa.a + '/' + sa.t + ' ' + sa.ab + ' 自刑 (self-penalty)';
+          if (pens.indexOf(stag) < 0) pens.push(stag);
         }
       }
       if (pens.length) {
@@ -281,9 +361,9 @@
              combo: combo, penalties: pens };
   }
 
-  var API = { evaluateTrend: evaluateTrend, directionalCombo: directionalCombo, strengthRank: strengthRank,
+  var API = { evaluateTrend: evaluateTrend, directionalCombo: directionalCombo, lifeStage: lifeStage, stageRank: stageRank, elemRank: elemRank,
               WX: WX, GEN: GEN, KE: KE, COMBINE: COMBINE, TOMB_SHA: TOMB_SHA, TOMB_OF_ELEM: TOMB_OF_ELEM,
-              DIRECTIONAL: DIRECTIONAL, veryUntimely: veryUntimely };
+              DIRECTIONAL: DIRECTIONAL, hasEnergy: hasEnergy, STAGE_CN: STAGE_CN };
 
   // ---- EMA(8+1) trend + consolidation filter (shared by the PWA and the backtest) ----
   var EMA_PERIOD = 8;
