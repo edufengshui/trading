@@ -179,6 +179,7 @@
     function baseRank(b) { return elemRank(WX[b], monthBranch, tombOpened); }
     function rankOf(b) {
       var r = baseRank(b);
+      if (isMGearly(b)) return 9;                                   // 月將: energia del Sole, sempre al massimo
       if (dayClash(b) && r >= 5) r = Math.min(9, r + 1);            // clashato ma forte → eccitato
       if (dayClash(b) && r < 5) r = 0;                              // clashato e debole → spazzato via
       if (voidRaw(b) && r > 0) r = Math.floor(r / 2);               // vuoto → energia dimezzata
@@ -186,8 +187,11 @@
     }
     function energetic(b) { return rankOf(b) >= 5; }
     // vuoto E untimely: praticamente non esiste. Vuoto ma timely: dimezzato, ancora funzionale.
-    function nonExistent(b) { return (voidRaw(b) && baseRank(b) < 5) || (dayClash(b) && baseRank(b) < 5); }
-    function excited(b) { return dayClash(b) && baseRank(b) >= 5; }
+    function nonExistent(b) {
+      if (isMGearly(b)) return false;                               // il 月將 non svanisce mai
+      return (voidRaw(b) && baseRank(b) < 5) || (dayClash(b) && baseRank(b) < 5);
+    }
+    function excited(b) { return dayClash(b) && (isMGearly(b) || baseRank(b) >= 5); }
     // un 六合 si scioglie se il giorno clasha uno dei due rami
     function bonded(x, y) { return COMBINE[x] === y && !dayClash(x) && !dayClash(y); }
     function describe(b) {
@@ -342,7 +346,7 @@
         // 未 → 酉 → 亥: l'energia continua a scorrere via da M1, non torna indietro
         T(describe(C) + ' drena a sua volta ' + B + ' → il deflusso da ' + A + ' prosegue lungo la catena → resta non confermato');
       }
-      else if (kind === 'harm' && cNeutralizesB) { leanOnA(C + ' neutralizza ' + B + ' (' + (cChongB ? '冲' : cCombB ? '六合' : cDrainB ? 'drena' : 'tomba') + ')'); }
+      else if (kind === 'harm' && (cNeutralizesB || (cCtrlB && !bMG))) { leanOnA(C + ' ' + (cCtrlB && !cNeutralizesB ? 'controlla' : 'neutralizza') + ' ' + B + ' (' + (cChongB ? '冲' : cCombB ? '六合' : cDrainB ? 'drena' : cIsTombB ? 'tomba' : '剋') + ')'); }
       else if (kind === 'help' && (cNeutralizesB || (cCtrlB && !bMG))) { leanOnA(C + ' ' + (cCtrlB ? 'controlla' : 'neutralizza') + ' ' + B); }
       else if (kind === 'help' && cGenB) { T(C + ' genera ' + B + ' → sostegno rinforzato → resta confermato'); }
     }
