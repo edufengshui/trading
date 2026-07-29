@@ -139,9 +139,32 @@
     opts = opts || {};
     var dayStem = opts.dayStem, voids = opts.voidBranches || [], season = opts.seasonElement || null,
         mg = opts.monthGeneral || null, monthBranch = opts.monthBranch || null,
-        dayBranch = opts.dayBranch || null;
+        dayBranch = opts.dayBranch || null, lessons = opts.fourLessons || null;
     var monthElem = monthBranch ? WX[monthBranch] : null;
     var trace = []; function T(s) { trace.push(s); }
+
+    // ---- M1 "born combined": in DLR the first message does not come out of nowhere, it rises
+    // from one of the four lessons. If it sits on a branch it combines with (六合), it is born
+    // already bound and its capacity is notably reduced — a bound trend cannot stand on its own.
+    var m1Seat = null, m1BornCombined = false, m1Freed = null;
+    if (lessons && lessons.length) {
+      for (var li = 0; li < lessons.length; li++) {
+        var lt = lessons[li].top && lessons[li].top.branch ? lessons[li].top.branch : lessons[li].top;
+        var lb = lessons[li].bottom;
+        if (lt === M1 && COMBINE[M1] === lb) { m1Seat = lb; m1BornCombined = true; break; }
+      }
+    }
+    // A clash on the branch that binds M1 breaks the bond and frees the trend.
+    // Which message may do it is set by `freeMode`: 'none' | 'm2' | 'm3' | 'either' | 'day'.
+    var freeMode = opts.freeMode || 'either';
+    if (m1BornCombined && m1Seat) {
+      var byM2 = (chong(m1Seat) === M2), byM3 = (chong(m1Seat) === M3), byDay = (chong(m1Seat) === dayBranch);
+      if ((freeMode === 'm2' && byM2) || (freeMode === 'm3' && byM3) ||
+          (freeMode === 'either' && (byM2 || byM3)) || (freeMode === 'day' && byDay)) {
+        m1Freed = byM2 && (freeMode !== 'm3') ? 'M2 ' + M2 : (byM3 ? 'M3 ' + M3 : 'il giorno ' + dayBranch);
+        m1BornCombined = false;
+      }
+    }
 
     // The day branch clashing the month branch unlocks whatever element is entombed there,
     // making it available for that day only.
@@ -217,6 +240,8 @@
       T('M3 ' + C + ' è legato a M2 ' + B + ' [六合] → impegnato, non agisce su M1 (貪合忘冲)');
     }
 
+    if (m1BornCombined) T('trend ' + M1 + ' nasce combinato con ' + m1Seat + ' [六合] nella sua lettura → capacità ridotta');
+    else if (m1Freed) T('trend ' + M1 + ' nasceva combinato con ' + m1Seat + ', ma ' + m1Freed + ' clasha il legame → trend liberato');
     if (isMG(A)) T('trend ' + A + ' è il 月將 → mai vuoto, sempre forte (doppia energia)');
     if ((tombOfBranch(A) === B) && voidB) T('M2 ' + B + ' sarebbe la tomba del trend ma è vuoto (空) → non seppellisce');
 
@@ -247,7 +272,12 @@
     else if (clashOverride === 'rescued') { confirmed = true; kind = 'help'; }
 
     function leanOnA(reason) {
-      if (voidA) { confirmed = false; T(reason + ' → si appoggia al trend, ma è vuoto (空) e non nutrito → non confermato'); }
+      if (m1BornCombined && A === M1) {
+        confirmed = false;
+        T(reason + ' → si dovrebbe appoggiare al trend, ma ' + M1 + ' nasce combinato con ' + m1Seat +
+          ' [六合] nella sua lettura: legato, non regge da solo → non confermato');
+      }
+      else if (voidA) { confirmed = false; T(reason + ' → si appoggia al trend, ma è vuoto (空) e non nutrito → non confermato'); }
       else if (!energetic(A) && !isMG(A)) { confirmed = false; T(reason + ' → si appoggia al trend, ma il trend ' + describe(A) + ' è senza energia → non confermato'); }
       else { confirmed = true; T(reason + ' → si appoggia al trend → confermato'); }
     }
