@@ -60,6 +60,10 @@ button.ghost:hover{border-color:var(--gold);color:var(--gold);}
 .forexbar .pill .dir.down{color:var(--cinnabar);}
 .forexbar .pill .warn{font-style:normal;font-size:11px;color:var(--cinnabar);}
 .forexbar .pill.unknown{opacity:.6;border-style:dotted;}
+/* seed within 3 pip of the bucket edge: the 地支 is not reproducible → not tradable */
+.forexbar .pill.fragile{opacity:.42;border-style:dashed;border-color:var(--cinnabar);
+  text-decoration:line-through var(--cinnabar);}
+.forexbar .pill.fragile:hover{opacity:.85;}
 .forexbar .fxstale{display:block;margin-top:9px;font-size:11px;color:#e08a80;font-weight:600;
   background:rgba(200,90,80,.12);border:1px solid var(--cinnabar);border-radius:7px;padding:7px 10px;}
 .forexbar .fxlegend{display:block;margin-top:9px;font-size:11px;color:var(--faint);font-style:italic;}

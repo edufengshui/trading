@@ -171,38 +171,64 @@ function renderForexBar() {
   var pills = ok.map(function (r) {
     var known = (r.emaConsolidated === true || r.emaConsolidated === false);
     var choppy = (r.emaConsolidated === false);
+    var fragile = (r.seedFragile === true);                       // seed boundary guard
     var arrow = r.direction === 'up' ? '↑' : r.direction === 'down' ? '↓' : '';
     var tip = !known
       ? 'Consolidation filter unavailable — the feed has no EMA history for this cross.'
       : (choppy
         ? 'EMA not consolidated — ' + r.emaChanges + ' reversals in the last 10 days. Filtered out, but still clickable.'
         : 'EMA consolidated — ' + r.emaChanges + ' reversals in the last 10 days.');
-    var cls = !known ? ' unknown' : (choppy ? ' choppy' : '');
+    if (fragile) {
+      tip = 'NO TRADE — the 00:00 price is only ' + r.seedEdgePips + ' pip from the seed-bucket edge, ' +
+        'so another data source could give a different 地支 (Earthly Branch) and a different chart. ' +
+        'The day is not well defined. || ' + tip;
+    }
+    var cls = (!known ? ' unknown' : (choppy ? ' choppy' : '')) + (fragile ? ' fragile' : '');
     return '<button class="pill' + cls + '" data-cross="' + r.cross +
-      '" data-branch="' + r.branch + '" data-choppy="' + (choppy ? '1' : '0') + '" title="' + tip + '">' +
+      '" data-branch="' + r.branch + '" data-choppy="' + (choppy ? '1' : '0') +
+      '" data-fragile="' + (fragile ? '1' : '0') + '" title="' + tip + '">' +
       r.cross + ' <b>' + r.branch + '</b>' +
       (arrow ? ' <i class="dir ' + r.direction + '">' + arrow + '</i>' : '') +
+      (fragile ? ' <i class="warn">⛔</i>' : '') +
       (choppy ? ' <i class="warn">⚠</i>' : '') + (!known ? ' <i class="warn">?</i>' : '') + '</button>';
   }).join('');
   var nChoppy = ok.filter(function (r) { return r.emaConsolidated === false; }).length;
   var nUnknown = ok.filter(function (r) { return r.emaConsolidated !== true && r.emaConsolidated !== false; }).length;
+  var nFragile = ok.filter(function (r) { return r.seedFragile === true; }).length;
+  // Fail loudly, never silently: an older Worker does not send the field at all, and a missing
+  // field must not be read as "the seed is safe".
+  var guardMissing = ok.filter(function (r) { return !('seedEdgePips' in r); }).length;
   var legend = '';
+  if (guardMissing) {
+    legend += '<span class="fxstale">⛔ SEED BOUNDARY GUARD NOT ACTIVE — this feed was produced by an older Worker ' +
+      '(generated ' + (forexData.generatedAt || '?') + ') that does not send seedEdgePips. ' +
+      'No cross is being checked against the seed edge: the signals below are NOT the ones the backtest measured. ' +
+      'Redeploy the Worker and call /run.</span>';
+  }
   if (nUnknown) {
-    legend = '<span class="fxstale">⚠ Consolidation filter NOT ACTIVE — this feed was produced by an older Worker ' +
+    legend += '<span class="fxstale">⚠ Consolidation filter NOT ACTIVE — this feed was produced by an older Worker ' +
       '(generated ' + (forexData.generatedAt || '?') + '). Redeploy the Worker and call /run. ' +
       'Until then no cross is being filtered.</span>';
-  } else if (nChoppy) {
-    legend = '<span class="fxlegend">⚠ = EMA not consolidated (3+ reversals in 10 days) — not recommended, but you can still open them.</span>';
+  }
+  if (nFragile) {
+    legend += '<span class="fxlegend">⛔ = 00:00 price within 3 pip of the seed-bucket edge — the 地支 is not ' +
+      'reproducible across data sources, so the day is NO TRADE.</span>';
+  }
+  if (!nUnknown && nChoppy) {
+    legend += '<span class="fxlegend">⚠ = EMA not consolidated (3+ reversals in 10 days) — not recommended, but you can still open them.</span>';
   }
   bar.innerHTML = head + '<div class="pills">' + pills + '</div>' + legend +
     (errs.length ? '<span class="fxerr">no data (market closed?): ' + errs.join(', ') + '</span>' : '');
   bar.querySelectorAll('.pill').forEach(function (b) {
     b.addEventListener('click', function () { selectForexCross(b.dataset.cross, b.dataset.branch, b); });
   });
-  // prefer the first tradable (consolidated) cross for the initial view
+  // prefer the first genuinely tradable cross: consolidated EMA and a reproducible seed
   var pillsEls = bar.querySelectorAll('.pill');
   var first = null;
-  for (var i = 0; i < pillsEls.length; i++) { if (pillsEls[i].dataset.choppy === '0') { first = pillsEls[i]; break; } }
+  for (var i = 0; i < pillsEls.length; i++) {
+    if (pillsEls[i].dataset.choppy === '0' && pillsEls[i].dataset.fragile === '0') { first = pillsEls[i]; break; }
+  }
+  if (!first) for (var i2 = 0; i2 < pillsEls.length; i2++) { if (pillsEls[i2].dataset.choppy === '0') { first = pillsEls[i2]; break; } }
   if (!first) first = pillsEls[0];
   if (first) selectForexCross(first.dataset.cross, first.dataset.branch, first);
 }
@@ -263,21 +289,30 @@ function renderTrend(cross, chart, dArr, row) {
   var dir = row && row.direction ? row.direction : null;         // 'up' | 'down' | 'flat' | null
   var filterKnown = row && (row.emaConsolidated === true || row.emaConsolidated === false);
   var choppy = row && row.emaConsolidated === false;             // consolidation filter
+  // Seed boundary guard. This comes FIRST because it does not question the verdict, it questions
+  // the chart: a price within 3 pip of the bucket edge could belong to the neighbouring 地支 on a
+  // different feed, so every reading downstream — 返吟 included — is built on a branch that is not
+  // reproducible. Backtested with GUARD=3, which discards 6.4% of the days.
+  var fragile = !!(row && row.seedFragile === true);
+  var guardKnown = !!(row && ('seedEdgePips' in row));
   var signal = null;
-  if (v.noTrade) signal = 'NO TRADE';
+  if (fragile) signal = 'NO TRADE';
+  else if (v.noTrade) signal = 'NO TRADE';
   else if (choppy) signal = 'NO TRADE';
   else if (dir === 'up') signal = v.confirmed ? 'LONG' : 'SHORT';
   else if (dir === 'down') signal = v.confirmed ? 'SHORT' : 'LONG';
 
-  var verdictBadge = v.noTrade
-    ? '<span class="tv no">返吟 FAN YIN · no trade</span>'
-    : (choppy
-      ? '<span class="tv no">EMA not consolidated · no trade</span>'
-      : (v.confirmed
-        ? '<span class="tv ok">CONFIRMED · follows EMA</span>'
-        : '<span class="tv no">NOT CONFIRMED · against EMA</span>'));
+  var verdictBadge = fragile
+    ? '<span class="tv no">SEED ON THE EDGE · no trade</span>'
+    : (v.noTrade
+      ? '<span class="tv no">返吟 FAN YIN · no trade</span>'
+      : (choppy
+        ? '<span class="tv no">EMA not consolidated · no trade</span>'
+        : (v.confirmed
+          ? '<span class="tv ok">CONFIRMED · follows EMA</span>'
+          : '<span class="tv no">NOT CONFIRMED · against EMA</span>')));
   var signalBadge = signal
-    ? '<span class="sig ' + (v.noTrade ? 'notrade' : signal.toLowerCase()) + '">' + signal + '</span>'
+    ? '<span class="sig ' + (signal === 'NO TRADE' ? 'notrade' : signal.toLowerCase()) + '">' + signal + '</span>'
     : '<span class="sig na">signal n/a — EMA trend missing</span>';
   var head = '<div class="trendhead"><span>' + cross + ' — Level 1</span>' + signalBadge + '</div>';
 
@@ -289,7 +324,18 @@ function renderTrend(cross, chart, dArr, row) {
       ' → first ' + String(row.digits).length + ' significant digits <b class="px">' + row.digits + '</b>' +
       ' → ' + row.digits + ' mod 12 = remainder <b class="px">' + rem + '</b>' +
       ' → 地支 <b>' + row.branch + '</b> (' + row.branchPinyin + ')' +
-      ' <span class="hint">counting 子=1</span></div>';
+      ' <span class="hint">counting 子=1</span>';
+    // Seed bucket is 100 pip wide; show how far the price sits from its nearest edge.
+    if (guardKnown && row.seedEdgePips != null) {
+      seedLine += '<br>distance from the seed-bucket edge <b class="px">' + row.seedEdgePips + ' pip</b>' +
+        (fragile
+          ? ' — <b class="down">under the 3 pip guard: another feed could give a different 地支 → NO TRADE</b>'
+          : ' <span class="hint">guard 3 pip · bucket 100 pip wide</span>');
+    } else {
+      seedLine += '<br><b class="down">seed boundary guard unavailable (old feed — redeploy the Worker and call /run): ' +
+        'this reading is NOT checked against the seed edge</b>';
+    }
+    seedLine += '</div>';
   }
 
   var arrow = dir === 'up' ? '↑ up (blue)' : dir === 'down' ? '↓ down (red)' : (dir ? dir : 'n/a');
