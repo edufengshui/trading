@@ -405,7 +405,7 @@
   // La libreria assegna il mese all'intero giorno di calendario, ignorando
   // l'ora in cui il 節 entra davvero. Alle 00:00 GMT il 節 spesso non e ancora
   // entrato, e il mese e ancora quello precedente.
-  var JIE2BRANCH = { '立春':'寅','驚蟄':'卯','清明':'辰','立夏':'巳','芒種':'午','小暑':'未',
+  var JIE2BRANCH = { '立春':'寅','驚蟄':'卯','惊蛰':'卯','清明':'辰','立夏':'巳','芒種':'午','芒种':'午','小暑':'未',
                      '立秋':'申','白露':'酉','寒露':'戌','立冬':'亥','大雪':'子','小寒':'丑' };
   function monthBranchAtGmt(utcMs) {
     var S = (typeof Solar !== 'undefined') ? Solar
@@ -451,6 +451,7 @@
     chart.monthBranch = monthBranchAtGmt(utcMs) || (p.month ? p.month.slice(1) : null);
     chart.source = {
       mode: 'forex', dayPillar: p.day, hourPillar: hourStem + seedBranch, monthPillar: p.month || null,
+      yearPillar: p.year || null,
       seedBranch: seedBranch, zhongQi: zhongQi, tst: tst, longitude: lonDeg
     };
     return chart;
