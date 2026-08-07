@@ -142,6 +142,7 @@ var FOREX_LON = 0;          // 0° Greenwich for the day pillar & 月將 at 00:0
 var forexData = null;
 var METHOD = 'dlr';         // 'dlr' | 'pb' — chosen with the toggle, re-renders the trend panel
 var lastTrendArgs = null;   // remember the last renderTrend inputs so the toggle can re-render
+var pbManual = null;        // {sup, inf, linea} when the user overrides the trigrams by hand, else null
 
 async function loadForex() {
   clearErr();
@@ -237,6 +238,7 @@ function renderForexBar() {
 
 function selectForexCross(cross, branch, btn) {
   clearErr();
+  pbManual = null;   // choosing another cross drops any manual trigram override
   if (!window.XKDGDaLiuRen || !window.XKDGSolarTime) return showErr('<b>Engine not loaded.</b>');
   // Anchor the day pillar & 月將 to the GMT calendar date. At 00:00:00 GMT the true solar
   // time at 0° falls a few minutes into the previous day (equation of time), which would
@@ -279,7 +281,9 @@ function seasonElementFor(y, mo, dd) {
 
 function renderTrendPB(cross, chart, dArr, row, p) {
   if (!window.XKDGPlumBlossom || !row || row.seed == null || !chart.dayBranch) { p.style.display = 'none'; return; }
-  var pb = window.XKDGPlumBlossom.read(row.seed, chart.dayBranch);
+  var pb = pbManual
+    ? window.XKDGPlumBlossom.readManual(pbManual.sup, pbManual.inf, pbManual.linea)
+    : window.XKDGPlumBlossom.read(row.seed, chart.dayBranch);
   if (pb.error) { p.style.display = 'none'; return; }
 
   // same downstream logic as the DLR panel: EMA direction + guards decide the final signal
@@ -309,6 +313,7 @@ function renderTrendPB(cross, chart, dArr, row, p) {
   if (row && row.price != null) {
     seedLine = '<div class="trendmsgs seedline">00:00 GMT open <b class="px">' + row.price + '</b>' +
       ' → seme <b class="px">' + row.seed + '</b> · giorno <b>' + chart.dayStem + chart.dayBranch + '</b>' +
+      (pbManual ? ' · <b class="down">inserimento manuale</b>' : '') +
       (fragile ? '<br><b class="down">seme entro 3 pip dal bordo → NO TRADE</b>' : '') + '</div>';
   }
 
@@ -341,8 +346,35 @@ function renderTrendPB(cross, chart, dArr, row, p) {
     ' → si muove in <b>' + pb.yongTrasfLabel + '</b>' +
     ' — ' + verdictBadge + '</div>';
 
-  p.innerHTML = head + seedLine + emaLine + hexBlock + roles;
+  // manual override controls: superiore (1-8), inferiore (1-8), linea mutante (1-6)
+  function opts(n, sel){ var s=''; for(var i=1;i<=n;i++) s+='<option value="'+i+'"'+(i===sel?' selected':'')+'>'+i+'</option>'; return s; }
+  var manualRow = '<div class="pbmanual">' +
+    '<span>Inserimento manuale:</span>' +
+    ' superiore <select id="pb-sup">' + opts(8, pb.superiore) + '</select>' +
+    ' inferiore <select id="pb-inf">' + opts(8, pb.inferiore) + '</select>' +
+    ' linea mutante <select id="pb-line">' + opts(6, pb.linea) + '</select>' +
+    ' <button class="ghost" id="pb-reset" style="padding:4px 12px">Reset al seme</button>' +
+    '</div>';
+
+  p.innerHTML = head + seedLine + emaLine + hexBlock + roles + manualRow;
   p.style.display = 'block';
+
+  // wire the manual controls (re-render on change)
+  function onManualChange(){
+    pbManual = {
+      sup:  parseInt($('pb-sup').value, 10),
+      inf:  parseInt($('pb-inf').value, 10),
+      linea:parseInt($('pb-line').value, 10)
+    };
+    if (lastTrendArgs) renderTrend(lastTrendArgs.cross, lastTrendArgs.chart, lastTrendArgs.dArr, lastTrendArgs.row);
+  }
+  $('pb-sup').addEventListener('change', onManualChange);
+  $('pb-inf').addEventListener('change', onManualChange);
+  $('pb-line').addEventListener('change', onManualChange);
+  $('pb-reset').addEventListener('click', function(){
+    pbManual = null;
+    if (lastTrendArgs) renderTrend(lastTrendArgs.cross, lastTrendArgs.chart, lastTrendArgs.dArr, lastTrendArgs.row);
+  });
 }
 
 function renderTrend(cross, chart, dArr, row) {

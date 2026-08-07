@@ -84,16 +84,8 @@
   };
 
   // seme intero, ramo del giorno (uno di B) -> lettura completa
-  function read(seed, dayBranch){
-    seed = Math.abs(parseInt(seed, 10));
-    if (!(seed > 0)) return { error: 'seme non valido' };
-    var dayNum = B.indexOf(dayBranch) + 1;
-    if (dayNum < 1) return { error: 'ramo del giorno non valido: ' + dayBranch };
-
-    var supNum = mod8(Math.floor(seed / 8));
-    var infNum = mod8(seed);
-    var linea  = mod6(supNum + infNum + dayNum);
-
+  // nucleo del calcolo: dati superiore, inferiore e linea mutante (1..6) -> lettura completa
+  function build(supNum, infNum, linea, extra){
     var yongOrigNum = linea <= 3 ? infNum : supNum;
     var trendNum    = linea <= 3 ? supNum : infNum;
     var localLine   = linea <= 3 ? linea : linea - 3;
@@ -103,8 +95,6 @@
     var rel = relazione(trend.el, yongTrasf.el);
     var v = VERDETTO[rel] || { prosegue: null, testo: '?' };
 
-    // --- i tre esagrammi (numeri sup/inf di ciascuno) per il disegno ---
-    // esagramma di partenza: sup = supNum, inf = infNum
     // trasformato: la linea mutante (globale) capovolta
     var trSup = supNum, trInf = infNum;
     if (linea <= 3) trInf = flipLine(infNum, linea); else trSup = flipLine(supNum, linea - 3);
@@ -113,22 +103,42 @@
     var nucInf = numFromLines(low6.charAt(1) + low6.charAt(2) + low6.charAt(3));
     var nucSup = numFromLines(low6.charAt(2) + low6.charAt(3) + low6.charAt(4));
 
-    return {
-      seed: seed, dayBranch: dayBranch, dayNum: dayNum,
+    var out = {
       superiore: supNum, inferiore: infNum, linea: linea,
       trend: trend, yongOriginale: yongOrig, yongTrasformato: yongTrasf,
       relazione: rel, relazioneTesto: v.testo,
       prosegue: v.prosegue,
-      // i tre esagrammi per il disegno: {sup, inf}
       original:  { sup: supNum, inf: infNum },
       mutual:    { sup: nucSup, inf: nucInf },
       transform: { sup: trSup,  inf: trInf },
-      movingLine: linea,   // 1..6 dal basso
-      // etichette pronte per l'interfaccia
+      movingLine: linea,
       trendLabel: trend.name + ' ' + trend.pinyin + ' (' + EL_IT[trend.el] + ')',
       yongOrigLabel: yongOrig.name + ' ' + yongOrig.pinyin + ' (' + EL_IT[yongOrig.el] + ')',
       yongTrasfLabel: yongTrasf.name + ' ' + yongTrasf.pinyin + ' (' + EL_IT[yongTrasf.el] + ')'
     };
+    if (extra) for (var k in extra) out[k] = extra[k];
+    return out;
+  }
+
+  // dal seme di prezzo + ramo del giorno (modo automatico)
+  function read(seed, dayBranch){
+    seed = Math.abs(parseInt(seed, 10));
+    if (!(seed > 0)) return { error: 'seme non valido' };
+    var dayNum = B.indexOf(dayBranch) + 1;
+    if (dayNum < 1) return { error: 'ramo del giorno non valido: ' + dayBranch };
+    var supNum = mod8(Math.floor(seed / 8));
+    var infNum = mod8(seed);
+    var linea  = mod6(supNum + infNum + dayNum);
+    return build(supNum, infNum, linea, { seed: seed, dayBranch: dayBranch, dayNum: dayNum });
+  }
+
+  // inserimento manuale: superiore, inferiore (1..8), linea mutante (1..6)
+  function readManual(supNum, infNum, linea){
+    supNum = parseInt(supNum, 10); infNum = parseInt(infNum, 10); linea = parseInt(linea, 10);
+    if (!(supNum >= 1 && supNum <= 8)) return { error: 'superiore non valido' };
+    if (!(infNum >= 1 && infNum <= 8)) return { error: 'inferiore non valido' };
+    if (!(linea >= 1 && linea <= 6)) return { error: 'linea mutante non valida' };
+    return build(supNum, infNum, linea, { manual: true });
   }
 
   // sei linee dal basso (1) all'alto (6) di un esagramma {sup, inf}
@@ -136,5 +146,5 @@
     return (TRIGRAM[hx.inf].lines + TRIGRAM[hx.sup].lines).split('');  // '1'=yang intera, '0'=yin spezzata
   }
 
-  return { read: read, TRIGRAM: TRIGRAM, hexLinesLowFirst: hexLinesLowFirst };
+  return { read: read, readManual: readManual, TRIGRAM: TRIGRAM, hexLinesLowFirst: hexLinesLowFirst };
 }));

@@ -185,3 +185,8 @@ button.ghost:hover{border-color:var(--gold);color:var(--gold);}
 .pbline .seg.half{width:42px;}
 .pbline .seg.gap{width:12px;background:transparent;}
 .pbline.moving .seg{background:#c0392b;}
+
+/* Plum Blossom manual override row */
+.pbmanual{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:14px;color:var(--parch);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.pbmanual select{background:transparent;color:var(--parch);border:1px solid var(--line);border-radius:4px;padding:3px 6px;font-size:14px;}
+.pbmanual select:hover{border-color:var(--gold);}
