@@ -57,13 +57,6 @@
     { elem: 'Metal', trio: ['申', '酉', '戌'], en: 'Metal/West' },
     { elem: 'Water', trio: ['亥', '子', '丑'], en: 'Water/North' }
   ];
-  // 三合局 (triangle trios) — 長生 · 帝旺 · 墓 of one element. The tomb is always an earth branch.
-  var TRIANGLE = [
-    { elem: 'Water', trio: ['申', '子', '辰'], en: 'Water' },
-    { elem: 'Wood',  trio: ['亥', '卯', '未'], en: 'Wood'  },
-    { elem: 'Fire',  trio: ['寅', '午', '戌'], en: 'Fire'  },
-    { elem: 'Metal', trio: ['巳', '酉', '丑'], en: 'Metal' }
-  ];
   // 刑 (penalties): 寅巳申 · 丑戌未 · 子卯 · 辰午酉亥 自刑 (self)
   var XING = { '寅': '巳', '巳': '申', '申': '寅', '丑': '戌', '戌': '未', '未': '丑',
                '子': '卯', '卯': '子', '辰': '辰', '午': '午', '酉': '酉', '亥': '亥' };
@@ -140,16 +133,6 @@
       var d = DIRECTIONAL[i], asc = d.trio.join(''), desc = d.trio.slice().reverse().join('');
       if (seq === asc) return { elem: d.elem, cn: asc, en: d.en, order: 'clockwise' };
       if (seq === desc) return { elem: d.elem, cn: desc, en: d.en, order: 'anticlockwise' };
-    }
-    return null;
-  }
-
-  // A complete 三合 needs all three members present in the pool. No 半合 (half trio).
-  function triangleIn(pool) {
-    for (var i = 0; i < TRIANGLE.length; i++) {
-      var t = TRIANGLE[i], all = true;
-      for (var j = 0; j < 3; j++) if (pool.indexOf(t.trio[j]) < 0) all = false;
-      if (all) return t;
     }
     return null;
   }
@@ -469,63 +452,6 @@
       }
     } else {
       T('刑: eventuali penalità fra i tre messaggi sono protette dal legame ' + C + ' 六合 ' + A + ' → ignorate');
-    }
-
-    // ---- 三合 triangle trio: the three members act as one body --------------------------
-    // Reservoir: the three messages plus the day branch (the hour is deliberately excluded).
-    // Only a COMPLETE trio counts — no 半合. When it forms, the three fuse into a single actor
-    // of the trio's element and their individual elemental identities are suspended: inside the
-    // Wood trio 未 is no longer Earth and 亥 is no longer Water. Anything outside that had a
-    // relation with one member now faces all three at once, so an isolated controller of the
-    // trio's element is overwhelmed, breaks, and stops acting altogether.
-    // If M1 is itself a member, the body widens around it and the trend is reinforced.
-    var triPool = [M1, M2, M3];
-    if (dayBranch) triPool.push(dayBranch);
-    var triangle = triangleIn(triPool);
-    if (triangle) {
-      var seats = [];
-      ['M1', 'M2', 'M3'].forEach(function (nm, i) {
-        var b = [M1, M2, M3][i];
-        if (triangle.trio.indexOf(b) >= 0) seats.push(nm + ' ' + b);
-      });
-      if (dayBranch && triangle.trio.indexOf(dayBranch) >= 0) seats.push('il giorno ' + dayBranch);
-      var head = '三合 ' + triangle.trio.join('') + ' (' + triangle.en + '): ' +
-                 seats.join(' + ') + ' formano un corpo unico di ' + triangle.en +
-                 ' — le identità elementari individuali si sospendono';
-
-      var outsiders = [M1, M2, M3].filter(function (b) { return triangle.trio.indexOf(b) < 0; });
-      outsiders.forEach(function (b) {
-        if (controls(WX[b], triangle.elem)) {
-          T(head.split(' — ')[0] + ' — ' + b + ' controlla ' + triangle.en +
-            ' da solo, ma contro il blocco intero si spezza → esce di scena');
-        }
-      });
-
-      if (triangle.trio.indexOf(M1) >= 0) {
-        confirmed = true;
-        T(head + '. Il trend ' + M1 + ' è membro: il corpo si allarga → confermato');
-      } else {
-        // M1 is outside: it now faces the whole body, judged by the ordinary Five Element
-        // relation between the trend and the trio's element.
-        var e1 = WX[M1], et = triangle.elem;
-        if (controls(e1, et)) {
-          confirmed = false;
-          T(head + '. Il trend ' + M1 + ' controlla ' + triangle.en +
-            ' da solo: contro il blocco intero si spezza → non confermato');
-        } else if (controls(et, e1)) {
-          confirmed = false;
-          T(head + '. Il blocco controlla il trend ' + M1 + ' [剋] con tutta la sua massa → non confermato');
-        } else if (generates(et, e1)) {
-          confirmed = true;
-          T(head + '. Il blocco genera il trend ' + M1 + ' [生] con tutta la sua massa → confermato');
-        } else if (generates(e1, et)) {
-          confirmed = false;
-          T(head + '. Il trend ' + M1 + ' genera il blocco: drenato da tutta la sua massa → non confermato');
-        } else {
-          confirmed = true;
-          T(head + '. Il trend ' + M1 + ' è dello stesso elemento del blocco [比和] → confermato');
-        }
-      }
     }
 
     // ---- 三會 directional trio: final override ----

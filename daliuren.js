@@ -400,6 +400,35 @@
   // ---- Forex chart: 占時 comes from the daily seed branch, not the clock -------
   // Day pillar and 月將 are taken from the instant (00:00 GMT at the chosen longitude);
   // the hour branch is the seed 地支, and its stem is derived via 五鼠遁 so 旬空 works.
+
+  // --- ramo del mese preso dall'istante esatto del 節 in GMT -----------------
+  // La libreria assegna il mese all'intero giorno di calendario, ignorando
+  // l'ora in cui il 節 entra davvero. Alle 00:00 GMT il 節 spesso non e ancora
+  // entrato, e il mese e ancora quello precedente.
+  var JIE2BRANCH = { '立春':'寅','驚蟄':'卯','清明':'辰','立夏':'巳','芒種':'午','小暑':'未',
+                     '立秋':'申','白露':'酉','寒露':'戌','立冬':'亥','大雪':'子','小寒':'丑' };
+  function monthBranchAtGmt(utcMs) {
+    var S = (typeof Solar !== 'undefined') ? Solar
+          : (typeof global !== 'undefined' && global.Solar) ? global.Solar : null;
+    if (!S || utcMs == null) return null;
+    var best = null;
+    for (var k = 0; k < 2; k++) {
+      var d = new Date(utcMs - k * 365 * 24 * 3600e3);
+      var tab;
+      try {
+        tab = S.fromYmdHms(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate(), 12, 0, 0)
+               .getLunar().getJieQiTable();
+      } catch (e) { continue; }
+      for (var name in JIE2BRANCH) {
+        var jq = tab[name]; if (!jq) continue;
+        // gli istanti della libreria sono in ora cinese (UTC+8)
+        var ms = Date.parse(jq.toYmdHms().replace(' ', 'T') + 'Z') - 8 * 3600e3;
+        if (ms <= utcMs && (!best || ms > best.ms)) best = { ms: ms, branch: JIE2BRANCH[name] };
+      }
+    }
+    return best ? best.branch : null;
+  }
+
   function buildChartFromForexSeed(utcMs, lonDeg, seedBranch) {
     var ST = (typeof window !== 'undefined' ? window.XKDGSolarTime : null) ||
              (typeof require !== 'undefined' ? safeReq('./solar-time.js') : null);
@@ -419,7 +448,7 @@
 
     var hourStem = hourStemFor(dayStem, seedBranch);
     var chart = buildChartFromPrimitives(dayStem, dayBranch, seedBranch, mg, hourStem);
-    chart.monthBranch = p.month ? p.month.slice(1) : null;
+    chart.monthBranch = monthBranchAtGmt(utcMs) || (p.month ? p.month.slice(1) : null);
     chart.source = {
       mode: 'forex', dayPillar: p.day, hourPillar: hourStem + seedBranch, monthPillar: p.month || null,
       seedBranch: seedBranch, zhongQi: zhongQi, tst: tst, longitude: lonDeg
