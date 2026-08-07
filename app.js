@@ -316,17 +316,32 @@ function renderTrendPB(cross, chart, dArr, row, p) {
   var emaLine = '<div class="trendmsgs">EMA(8+1) daily trend: <b class="' + (dir || '') + '">' + arrow + '</b>' +
     (row && row.ema != null ? ' · ema ' + row.ema + ' (prev ' + row.emaPrev + ')' : '') + '</div>';
 
-  // the three trigrams + moving line, the essentials to check by hand
-  var hex = '<div class="trendmsgs">esagramma: <b>' +
-    window.XKDGPlumBlossom.TRIGRAM[pb.superiore].name + '</b> (' + pb.superiore + ') sopra / <b>' +
-    window.XKDGPlumBlossom.TRIGRAM[pb.inferiore].name + '</b> (' + pb.inferiore + ') sotto' +
-    ' · linea mutante <b>' + pb.linea + '</b></div>';
+  // the three hexagrams drawn (Original / Mutual / Transform), like the reference app
+  function drawHex(hx, title, subNums, movingLine) {
+    var lines = window.XKDGPlumBlossom.hexLinesLowFirst(hx);  // index 0 = bottom line (1)
+    var rows = '';
+    for (var i = 5; i >= 0; i--) {                            // draw top (6) down to bottom (1)
+      var yang = lines[i] === '1';
+      var moving = movingLine && (i + 1) === movingLine;
+      var cls = 'pbline' + (yang ? ' yang' : ' yin') + (moving ? ' moving' : '');
+      rows += yang
+        ? '<div class="' + cls + '"><span class="seg full"></span></div>'
+        : '<div class="' + cls + '"><span class="seg half"></span><span class="seg gap"></span><span class="seg half"></span></div>';
+    }
+    return '<div class="pbcol"><div class="pbtitle">' + title + '</div>' +
+      '<div class="pbnum">' + hx.sup + '</div>' + rows + '<div class="pbnum">' + hx.inf + '</div></div>';
+  }
+  var hexBlock = '<div class="pbhex">' +
+    drawHex(pb.original,  'Original',  null, pb.movingLine) +
+    drawHex(pb.mutual,    'Mutual',    null, 0) +
+    drawHex(pb.transform, 'Transform', null, 0) + '</div>';
+
   var roles = '<div class="trendmsgs">Trend (體) <b>' + pb.trendLabel + '</b>' +
     ' · Yong (用) <b>' + pb.yongOrigLabel + '</b>' +
     ' → si muove in <b>' + pb.yongTrasfLabel + '</b>' +
     ' — ' + verdictBadge + '</div>';
 
-  p.innerHTML = head + seedLine + emaLine + hex + roles;
+  p.innerHTML = head + seedLine + emaLine + hexBlock + roles;
   p.style.display = 'block';
 }
 

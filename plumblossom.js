@@ -103,12 +103,27 @@
     var rel = relazione(trend.el, yongTrasf.el);
     var v = VERDETTO[rel] || { prosegue: null, testo: '?' };
 
+    // --- i tre esagrammi (numeri sup/inf di ciascuno) per il disegno ---
+    // esagramma di partenza: sup = supNum, inf = infNum
+    // trasformato: la linea mutante (globale) capovolta
+    var trSup = supNum, trInf = infNum;
+    if (linea <= 3) trInf = flipLine(infNum, linea); else trSup = flipLine(supNum, linea - 3);
+    // nucleare (互卦): linee dal basso 1→6 = inf.lines + sup.lines ; nucInf = 2-3-4, nucSup = 3-4-5
+    var low6 = TRIGRAM[infNum].lines + TRIGRAM[supNum].lines;
+    var nucInf = numFromLines(low6.charAt(1) + low6.charAt(2) + low6.charAt(3));
+    var nucSup = numFromLines(low6.charAt(2) + low6.charAt(3) + low6.charAt(4));
+
     return {
       seed: seed, dayBranch: dayBranch, dayNum: dayNum,
       superiore: supNum, inferiore: infNum, linea: linea,
       trend: trend, yongOriginale: yongOrig, yongTrasformato: yongTrasf,
       relazione: rel, relazioneTesto: v.testo,
       prosegue: v.prosegue,
+      // i tre esagrammi per il disegno: {sup, inf}
+      original:  { sup: supNum, inf: infNum },
+      mutual:    { sup: nucSup, inf: nucInf },
+      transform: { sup: trSup,  inf: trInf },
+      movingLine: linea,   // 1..6 dal basso
       // etichette pronte per l'interfaccia
       trendLabel: trend.name + ' ' + trend.pinyin + ' (' + EL_IT[trend.el] + ')',
       yongOrigLabel: yongOrig.name + ' ' + yongOrig.pinyin + ' (' + EL_IT[yongOrig.el] + ')',
@@ -116,5 +131,10 @@
     };
   }
 
-  return { read: read, TRIGRAM: TRIGRAM };
+  // sei linee dal basso (1) all'alto (6) di un esagramma {sup, inf}
+  function hexLinesLowFirst(hx){
+    return (TRIGRAM[hx.inf].lines + TRIGRAM[hx.sup].lines).split('');  // '1'=yang intera, '0'=yin spezzata
+  }
+
+  return { read: read, TRIGRAM: TRIGRAM, hexLinesLowFirst: hexLinesLowFirst };
 }));

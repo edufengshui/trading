@@ -173,3 +173,15 @@ button.ghost:hover{border-color:var(--gold);color:var(--gold);}
 /* method toggle (Da Liu Ren ↔ Plum Blossom) */
 .methodtoggle button.mtoggle{padding:8px 16px;font-size:14px;cursor:pointer;}
 .methodtoggle button.mtoggle.active{background:rgba(217,177,94,.18);color:var(--gold);border-color:var(--gold);}
+
+/* Plum Blossom hexagrams (Original / Mutual / Transform) */
+.pbhex{display:flex;gap:24px;justify-content:flex-start;margin:12px 0;flex-wrap:wrap;}
+.pbcol{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:110px;}
+.pbtitle{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin-bottom:4px;}
+.pbnum{font-size:20px;font-weight:700;color:var(--parch);margin:2px 0;}
+.pbline{display:flex;gap:8px;width:96px;height:14px;justify-content:center;align-items:center;}
+.pbline .seg{height:12px;background:var(--parch);display:inline-block;border-radius:1px;}
+.pbline .seg.full{width:96px;}
+.pbline .seg.half{width:42px;}
+.pbline .seg.gap{width:12px;background:transparent;}
+.pbline.moving .seg{background:#c0392b;}
