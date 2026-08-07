@@ -140,6 +140,8 @@ function centerCell(c) {
 var WORKER_URL = 'https://trading-forex-seed.decumano16.workers.dev/';
 var FOREX_LON = 0;          // 0° Greenwich for the day pillar & 月將 at 00:00 GMT
 var forexData = null;
+var METHOD = 'dlr';         // 'dlr' | 'pb' — chosen with the toggle, re-renders the trend panel
+var lastTrendArgs = null;   // remember the last renderTrend inputs so the toggle can re-render
 
 async function loadForex() {
   clearErr();
@@ -275,8 +277,66 @@ function seasonElementFor(y, mo, dd) {
   return lastElem;
 }
 
+function renderTrendPB(cross, chart, dArr, row, p) {
+  if (!window.XKDGPlumBlossom || !row || row.seed == null || !chart.dayBranch) { p.style.display = 'none'; return; }
+  var pb = window.XKDGPlumBlossom.read(row.seed, chart.dayBranch);
+  if (pb.error) { p.style.display = 'none'; return; }
+
+  // same downstream logic as the DLR panel: EMA direction + guards decide the final signal
+  var dir = row && row.direction ? row.direction : null;         // 'up' | 'down' | 'flat' | null
+  var choppy = row && row.emaConsolidated === false;
+  var fragile = !!(row && row.seedFragile === true);
+  var confirmed = pb.prosegue;                                    // PB verdict: does the trend continue?
+  var signal = null;
+  if (fragile) signal = 'NO TRADE';
+  else if (choppy) signal = 'NO TRADE';
+  else if (dir === 'up') signal = confirmed ? 'LONG' : 'SHORT';
+  else if (dir === 'down') signal = confirmed ? 'SHORT' : 'LONG';
+
+  var verdictBadge = fragile
+    ? '<span class="tv no">SEED ON THE EDGE · no trade</span>'
+    : (choppy
+      ? '<span class="tv no">EMA not consolidated · no trade</span>'
+      : (confirmed
+        ? '<span class="tv ok">PROSEGUE · segue l\'EMA</span>'
+        : '<span class="tv no">INVERTE · contro l\'EMA</span>'));
+  var signalBadge = signal
+    ? '<span class="sig ' + (signal === 'NO TRADE' ? 'notrade' : signal.toLowerCase()) + '">' + signal + '</span>'
+    : '<span class="sig na">signal n/a — EMA trend missing</span>';
+  var head = '<div class="trendhead"><span>' + cross + ' — 梅花 Plum Blossom</span>' + signalBadge + '</div>';
+
+  var seedLine = '';
+  if (row && row.price != null) {
+    seedLine = '<div class="trendmsgs seedline">00:00 GMT open <b class="px">' + row.price + '</b>' +
+      ' → seme <b class="px">' + row.seed + '</b> · giorno <b>' + chart.dayStem + chart.dayBranch + '</b>' +
+      (fragile ? '<br><b class="down">seme entro 3 pip dal bordo → NO TRADE</b>' : '') + '</div>';
+  }
+
+  var arrow = dir === 'up' ? '↑ up (blue)' : dir === 'down' ? '↓ down (red)' : (dir ? dir : 'n/a');
+  var emaLine = '<div class="trendmsgs">EMA(8+1) daily trend: <b class="' + (dir || '') + '">' + arrow + '</b>' +
+    (row && row.ema != null ? ' · ema ' + row.ema + ' (prev ' + row.emaPrev + ')' : '') + '</div>';
+
+  // the three trigrams + moving line, the essentials to check by hand
+  var hex = '<div class="trendmsgs">esagramma: <b>' +
+    window.XKDGPlumBlossom.TRIGRAM[pb.superiore].name + '</b> (' + pb.superiore + ') sopra / <b>' +
+    window.XKDGPlumBlossom.TRIGRAM[pb.inferiore].name + '</b> (' + pb.inferiore + ') sotto' +
+    ' · linea mutante <b>' + pb.linea + '</b></div>';
+  var roles = '<div class="trendmsgs">Trend (體) <b>' + pb.trendLabel + '</b>' +
+    ' · Yong (用) <b>' + pb.yongOrigLabel + '</b>' +
+    ' → si muove in <b>' + pb.yongTrasfLabel + '</b>' +
+    ' — ' + verdictBadge + '</div>';
+
+  p.innerHTML = head + seedLine + emaLine + hex + roles;
+  p.style.display = 'block';
+}
+
 function renderTrend(cross, chart, dArr, row) {
+  lastTrendArgs = { cross: cross, chart: chart, dArr: dArr, row: row };
   var p = $('trendpanel');
+
+  // ---- Plum Blossom branch: same seed, same EMA, same filters; only the verdict differs ----
+  if (METHOD === 'pb') { renderTrendPB(cross, chart, dArr, row, p); return; }
+
   if (!window.XKDGTrend || !chart.transmission || !chart.transmission.three) { p.style.display = 'none'; return; }
   var t3 = chart.transmission.three;
   var season = seasonElementFor(dArr[0], dArr[1], dArr[2]);
@@ -367,6 +427,15 @@ window.addEventListener('DOMContentLoaded', function () {
     if (!$('date').value) setNow();
     $('time').value = '00:00'; $('utc-offset').value = '0'; $('dst').checked = false; build();
   });
+  // method toggle: DLR ↔ Plum Blossom. Re-renders the trend panel from the last chart.
+  function setMethod(m) {
+    METHOD = m;
+    $('method-dlr').classList.toggle('active', m === 'dlr');
+    $('method-pb').classList.toggle('active', m === 'pb');
+    if (lastTrendArgs) renderTrend(lastTrendArgs.cross, lastTrendArgs.chart, lastTrendArgs.dArr, lastTrendArgs.row);
+  }
+  $('method-dlr').addEventListener('click', function () { setMethod('dlr'); });
+  $('method-pb').addEventListener('click', function () { setMethod('pb'); });
   build();
 });
 
