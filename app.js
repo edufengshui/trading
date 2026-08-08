@@ -240,12 +240,20 @@ function selectForexCross(cross, branch, btn) {
   clearErr();
   pbManual = null;   // choosing another cross drops any manual trigram override
   if (!window.XKDGDaLiuRen || !window.XKDGSolarTime) return showErr('<b>Engine not loaded.</b>');
-  // Anchor the day pillar & 月將 to the GMT calendar date. At 00:00:00 GMT the true solar
-  // time at 0° falls a few minutes into the previous day (equation of time), which would
-  // roll the day pillar back one day — so we sample at 12:00 GMT, keeping the TST day equal
-  // to the trading date while 月將 still resolves to 00:00 GMT of that day.
+  // La carta si costruisce nell'istante in cui a Greenwich entra il nuovo giorno in TEMPO
+  // SOLARE VERO: le 00:00 GMT corrette per l'equazione del tempo, che nell'anno oscilla di
+  // circa un quarto d'ora. Da quell'istante escono tutti i pilastri.
+  // (Prima si campionava a mezzogiorno GMT per aggirare lo scatto del pilastro del giorno
+  //  a 00:00:00 esatte; quella scorciatoia leggeva il 節 dodici ore troppo tardi e sbagliava
+  //  il ramo del mese nei giorni in cui il passaggio cade fra mezzanotte e mezzogiorno —
+  //  per esempio il 07/12/2023, Daxue alle 09:32 GMT. Corretto l'08/08/2026.)
   var d = forexData.date.split('-').map(Number);
-  var utcMs = Date.UTC(d[0], d[1] - 1, d[2], 12, 0, 0);
+  var utcMs = (function () {
+    var approx = Date.UTC(d[0], d[1] - 1, d[2], 0, 0, 0), ms = approx;
+    for (var i = 0; i < 3; i++)
+      ms = approx - window.XKDGSolarTime.equationOfTimeMinutes(new Date(ms)) * 60000;
+    return ms;
+  })();
   var p = window.XKDGSolarTime.pillarsFromUtc(utcMs, FOREX_LON);
   var chart = window.XKDGDaLiuRen.buildChartFromForexSeed(utcMs, FOREX_LON, branch);
   if (!p || !chart || chart.error) {
