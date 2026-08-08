@@ -1,7 +1,7 @@
 /* plumblossom.js — 梅花易數 sul seme di prezzo, per la PWA di trading.
  *
  * Versione dell'08/08/2026, decisa con Edu. Riproduce pb_v8.js del motore di ricerca
- * (research set 2020-01-01 → 2024-05-31: +8.899 pip, z 2,08, contro +6.223 della
+ * (research set 2020-01-01 → 2024-05-31: +10.591 pip, z 2,43, contro +6.223 della
  * sola relazione). Sostituisce la versione del 07/08/2026, che leggeva il Yong
  * TRASFORMATO e non aveva la regola del clash del palazzo.
  *
@@ -38,13 +38,25 @@
  *       Se il ponte è il Tai Sui (ramo dell'anno) porta il doppio.
  *     - ATTACCANTI: i rami che clashano il palazzo attivo del Trend.
  *     - DIFENSORI: i rami dello stesso elemento del Trend.
- *   Ogni ramo pesa secondo il suo stato stagionale rispetto all'elemento del mese
- *   (旺 4 · 相 3 · 休 2 · 囚 1 · 死 0); il Tai Sui vale il doppio.
+ *   Ogni ramo vale uno; il ramo dell'anno (Tai Sui) vale due. La stagione NON entra
+ *   nel conto: provata l'08/08/2026 con i cinque stadi, misurava meno (+8.899 contro
+ *   +9.419) e la si puo' riprendere se serve.
+ *   L'ORA ricavata dal seme sceglie il palazzo attivo ma NON entra nel Bazi: non
+ *   attacca, non difende, non combina. Provata dentro l'08/08/2026, costava 1.970 pip.
  *   Se gli attaccanti superano i difensori il Trend è spazzato via e il verdetto è
  *   INVERTE. Mai il contrario: un Trend spazzato via non può proseguire.
  *
+ * ORA VUOTA e AUTOPENALITA' (Edu, 08/08/2026 — da EURJPY 01/05/2024):
+ *   - se l'ora ricavata dal seme è VUOTA (旬空 rispetto al pilastro del giorno) non
+ *     svolge alcuna funzione e non sceglie il ramo del palazzo: restano attivi
+ *     entrambi, e il Trend è esposto su due fronti.
+ *   - se un ramo del palazzo del Trend è fra 辰午酉亥 e compare due o più volte nel
+ *     Bazi, si autopenalizza: il Trend è guasto e il verdetto è INVERTE.
+ *     (attenzione: cambia il verdetto su 6 carte sole nel research set — il suo
+ *     effetto misurato è aneddotico, si tiene per coerenza dottrinale)
+ *
  * NON implementato, provato e scartato l'08/08/2026: il clash che "eccita" invece di
- * spazzare quando l'elemento del Trend è 旺 o 相 (costava 1.007 pip).
+ * spazzare quando l'elemento del Trend e' forte in stagione (costava 1.007 pip).
  *
  * Il Yong trasformato resta calcolato e disegnato, ma NON entra più nel verdetto.
  */
@@ -80,31 +92,44 @@
                   '卯':'酉','酉':'卯','辰':'戌','戌':'辰','巳':'亥','亥':'巳' };
   var COMBINA = { '子':'丑','丑':'子','寅':'亥','亥':'寅','卯':'戌','戌':'卯',
                   '辰':'酉','酉':'辰','巳':'申','申':'巳','午':'未','未':'午' };
-  var PUNTI = { '旺':4, '相':3, '休':2, '囚':1, '死':0 };
   var TAISUI = 2;   // il Tai Sui vale il doppio
-
-  function stagione(el, seasonEl){
-    if (el === seasonEl) return '旺';
-    if (GEN[seasonEl] === el) return '相';
-    if (GEN[el] === seasonEl) return '休';
-    if (CTRL[seasonEl] === el) return '死';
-    if (CTRL[el] === seasonEl) return '囚';
-    return '休';
-  }
+  var S10 = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+  var AUTOPEN = ['辰','午','酉','亥'];   // i rami che si autopenalizzano raddoppiando
   function seedToBranch(seed){ return B[(((seed - 1) % 12) + 12) % 12]; }
+  // i due rami vuoti (旬空) della decade a cui appartiene il pilastro dato
+  function vuotiDi(stem, branch){
+    var si = S10.indexOf(stem), bi = B.indexOf(branch);
+    if (si < 0 || bi < 0) return [];
+    var start = ((bi - si) % 12 + 12) % 12;
+    return [ B[(start + 10) % 12], B[(start + 11) % 12] ];
+  }
 
   /* Regola del clash del palazzo. Torna null se mancano i dati del Bazi. */
-  function clashDelPalazzo(trendNum, trendEl, seed, monthBranch, dayBranch, yearBranch){
+  function clashDelPalazzo(trendNum, trendEl, seed, monthBranch, dayBranch, yearBranch, dayStem){
     if (!monthBranch || !dayBranch || !yearBranch) return null;
     if (!WX[monthBranch] || !WX[dayBranch] || !WX[yearBranch]) return null;
-    var monthEl = WX[monthBranch];
     var oraBranch = seedToBranch(seed);
 
+    // l'ora ricavata dal seme sceglie il ramo attivo nei palazzi doppi.
+    // Se l'ora e' VUOTA (旬空 rispetto al pilastro del giorno) non svolge alcuna
+    // funzione e non sceglie: restano attivi entrambi i rami, e il Trend e' esposto
+    // su due fronti. La lettura opposta (nessun ramo attivo, Trend incolpibile) e'
+    // stata provata l'08/08/2026 e misurava peggio del non fare niente.
+    var vuoti = dayStem ? vuotiDi(dayStem, dayBranch) : [];
+    var oraVuota = vuoti.indexOf(oraBranch) >= 0;
     var palazzo = HOUTIAN[trendNum].slice();
-    if (palazzo.length === 2) {
+    if (palazzo.length === 2 && !oraVuota) {
       var oraYang = (B.indexOf(oraBranch) % 2) === 0;
       palazzo = palazzo.filter(function (b) { return ((B.indexOf(b) % 2) === 0) === oraYang; });
     }
+
+    // AUTOPENALITA': se un ramo del palazzo del Trend e' fra 辰午酉亥 e compare due o
+    // piu' volte nel Bazi, si autopenalizza; il Trend e' guasto e non vince.
+    var tutti = [yearBranch, monthBranch, dayBranch];
+    var autopen = palazzo.some(function (pz) {
+      return AUTOPEN.indexOf(pz) >= 0 &&
+             tutti.filter(function (b) { return b === pz; }).length >= 2;
+    });
 
     var bazi = [ { b: yearBranch, ts: true }, { b: monthBranch, ts: false }, { b: dayBranch, ts: false } ];
 
@@ -123,7 +148,7 @@
     }
     var liberi = bazi.filter(function (x, k) { return !usato[k]; });
 
-    function peso(x){ return PUNTI[stagione(WX[x.b], monthEl)] * (x.ts ? TAISUI : 1); }
+    function peso(x){ return x.ts ? TAISUI : 1; }   // scala piatta: ogni ramo vale uno, il Tai Sui due
 
     var att = 0, dif = 0, attList = [], difList = [], ponteList = [];
     liberi.forEach(function (x) {
@@ -139,20 +164,23 @@
           ponteList.push(BR_IT[x.b] + ' → ' + BR_IT[ponte.b] + ' (' + w + ')');
         } else {
           att += w;
-          attList.push(BR_IT[x.b] + ' ' + stagione(WX[x.b], monthEl) + ' (' + w + ')');
+          attList.push(BR_IT[x.b] + ' (' + w + ')');
         }
       } else if (WX[x.b] === trendEl) {
         var wd = peso(x); dif += wd;
-        difList.push(BR_IT[x.b] + ' ' + stagione(WX[x.b], monthEl) + ' (' + wd + ')');
+        difList.push(BR_IT[x.b] + ' (' + wd + ')');
       }
     });
 
     return {
       oraBranch: oraBranch, oraLabel: BR_IT[oraBranch],
+      vuoti: vuoti, vuotiLabel: vuoti.map(function (b) { return BR_IT[b]; }).join(' / '),
+      oraVuota: oraVuota, autopenalita: autopen,
       palazzo: palazzo, palazzoLabel: palazzo.map(function (b) { return BR_IT[b]; }).join(' / '),
       combinazioni: combinati, attaccanti: attList, difensori: difList, ponti: ponteList,
       forzaAttacco: att, forzaDifesa: dif,
-      spazzato: att > 0 && att > dif
+      spazzato: att > 0 && att > dif,
+      guasto: autopen || (att > 0 && att > dif)
     };
   }
 
@@ -204,10 +232,11 @@
     // regola del clash del palazzo (solo in modo automatico, serve il Bazi)
     var bz = extra && extra.bazi ? extra.bazi : null;
     var clash = (bz && bz.seed)
-      ? clashDelPalazzo(trendNum, trend.el, bz.seed, bz.monthBranch, bz.dayBranch, bz.yearBranch)
+      ? clashDelPalazzo(trendNum, trend.el, bz.seed, bz.monthBranch, bz.dayBranch,
+                        bz.yearBranch, bz.dayStem)
       : null;
     var prosegueFinale = v.prosegue;
-    if (clash && clash.spazzato && prosegueFinale === true) prosegueFinale = false;
+    if (clash && clash.guasto && prosegueFinale === true) prosegueFinale = false;
 
     // trasformato: la linea mutante (globale) capovolta
     var trSup = supNum, trInf = infNum;
@@ -238,7 +267,7 @@
 
   // dal seme di prezzo + ramo del giorno (modo automatico)
   // seed, ramo del giorno, e (facoltativi) ramo del mese e ramo dell'anno per il clash
-  function read(seed, dayBranch, monthBranch, yearBranch){
+  function read(seed, dayBranch, monthBranch, yearBranch, dayStem){
     seed = Math.abs(parseInt(seed, 10));
     if (!(seed > 0)) return { error: 'seme non valido' };
     var dayNum = B.indexOf(dayBranch) + 1;
@@ -248,7 +277,8 @@
     var linea  = mod6(supNum + infNum + dayNum);
     return build(supNum, infNum, linea, {
       seed: seed, dayBranch: dayBranch, dayNum: dayNum,
-      bazi: { seed: seed, dayBranch: dayBranch, monthBranch: monthBranch || null, yearBranch: yearBranch || null }
+      bazi: { seed: seed, dayBranch: dayBranch, monthBranch: monthBranch || null,
+              yearBranch: yearBranch || null, dayStem: dayStem || null }
     });
   }
 

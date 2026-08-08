@@ -284,7 +284,8 @@ function renderTrendPB(cross, chart, dArr, row, p) {
   var pb = pbManual
     ? window.XKDGPlumBlossom.readManual(pbManual.sup, pbManual.inf, pbManual.linea)
     : window.XKDGPlumBlossom.read(row.seed, chart.dayBranch, chart.monthBranch,
-        (chart.source && chart.source.yearPillar) ? chart.source.yearPillar.charAt(1) : null);
+        (chart.source && chart.source.yearPillar) ? chart.source.yearPillar.charAt(1) : null,
+        chart.dayStem || null);
   if (pb.error) { p.style.display = 'none'; return; }
 
   // same downstream logic as the DLR panel: EMA direction + guards decide the final signal
