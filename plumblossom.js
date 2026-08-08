@@ -1,77 +1,77 @@
 /* plumblossom.js — 梅花易數 sul seme di prezzo, per la PWA di trading.
  *
- * Versione dell'08/08/2026, decisa con Edu. Riproduce pb_v8.js del motore di ricerca
- * (research set 2020-01-01 → 2024-05-31: +10.352 pip, z 2,29, contro +6.223 della
- * sola relazione). Sostituisce la versione del 07/08/2026, che leggeva il Yong
- * TRASFORMATO e non aveva la regola del clash del palazzo.
+ * Versione dell'08/08/2026 (sera), decisa con Edu. Riproduce pb_v29.js del motore di
+ * ricerca (research set 2020-01-01 → 2024-05-31: +12.207 pip, z 2,85, 52,43% su 3.544
+ * carte, contro +8.101 della sola relazione). Sostituisce la versione del mattino, che
+ * leggeva il palazzo con la polarita' dell'ora, trattava il pareggio come NO TRADE e
+ * non aveva ne' le forze della data ne' il sostegno del Yong.
  *
  * Costruzione dell'esagramma dal seme (le stesse 3 cifre del DLR, 2 se il cross < 1):
  *   superiore     = floor(seme/8) mod 8   (resto 0 -> 8)
  *   inferiore     = seme mod 8            (resto 0 -> 8)
  *   linea mutante = (superiore + inferiore + numero del ramo del giorno) mod 6  (0 -> 6)
- *                   numero del ramo del giorno: 子=1 … 亥=12
+ *                   numero del ramo del giorno: Zi=1 … Hai=12
  *   Yong = il trigramma che contiene la linea mutante (posizioni 1-3 = inferiore, 4-6 = superiore)
  *   Trend (Yi, "corpo") = l'altro trigramma
  *   Yong si muove: capovolgendo la linea mutante il Yong diventa il trigramma trasformato.
  *
- * Verdetto di base (relazione Cinque Elementi fra Trend e Yong ORIGINALE):
- *   il Trend riceve o domina o è pari  -> il trend prosegue
- *   il Trend cede energia o è dominato -> il trend inverte
- *     生我 Yong genera il Trend   -> prosegue
- *     我剋 il Trend controlla Yong -> prosegue
- *     比和 stesso elemento         -> prosegue
- *     我生 il Trend genera Yong    -> inverte
- *     剋我 Yong controlla il Trend -> inverte
+ * Verdetto di base (relazione fra Trend e Yong ORIGINALE, sui Cinque Elementi):
+ *   生我 il Yong genera il Trend    -> segue il trend
+ *   我剋 il Trend controlla il Yong -> segue il trend
+ *   我生 il Trend genera il Yong    -> non segue il trend
+ *   剋我 il Yong controlla il Trend -> non segue il trend
+ *   比和 stesso elemento            -> pareggio, si scioglie leggendo il ramo del Yong (sotto)
  *
- *   比和 stesso elemento -> NO TRADE (non si legge)
+ * PAREGGIO 比和 sciolto sulla natura della linea (Edu, 08/08/2026):
+ *   quando i due trigrammi sono dello stesso elemento la relazione e' in pareggio.
+ *   Si legge allora il ramo del palazzo del Yong contro il Trend. Il ramo attivo, nei
+ *   palazzi doppi, e' scelto dalla NATURA della linea mutante: intera = ramo yang,
+ *   spezzata = ramo yin (rami yang Zi Yin Chen Wu Shen Xu, rami yin Chou Mao Si Wei You Hai).
+ *   Se quel ramo genera il Trend o e' controllato dal Trend -> segue; se lo genera o lo
+ *   controlla il Trend -> non segue; se e' dello stesso elemento -> resta pareggio, NO TRADE.
+ *   (Provati altri quattro selettori l'08/08/2026: la natura misurava il meglio.)
  *
  * REGOLA DEL CLASH DEL PALAZZO (Edu, 08/08/2026 — da EURJPY 15/03/2023):
  *   Il Trend occupa un palazzo nel Houtian, a cui corrispondono uno o due rami:
- *     乾 戌亥 · 兌 酉 · 離 午 · 震 卯 · 巽 辰巳 · 坎 子 · 艮 丑寅 · 坤 未申
- *   Se i rami sono due, l'ORA RICAVATA DAL SEME sceglie quello attivo per yin/yang
- *   (rami yang 子寅辰午申戌, rami yin 丑卯巳未酉亥).
+ *     Qian Xu Hai · Dui You · Li Wu · Zhen Mao · Xun Chen Si · Kan Zi · Gen Chou Yin · Kun Wei Shen
+ *   Se i rami sono due, l'ORA RICAVATA DAL SEME sceglie quello attivo per polarita'.
+ *   Se l'ORA e' VUOTA (旬空 rispetto al pilastro del giorno) non sceglie: restano attivi
+ *   entrambi i rami e il Trend e' esposto su due fronti.
  *   Fra i rami del Bazi (anno, mese, giorno):
- *     - COMBINAZIONE 六合: due rami che si combinano si legano fra loro e non fanno
- *       niente, né attaccano né difendono. Si appaiano uno a uno.
- *     - PONTE: un attaccante che genera un altro ramo del Bazi, il quale a sua volta
- *       genera il Trend, non colpisce: il suo qi arriva al Trend come nutrimento.
- *       Se il ponte è il Tai Sui (ramo dell'anno) porta il doppio.
+ *     - COMBINAZIONE 六合: due rami che si combinano si legano e non fanno niente.
+ *     - VUOTO: un ramo del Bazi che sia fra i due vuoti (旬空) del giorno non ha sostanza:
+ *       non attacca e non difende (Edu, da USDJPY 13/12/2023).
+ *     - PONTE (sul clash): un attaccante che genera un altro ramo che a sua volta genera
+ *       il Trend non colpisce: arriva come nutrimento. Il Tai Sui porta il doppio.
  *     - ATTACCANTI: i rami che clashano il palazzo attivo del Trend.
  *     - DIFENSORI: i rami dello stesso elemento del Trend.
- *   Ogni ramo vale uno; il ramo dell'anno (Tai Sui) vale due. La stagione NON entra
- *   nel conto: provata l'08/08/2026 con i cinque stadi, misurava meno (+8.899 contro
- *   +9.419) e la si puo' riprendere se serve.
- *   L'ORA ricavata dal seme sceglie il palazzo attivo ma NON entra nel Bazi: non
- *   attacca, non difende, non combina. Provata dentro l'08/08/2026, costava 1.970 pip.
- *   Se gli attaccanti superano i difensori il Trend è spazzato via e il verdetto è
- *   INVERTE. Mai il contrario: un Trend spazzato via non può proseguire.
+ *   Ogni ramo vale uno, il Tai Sui due. Se gli attaccanti superano i difensori il Trend
+ *   e' spazzato via e il verdetto e' "non segue". Mai il contrario.
  *
- * ORA VUOTA e AUTOPENALITA' (Edu, 08/08/2026 — da EURJPY 01/05/2024):
- *   - se l'ora ricavata dal seme è VUOTA (旬空 rispetto al pilastro del giorno) non
- *     svolge alcuna funzione e non sceglie il ramo del palazzo: restano attivi
- *     entrambi, e il Trend è esposto su due fronti.
- *   - se un ramo del palazzo del Trend è fra 辰午酉亥 e compare due o più volte nel
- *     Bazi, si autopenalizza: il Trend è guasto e il verdetto è INVERTE.
- *     (attenzione: cambia il verdetto su 6 carte sole nel research set — il suo
- *     effetto misurato è aneddotico, si tiene per coerenza dottrinale)
+ * FORZE DENTRO LA DATA (Edu, 08/08/2026 — da USDJPY 06/09/2022):
+ *   fra i rami vivi del Bazi, due che si clashano si combattono. Il Tai Sui vince sempre
+ *   il suo clash; altrimenti vince chi ha piu' alleati (rami dello stesso elemento) nel
+ *   Bazi, e a pari alleati restano entrambi a meta'. Il perdente cala a meta' forza, e
+ *   con meta' forza difende e sostiene.
  *
- * SELETTORE UNICO: e' sempre la polarita' dell'ORA ricavata dal seme a scegliere il ramo
- * attivo in un palazzo doppio, per il Trend come per il Yong. Provata la polarita' della
- * linea mobile l'08/08/2026 e scartata: misurava peggio (+7.043 contro +8.089).
+ * SOSTEGNO DEL YONG INDEBOLITO (Edu, 08/08/2026 — da USDJPY 06/09/2022):
+ *   quando il Yong controlla il Trend (剋我), se il ramo del Bazi che sostiene il Yong —
+ *   un ramo del suo stesso elemento — ha perso un clash dentro la data ed e' a meta'
+ *   forza, il controllo del Yong non ha appoggio e non passa: il Trend segue.
  *
- * NON implementati, provati e scartati l'08/08/2026:
- *   - il clash che "eccita" invece di spazzare quando l'elemento del Trend e' forte in
- *     stagione (costava 1.007 pip)
- *   - il blocco per combinazione fra il palazzo del Trend e quello del Yong (72 giuste
- *     su 140 carte cambiate: non distingue)
- *   - il ponte del palazzo del Yong, cioe' il controllo del Yong che esce trasformato
- *     passando dentro il proprio palazzo (col selettore corretto ribalta 22 carte e ne
- *     sbaglia 15)
- *   - lo scioglimento del pareggio 比和 leggendo il palazzo del Yong contro il Trend
- *     (col selettore corretto porta z da 2,29 a 0,99)
- *   - l'ora dentro il Bazi come attaccante o difensore (costava fino a 1.970 pip)
+ * PONTE SULLA RELAZIONE (Edu, 08/08/2026 — da EURJPY 07/12/2023):
+ *   quando il Yong controlla il Trend, se fra i rami vivi c'e' il Tai Sui che il Yong
+ *   genera e che a sua volta genera il Trend, il controllo passa dentro quel ramo e
+ *   diventa nutrimento: il Trend segue.
  *
- * Il Yong trasformato resta calcolato e disegnato, ma NON entra più nel verdetto.
+ * AUTOPENALITA' (Edu, 08/08/2026): se un ramo del palazzo del Trend e' fra Chen Wu You Hai
+ *   e compare due o piu' volte nel Bazi, il Trend e' guasto e non segue.
+ *
+ * Provati e scartati l'08/08/2026 (non implementati): blocco per combinazione dei palazzi,
+ * ponte del palazzo del Yong, scarico del Yong nel proprio palazzo, ponte sulla relazione
+ * su rami non-Tai-Sui, forze decise dalla stagione, clash che "eccita" il Trend forte.
+ *
+ * Il Yong trasformato resta calcolato e disegnato, ma NON entra nel verdetto.
  */
 (function (root, factory) {
   if (typeof module !== 'undefined' && module.exports) module.exports = factory();
@@ -80,7 +80,6 @@
   'use strict';
 
   var B = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
-  // numerazione Xiantian (Fuxi)
   var TRIGRAM = {
     1: { name: '乾', pinyin: 'Qian', el: 'Metal', lines: '111' },
     2: { name: '兌', pinyin: 'Dui',  el: 'Metal', lines: '110' },
@@ -105,39 +104,34 @@
                   '卯':'酉','酉':'卯','辰':'戌','戌':'辰','巳':'亥','亥':'巳' };
   var COMBINA = { '子':'丑','丑':'子','寅':'亥','亥':'寅','卯':'戌','戌':'卯',
                   '辰':'酉','酉':'辰','巳':'申','申':'巳','午':'未','未':'午' };
-  var TAISUI = 2;   // il Tai Sui vale il doppio
+  var TAISUI = 2;
   var S10 = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
-  var AUTOPEN = ['辰','午','酉','亥'];   // i rami che si autopenalizzano raddoppiando
+  var AUTOPEN = ['辰','午','酉','亥'];
   function seedToBranch(seed){ return B[(((seed - 1) % 12) + 12) % 12]; }
-  // i due rami vuoti (旬空) della decade a cui appartiene il pilastro dato
   function vuotiDi(stem, branch){
     var si = S10.indexOf(stem), bi = B.indexOf(branch);
     if (si < 0 || bi < 0) return [];
     var start = ((bi - si) % 12 + 12) % 12;
     return [ B[(start + 10) % 12], B[(start + 11) % 12] ];
   }
+  function isYang(branch){ return (B.indexOf(branch) % 2) === 0; }
 
-  /* Regola del clash del palazzo. Torna null se mancano i dati del Bazi. */
-  function clashDelPalazzo(trendNum, trendEl, seed, monthBranch, dayBranch, yearBranch, dayStem){
+  /* Regola del clash del palazzo + forze della data. Torna null se manca il Bazi.
+     via: relazione effettiva ('生我' '我剋' '我生' '剋我'); yongEl: elemento del Yong
+     (nel pareggio, elemento del ramo del Yong letto contro il Trend). */
+  function clashDelPalazzo(trendNum, trendEl, seed, monthBranch, dayBranch, yearBranch, dayStem, via, yongEl, segueBase){
     if (!monthBranch || !dayBranch || !yearBranch) return null;
     if (!WX[monthBranch] || !WX[dayBranch] || !WX[yearBranch]) return null;
     var oraBranch = seedToBranch(seed);
 
-    // l'ora ricavata dal seme sceglie il ramo attivo nei palazzi doppi.
-    // Se l'ora e' VUOTA (旬空 rispetto al pilastro del giorno) non svolge alcuna
-    // funzione e non sceglie: restano attivi entrambi i rami, e il Trend e' esposto
-    // su due fronti. La lettura opposta (nessun ramo attivo, Trend incolpibile) e'
-    // stata provata l'08/08/2026 e misurava peggio del non fare niente.
     var vuoti = dayStem ? vuotiDi(dayStem, dayBranch) : [];
     var oraVuota = vuoti.indexOf(oraBranch) >= 0;
     var palazzo = HOUTIAN[trendNum].slice();
     if (palazzo.length === 2 && !oraVuota) {
-      var oraYang = (B.indexOf(oraBranch) % 2) === 0;
-      palazzo = palazzo.filter(function (b) { return ((B.indexOf(b) % 2) === 0) === oraYang; });
+      var oraYang = isYang(oraBranch);
+      palazzo = palazzo.filter(function (b) { return isYang(b) === oraYang; });
     }
 
-    // AUTOPENALITA': se un ramo del palazzo del Trend e' fra 辰午酉亥 e compare due o
-    // piu' volte nel Bazi, si autopenalizza; il Trend e' guasto e non vince.
     var tutti = [yearBranch, monthBranch, dayBranch];
     var autopen = palazzo.some(function (pz) {
       return AUTOPEN.indexOf(pz) >= 0 &&
@@ -146,7 +140,7 @@
 
     var bazi = [ { b: yearBranch, ts: true }, { b: monthBranch, ts: false }, { b: dayBranch, ts: false } ];
 
-    // combinazione: si appaiano uno a uno, i legati escono di scena
+    // combinazione 六合
     var combinati = [], usato = bazi.map(function () { return false; });
     for (var i = 0; i < bazi.length; i++) {
       if (usato[i]) continue;
@@ -159,16 +153,42 @@
         }
       }
     }
-    var liberi = bazi.filter(function (x, k) { return !usato[k]; });
+    bazi = bazi.filter(function (x, k) { return !usato[k]; });
 
-    function peso(x){ return x.ts ? TAISUI : 1; }   // scala piatta: ogni ramo vale uno, il Tai Sui due
+    // forze dentro la data
+    bazi.forEach(function (x) { x.forza = 1; });
+    var forzeList = [];
+    for (var a = 0; a < bazi.length; a++) for (var b2 = a + 1; b2 < bazi.length; b2++) {
+      if (CLASH[bazi[a].b] !== bazi[b2].b) continue;
+      var vinc = a, pers = b2;
+      if (bazi[b2].ts) { vinc = b2; pers = a; }
+      else if (bazi[a].ts) { vinc = a; pers = b2; }
+      else {
+        var alleati = function (br) {
+          return bazi.filter(function (y) { return WX[y.b] === WX[br]; }).length;
+        };
+        if (alleati(bazi[b2].b) > alleati(bazi[a].b)) { vinc = b2; pers = a; }
+        else if (alleati(bazi[a].b) === alleati(bazi[b2].b)) {
+          bazi[a].forza = Math.min(bazi[a].forza, 0.5);
+          bazi[b2].forza = Math.min(bazi[b2].forza, 0.5);
+          forzeList.push(BR_IT[bazi[a].b] + ' e ' + BR_IT[bazi[b2].b] + ' pari → entrambi a metà');
+          continue;
+        }
+      }
+      bazi[pers].forza = Math.min(bazi[pers].forza, 0.5);
+      forzeList.push(BR_IT[bazi[vinc].b] + ' batte ' + BR_IT[bazi[pers].b] + ' → ' + BR_IT[bazi[pers].b] + ' a metà');
+    }
+
+    function peso(x){ return x.ts ? TAISUI : 1; }
 
     var att = 0, dif = 0, attList = [], difList = [], ponteList = [];
-    liberi.forEach(function (x) {
+    bazi.forEach(function (x) {
+      if (vuoti.indexOf(x.b) >= 0) return;   // ramo vuoto: non attacca, non difende
       var clasha = palazzo.some(function (pz) { return CLASH[pz] === x.b; });
       if (clasha) {
-        var ponte = liberi.filter(function (y) {
-          return y.b !== x.b && GEN[WX[x.b]] === WX[y.b] && GEN[WX[y.b]] === trendEl;
+        var ponte = bazi.filter(function (y) {
+          return y.b !== x.b &&
+                 GEN[WX[x.b]] === WX[y.b] && GEN[WX[y.b]] === trendEl;
         })[0];
         var w = peso(x);
         if (ponte) {
@@ -180,9 +200,24 @@
           attList.push(BR_IT[x.b] + ' (' + w + ')');
         }
       } else if (WX[x.b] === trendEl) {
-        var wd = peso(x); dif += wd;
-        difList.push(BR_IT[x.b] + ' (' + wd + ')');
+        var wd = peso(x) * (x.forza || 1); dif += wd;
+        difList.push(BR_IT[x.b] + (x.forza < 1 ? ' (metà)' : '') + ' (' + wd + ')');
       }
+    });
+
+    var spazzato = att > 0 && att > dif;
+
+    // sostegno del Yong indebolito: solo quando il Yong controlla il Trend (剋我 puro,
+    // non nel pareggio). Il ramo di sostegno e' dello stesso elemento del Yong ORIGINALE.
+    var sostegni = bazi.filter(function (x) { return WX[x.b] === yongEl; });
+    var yongDebole = via === '剋我' && sostegni.length > 0 &&
+      sostegni.every(function (x) { return x.forza <= 0.5; });
+
+    // ponte sulla relazione (Tai Sui): su qualunque carta con verdetto di base "non segue",
+    // se il Tai Sui e' generato dal Yong e a sua volta genera il Trend, il controllo passa.
+    var attivi = bazi.filter(function (x) { return vuoti.indexOf(x.b) < 0; });
+    var ponteRel = segueBase === false && attivi.some(function (x) {
+      return x.ts && GEN[yongEl] === WX[x.b] && GEN[WX[x.b]] === trendEl;
     });
 
     return {
@@ -190,10 +225,12 @@
       vuoti: vuoti, vuotiLabel: vuoti.map(function (b) { return BR_IT[b]; }).join(' / '),
       oraVuota: oraVuota, autopenalita: autopen,
       palazzo: palazzo, palazzoLabel: palazzo.map(function (b) { return BR_IT[b]; }).join(' / '),
-      combinazioni: combinati, attaccanti: attList, difensori: difList, ponti: ponteList,
+      combinazioni: combinati, forze: forzeList,
+      attaccanti: attList, difensori: difList, ponti: ponteList,
       forzaAttacco: att, forzaDifesa: dif,
-      spazzato: att > 0 && att > dif,
-      guasto: autopen || (att > 0 && att > dif)
+      spazzato: spazzato, yongDebole: yongDebole, ponteRel: ponteRel,
+      guasto: autopen || spazzato,
+      salvato: yongDebole || ponteRel
     };
   }
 
@@ -204,7 +241,6 @@
     for (var k in TRIGRAM) if (TRIGRAM[k].lines === s) return Number(k);
     return null;
   }
-  // capovolge la linea locale (1=basso .. 3=alto) dentro un trigramma
   function flipLine(trigNum, localLine){
     var s = TRIGRAM[trigNum].lines.split('');
     var i = localLine - 1;
@@ -212,26 +248,45 @@
     return numFromLines(s.join(''));
   }
 
-  // relazione dell'elemento A rispetto a B
   function relazione(elA, elB){
     if (elA === elB) return '比和';
-    if (GEN[elB] === elA) return '生我';   // B genera A
-    if (CTRL[elA] === elB) return '我剋';   // A controlla B
-    if (GEN[elA] === elB) return '我生';   // A genera B
-    if (CTRL[elB] === elA) return '剋我';   // B controlla A
+    if (GEN[elB] === elA) return '生我';
+    if (CTRL[elA] === elB) return '我剋';
+    if (GEN[elA] === elB) return '我生';
+    if (CTRL[elB] === elA) return '剋我';
     return '?';
   }
 
   var VERDETTO = {
-    '生我': { prosegue: true,  testo: 'Yong genera il Trend → prosegue' },
-    '我剋': { prosegue: true,  testo: 'il Trend controlla Yong → prosegue' },
-    '比和': { prosegue: null,  testo: 'stesso elemento → NO TRADE' },
-    '我生': { prosegue: false, testo: 'il Trend genera Yong → inverte' },
-    '剋我': { prosegue: false, testo: 'Yong controlla il Trend → inverte' }
+    '生我': { segue: true,  testo: 'il Yong genera il Trend → segue il trend' },
+    '我剋': { segue: true,  testo: 'il Trend controlla il Yong → segue il trend' },
+    '我生': { segue: false, testo: 'il Trend genera il Yong → non segue il trend' },
+    '剋我': { segue: false, testo: 'il Yong controlla il Trend → non segue il trend' }
   };
 
-  // seme intero, ramo del giorno (uno di B) -> lettura completa
-  // nucleo del calcolo: dati superiore, inferiore e linea mutante (1..6) -> lettura completa
+  // ramo attivo del palazzo del Yong, scelto dalla NATURA della linea mutante
+  function ramoYong(yongNum, linea){
+    var palY = HOUTIAN[yongNum].slice();
+    if (palY.length < 2) return palY[0] || null;
+    var posInTrig = linea <= 3 ? linea : linea - 3;
+    var lineaIntera = (((yongNum - 1) >> (3 - posInTrig)) & 1) === 0;  // Fuxi: 0 = intera
+    var scelti = palY.filter(function (b) { return isYang(b) === lineaIntera; });
+    return scelti[0] || palY[0];
+  }
+
+  function sciogliPareggio(trendEl, yongNum, linea){
+    var ramo = ramoYong(yongNum, linea);
+    if (!ramo) return { segue: null, testo: 'pareggio → NO TRADE', ramo: null };
+    var pe = WX[ramo];
+    var lab = BR_IT[ramo] + ' ' + EL_IT[pe];
+    if (pe === trendEl)        return { segue: null,  testo: 'pareggio, ramo del Yong ' + lab + ' → NO TRADE', ramo: ramo };
+    if (GEN[pe] === trendEl)   return { segue: true,  testo: 'pareggio sciolto: ' + lab + ' genera il Trend → segue', ramo: ramo };
+    if (CTRL[trendEl] === pe)  return { segue: true,  testo: 'pareggio sciolto: il Trend controlla ' + lab + ' → segue', ramo: ramo };
+    if (GEN[trendEl] === pe)   return { segue: false, testo: 'pareggio sciolto: il Trend genera ' + lab + ' → non segue', ramo: ramo };
+    if (CTRL[pe] === trendEl)  return { segue: false, testo: 'pareggio sciolto: ' + lab + ' controlla il Trend → non segue', ramo: ramo };
+    return { segue: null, testo: 'pareggio → NO TRADE', ramo: ramo };
+  }
+
   function build(supNum, infNum, linea, extra){
     var yongOrigNum = linea <= 3 ? infNum : supNum;
     var trendNum    = linea <= 3 ? supNum : infNum;
@@ -239,22 +294,34 @@
     var yongTrasfNum = flipLine(yongOrigNum, localLine);
 
     var trend = TRIGRAM[trendNum], yongOrig = TRIGRAM[yongOrigNum], yongTrasf = TRIGRAM[yongTrasfNum];
-    var rel = relazione(trend.el, yongOrig.el);          // il verdetto usa il Yong ORIGINALE
-    var v = VERDETTO[rel] || { prosegue: null, testo: '?' };
+    var rel = relazione(trend.el, yongOrig.el);
 
-    // regola del clash del palazzo (solo in modo automatico, serve il Bazi)
+    var segueBase, relTesto, pareggio = null, viaClash = rel, yongElClash = yongOrig.el;
+    if (rel === '比和') {
+      pareggio = sciogliPareggio(trend.el, yongOrigNum, linea);
+      segueBase = pareggio.segue;
+      relTesto = pareggio.testo;
+      // nel pareggio la via resta '比和': il sostegno del Yong (剋我 puro) non si applica
+    } else {
+      var v = VERDETTO[rel] || { segue: null, testo: '?' };
+      segueBase = v.segue;
+      relTesto = v.testo;
+    }
+
     var bz = extra && extra.bazi ? extra.bazi : null;
-    var clash = (bz && bz.seed)
+    var clash = (bz && bz.seed && segueBase !== null)
       ? clashDelPalazzo(trendNum, trend.el, bz.seed, bz.monthBranch, bz.dayBranch,
-                        bz.yearBranch, bz.dayStem)
+                        bz.yearBranch, bz.dayStem, viaClash, yongElClash, segueBase)
       : null;
-    var prosegueFinale = v.prosegue;
-    if (clash && clash.guasto && prosegueFinale === true) prosegueFinale = false;
 
-    // trasformato: la linea mutante (globale) capovolta
+    var segueFinale = segueBase;
+    if (clash) {
+      if (clash.salvato) segueFinale = true;
+      else if (clash.guasto && segueBase === true) segueFinale = false;
+    }
+
     var trSup = supNum, trInf = infNum;
     if (linea <= 3) trInf = flipLine(infNum, linea); else trSup = flipLine(supNum, linea - 3);
-    // nucleare (互卦): linee dal basso 1→6 = inf.lines + sup.lines ; nucInf = 2-3-4, nucSup = 3-4-5
     var low6 = TRIGRAM[infNum].lines + TRIGRAM[supNum].lines;
     var nucInf = numFromLines(low6.charAt(1) + low6.charAt(2) + low6.charAt(3));
     var nucSup = numFromLines(low6.charAt(2) + low6.charAt(3) + low6.charAt(4));
@@ -262,9 +329,8 @@
     var out = {
       superiore: supNum, inferiore: infNum, linea: linea,
       trend: trend, yongOriginale: yongOrig, yongTrasformato: yongTrasf,
-      relazione: rel, relazioneTesto: v.testo,
-      prosegueBase: v.prosegue,
-      prosegue: prosegueFinale,
+      relazione: rel, relazioneTesto: relTesto, pareggio: pareggio,
+      segueBase: segueBase, segue: segueFinale,
       clash: clash,
       original:  { sup: supNum, inf: infNum },
       mutual:    { sup: nucSup, inf: nucInf },
@@ -278,8 +344,6 @@
     return out;
   }
 
-  // dal seme di prezzo + ramo del giorno (modo automatico)
-  // seed, ramo del giorno, e (facoltativi) ramo del mese e ramo dell'anno per il clash
   function read(seed, dayBranch, monthBranch, yearBranch, dayStem){
     seed = Math.abs(parseInt(seed, 10));
     if (!(seed > 0)) return { error: 'seme non valido' };
@@ -295,7 +359,6 @@
     });
   }
 
-  // inserimento manuale: superiore, inferiore (1..8), linea mutante (1..6)
   function readManual(supNum, infNum, linea){
     supNum = parseInt(supNum, 10); infNum = parseInt(infNum, 10); linea = parseInt(linea, 10);
     if (!(supNum >= 1 && supNum <= 8)) return { error: 'superiore non valido' };
@@ -304,9 +367,8 @@
     return build(supNum, infNum, linea, { manual: true });
   }
 
-  // sei linee dal basso (1) all'alto (6) di un esagramma {sup, inf}
   function hexLinesLowFirst(hx){
-    return (TRIGRAM[hx.inf].lines + TRIGRAM[hx.sup].lines).split('');  // '1'=yang intera, '0'=yin spezzata
+    return (TRIGRAM[hx.inf].lines + TRIGRAM[hx.sup].lines).split('');
   }
 
   return { read: read, readManual: readManual, TRIGRAM: TRIGRAM, hexLinesLowFirst: hexLinesLowFirst };

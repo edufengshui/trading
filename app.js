@@ -300,10 +300,12 @@ function renderTrendPB(cross, chart, dArr, row, p) {
   var dir = row && row.direction ? row.direction : null;         // 'up' | 'down' | 'flat' | null
   var choppy = row && row.emaConsolidated === false;
   var fragile = !!(row && row.seedFragile === true);
-  var confirmed = pb.prosegue;                                    // PB verdict: does the trend continue?
+  var confirmed = pb.segue;                                      // verdetto PB: il trend segue?
+  var noTradePB = (pb.segue === null);                           // pareggio non sciolto → NO TRADE
   var signal = null;
   if (fragile) signal = 'NO TRADE';
   else if (choppy) signal = 'NO TRADE';
+  else if (noTradePB) signal = 'NO TRADE';
   else if (dir === 'up') signal = confirmed ? 'LONG' : 'SHORT';
   else if (dir === 'down') signal = confirmed ? 'SHORT' : 'LONG';
 
@@ -311,9 +313,11 @@ function renderTrendPB(cross, chart, dArr, row, p) {
     ? '<span class="tv no">SEED ON THE EDGE · no trade</span>'
     : (choppy
       ? '<span class="tv no">EMA not consolidated · no trade</span>'
-      : (confirmed
-        ? '<span class="tv ok">PROSEGUE · segue l\'EMA</span>'
-        : '<span class="tv no">INVERTE · contro l\'EMA</span>'));
+      : (noTradePB
+        ? '<span class="tv no">PAREGGIO · no trade</span>'
+        : (confirmed
+          ? '<span class="tv ok">SEGUE il trend</span>'
+          : '<span class="tv no">NON SEGUE il trend</span>')));
   var signalBadge = signal
     ? '<span class="sig ' + (signal === 'NO TRADE' ? 'notrade' : signal.toLowerCase()) + '">' + signal + '</span>'
     : '<span class="sig na">signal n/a — EMA trend missing</span>';
