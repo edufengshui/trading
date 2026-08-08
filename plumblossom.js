@@ -1,7 +1,7 @@
 /* plumblossom.js — 梅花易數 sul seme di prezzo, per la PWA di trading.
  *
  * Versione dell'08/08/2026, decisa con Edu. Riproduce pb_v8.js del motore di ricerca
- * (research set 2020-01-01 → 2024-05-31: +10.591 pip, z 2,43, contro +6.223 della
+ * (research set 2020-01-01 → 2024-05-31: +10.352 pip, z 2,29, contro +6.223 della
  * sola relazione). Sostituisce la versione del 07/08/2026, che leggeva il Yong
  * TRASFORMATO e non aveva la regola del clash del palazzo.
  *
@@ -55,8 +55,21 @@
  *     (attenzione: cambia il verdetto su 6 carte sole nel research set — il suo
  *     effetto misurato è aneddotico, si tiene per coerenza dottrinale)
  *
- * NON implementato, provato e scartato l'08/08/2026: il clash che "eccita" invece di
- * spazzare quando l'elemento del Trend e' forte in stagione (costava 1.007 pip).
+ * SELETTORE UNICO: e' sempre la polarita' dell'ORA ricavata dal seme a scegliere il ramo
+ * attivo in un palazzo doppio, per il Trend come per il Yong. Provata la polarita' della
+ * linea mobile l'08/08/2026 e scartata: misurava peggio (+7.043 contro +8.089).
+ *
+ * NON implementati, provati e scartati l'08/08/2026:
+ *   - il clash che "eccita" invece di spazzare quando l'elemento del Trend e' forte in
+ *     stagione (costava 1.007 pip)
+ *   - il blocco per combinazione fra il palazzo del Trend e quello del Yong (72 giuste
+ *     su 140 carte cambiate: non distingue)
+ *   - il ponte del palazzo del Yong, cioe' il controllo del Yong che esce trasformato
+ *     passando dentro il proprio palazzo (col selettore corretto ribalta 22 carte e ne
+ *     sbaglia 15)
+ *   - lo scioglimento del pareggio 比和 leggendo il palazzo del Yong contro il Trend
+ *     (col selettore corretto porta z da 2,29 a 0,99)
+ *   - l'ora dentro il Bazi come attaccante o difensore (costava fino a 1.970 pip)
  *
  * Il Yong trasformato resta calcolato e disegnato, ma NON entra più nel verdetto.
  */
