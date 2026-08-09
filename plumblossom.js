@@ -320,6 +320,31 @@
       else if (clash.guasto && segueBase === true) segueFinale = false;
     }
 
+    // RAFFORZAMENTO DEL YONG (Edu, 09/08/2026): quando la base dice "segue" (il Ti prevale)
+    // ma il Yong esce RAFFORZATO dalla mutazione — caso 1 生我 (il trasformato genera il Yong)
+    // o caso 5 比和 (stesso elemento) — il Yong si impone e il verdetto passa a "non segue".
+    // Spento quando il trend EMA persiste da >=20 giorni: lì il trend forte va seguito.
+    var rafforzato = false;
+    if (segueBase === true && !(clash && clash.salvato)) {
+      var forteMut = (yongOrig.el === yongTrasf.el) || (GEN[yongTrasf.el] === yongOrig.el);
+      var trendPersistente = extra && extra.emaRun != null && extra.emaRun >= 20;
+      if (forteMut && !trendPersistente) { rafforzato = true; segueFinale = false; }
+    }
+
+    // TREND VUOTO NEL PAREGGIO (Edu, 09/08/2026): nel pareggio 比和 il corpo (Ti) vuoto perde
+    // il pari → non segue. Palazzo del Trend vuoto (旬空); il ramo attivo, nei palazzi a due
+    // rami, è scelto dalla posizione della linea mutante (1,3,5 = yang · 2,4,6 = yin).
+    var vuotoPareggio = false;
+    if (rel === '比和' && clash && clash.vuoti && clash.vuoti.length) {
+      var palT = HOUTIAN[trendNum], ramoT;
+      if (palT.length === 1) ramoT = palT[0];
+      else { var lineaYangT = (linea % 2 === 1); ramoT = palT.filter(function (b) { return isYang(b) === lineaYangT; })[0]; }
+      if (ramoT != null && clash.vuoti.indexOf(ramoT) >= 0) {
+        vuotoPareggio = true;
+        if (segueFinale === true) segueFinale = false;
+      }
+    }
+
     var trSup = supNum, trInf = infNum;
     if (linea <= 3) trInf = flipLine(infNum, linea); else trSup = flipLine(supNum, linea - 3);
     var low6 = TRIGRAM[infNum].lines + TRIGRAM[supNum].lines;
@@ -330,7 +355,7 @@
       superiore: supNum, inferiore: infNum, linea: linea,
       trend: trend, yongOriginale: yongOrig, yongTrasformato: yongTrasf,
       relazione: rel, relazioneTesto: relTesto, pareggio: pareggio,
-      segueBase: segueBase, segue: segueFinale,
+      segueBase: segueBase, segue: segueFinale, rafforzato: rafforzato, vuotoPareggio: vuotoPareggio,
       clash: clash,
       original:  { sup: supNum, inf: infNum },
       mutual:    { sup: nucSup, inf: nucInf },
@@ -344,7 +369,7 @@
     return out;
   }
 
-  function read(seed, dayBranch, monthBranch, yearBranch, dayStem){
+  function read(seed, dayBranch, monthBranch, yearBranch, dayStem, emaRun){
     seed = Math.abs(parseInt(seed, 10));
     if (!(seed > 0)) return { error: 'seme non valido' };
     var dayNum = B.indexOf(dayBranch) + 1;
@@ -354,6 +379,7 @@
     var linea  = mod6(supNum + infNum + dayNum);
     return build(supNum, infNum, linea, {
       seed: seed, dayBranch: dayBranch, dayNum: dayNum,
+      emaRun: (emaRun == null ? null : emaRun),
       bazi: { seed: seed, dayBranch: dayBranch, monthBranch: monthBranch || null,
               yearBranch: yearBranch || null, dayStem: dayStem || null }
     });

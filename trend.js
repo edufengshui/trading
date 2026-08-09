@@ -516,10 +516,19 @@
     if (!dirs.length) return { direction: null, consolidated: false, note: 'insufficient history' };
     var win = dirs.slice(-EMA_WINDOW), last = win[win.length - 1];
     var changes = countChanges(win);
+    // persistenza: giorni consecutivi nella stessa direzione in fondo alla serie (i passi 'f' non spezzano)
+    var runLen = 0, ref = null;
+    for (var q = dirs.length - 1; q >= 0; q--) {
+      var s = dirs[q]; if (s === 'f') continue;
+      if (ref === null) { ref = s; runLen = 1; }
+      else if (s === ref) runLen++;
+      else break;
+    }
     return {
       direction: last === 'u' ? 'up' : (last === 'd' ? 'down' : 'flat'),
       ema: series[series.length - 1], emaPrev: series[series.length - 2],
       dirs: win.join(''), changes: changes, consolidated: changes <= EMA_MAX_CHANGES,
+      runLen: runLen,
       window: EMA_WINDOW, maxChanges: EMA_MAX_CHANGES
     };
   }

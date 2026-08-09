@@ -293,7 +293,8 @@ function renderTrendPB(cross, chart, dArr, row, p) {
     ? window.XKDGPlumBlossom.readManual(pbManual.sup, pbManual.inf, pbManual.linea)
     : window.XKDGPlumBlossom.read(row.seed, chart.dayBranch, chart.monthBranch,
         (chart.source && chart.source.yearPillar) ? chart.source.yearPillar.charAt(1) : null,
-        chart.dayStem || null);
+        chart.dayStem || null,
+        (row && row.emaRun != null) ? row.emaRun : null);
   if (pb.error) { p.style.display = 'none'; return; }
 
   // same downstream logic as the DLR panel: EMA direction + guards decide the final signal
@@ -332,7 +333,7 @@ function renderTrendPB(cross, chart, dArr, row, p) {
   }
 
   var arrow = dir === 'up' ? '↑ up (blue)' : dir === 'down' ? '↓ down (red)' : (dir ? dir : 'n/a');
-  var emaLine = '<div class="trendmsgs">EMA(8+1) daily trend: <b class="' + (dir || '') + '">' + arrow + '</b>' +
+  var emaLine = '<div class="trendmsgs">EMA(12) daily trend: <b class="' + (dir || '') + '">' + arrow + '</b>' +
     (row && row.ema != null ? ' · ema ' + row.ema + ' (prev ' + row.emaPrev + ')' : '') + '</div>';
 
   // the three hexagrams drawn (Original / Mutual / Transform), like the reference app
@@ -460,7 +461,7 @@ function renderTrend(cross, chart, dArr, row) {
   }
 
   var arrow = dir === 'up' ? '↑ up (blue)' : dir === 'down' ? '↓ down (red)' : (dir ? dir : 'n/a');
-  var emaLine = '<div class="trendmsgs">EMA(8+1) daily trend: <b class="' + (dir || '') + '">' + arrow + '</b>' +
+  var emaLine = '<div class="trendmsgs">EMA(12) daily trend: <b class="' + (dir || '') + '">' + arrow + '</b>' +
     (row && row.ema != null ? ' · ema ' + row.ema + ' (prev ' + row.emaPrev + ')' : '') +
     (row && row.emaDirs ? ' · last 10 days ' + row.emaDirs.replace(/u/g, '↑').replace(/d/g, '↓').replace(/f/g, '–') +
       ' · ' + row.emaChanges + ' reversal' + (row.emaChanges === 1 ? '' : 's') +
