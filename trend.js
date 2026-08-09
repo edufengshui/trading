@@ -481,8 +481,8 @@
               DIRECTIONAL: DIRECTIONAL, hasEnergy: hasEnergy, STAGE_CN: STAGE_CN };
 
   // ---- EMA(8+1) trend + consolidation filter (shared by the PWA and the backtest) ----
-  var EMA_PERIOD = 8;
-  var EMA_WINDOW = 10;        // days of EMA direction looked at
+  var EMA_PERIOD = 12;
+  var EMA_WINDOW = 15;        // scalata col periodo (period*1.25) — EMA 12 → 15
   var EMA_MAX_CHANGES = 2;    // more reversals than this in the window → choppy → no trade
 
   function emaSeries(closes, period) {
