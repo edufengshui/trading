@@ -105,6 +105,28 @@
   var COMBINA = { '子':'丑','丑':'子','寅':'亥','亥':'寅','卯':'戌','戌':'卯',
                   '辰':'酉','酉':'辰','巳':'申','申':'巳','午':'未','未':'午' };
   var TAISUI = 2;
+  // NA YIN dell'esagramma iniziale (XKDG, Edu 10/08/2026): '(sup)-(inf)' in Fuxi -> elemento.
+  // Dal software XKDG: esagramma di Re Wen -> jiazi -> Na Yin. Verificata su Wei Ji=甲申
+  // Acqua, Ji Ji=甲寅 Acqua, Meng=庚申 Legno e sugli otto esagrammi puri.
+  var NAYIN_ESAGRAMMA = {
+    '1-1':'Metal', '1-2':'Wood', '1-3':'Metal', '1-4':'Fire', '1-5':'Metal', '1-6':'Earth', '1-7':'Water', '1-8':'Metal',
+    '2-1':'Water', '2-2':'Earth', '2-3':'Wood', '2-4':'Water', '2-5':'Water', '2-6':'Wood', '2-7':'Fire', '2-8':'Water',
+    '3-1':'Metal', '3-2':'Fire', '3-3':'Wood', '3-4':'Metal', '3-5':'Fire', '3-6':'Water', '3-7':'Earth', '3-8':'Fire',
+    '4-1':'Wood', '4-2':'Metal', '4-3':'Earth', '4-4':'Wood', '4-5':'Earth', '4-6':'Fire', '4-7':'Wood', '4-8':'Earth',
+    '5-1':'Earth', '5-2':'Wood', '5-3':'Fire', '5-4':'Earth', '5-5':'Wood', '5-6':'Earth', '5-7':'Metal', '5-8':'Wood',
+    '6-1':'Fire', '6-2':'Earth', '6-3':'Water', '6-4':'Fire', '6-5':'Metal', '6-6':'Wood', '6-7':'Fire', '6-8':'Metal',
+    '7-1':'Water', '7-2':'Fire', '7-3':'Wood', '7-4':'Water', '7-5':'Water', '7-6':'Wood', '7-7':'Earth', '7-8':'Water',
+    '8-1':'Metal', '8-2':'Water', '8-3':'Earth', '8-4':'Metal', '8-5':'Fire', '8-6':'Metal', '8-7':'Wood', '8-8':'Metal'
+  };
+  // stato stagionale di un elemento rispetto all'elemento del mese (cinque stadi)
+  function stagione(el, seasonEl){
+    if (el === seasonEl) return '旺';
+    if (GEN[seasonEl] === el) return '相';
+    if (GEN[el] === seasonEl) return '休';
+    if (CTRL[seasonEl] === el) return '死';
+    if (CTRL[el] === seasonEl) return '囚';
+    return '休';
+  }
   var S10 = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
   var AUTOPEN = ['辰','午','酉','亥'];
   function seedToBranch(seed){ return B[(((seed - 1) % 12) + 12) % 12]; }
@@ -349,8 +371,35 @@
 
     // SOPRAFFAZIONE DEL TRASFORMATO (Edu, 09/08/2026): se "segue" ma il Yong TRASFORMATO
     // controlla il Ti (剋), il corpo è sopraffatto → non segue. Qualsiasi mutazione.
+    // Due guardie (Edu, 10/08/2026), lette col FLUSSO DEL QI dei tre rami del Bazi
+    // (catena generativa fra gli elementi presenti; capolinea = riceve e non cede):
+    //  1. FLUSSO VERSO IL TI: se il qi della data converge sul Ti (capolinea = elemento
+    //     del Ti, o un capolinea lo genera), il corpo è nutrito e regge → la
+    //     sopraffazione non scatta.
+    //  2. NA YIN DEL TI DEBOLE: se il Na Yin dell'esagramma iniziale è dello stesso
+    //     elemento del Ti, il Ti è debole di stagione (死/囚) e il flusso non porta via
+    //     dal Ti, il rinforzo del Na Yin tiene → la sopraffazione non scatta.
     var sopraffTrasf = (CTRL[yongTrasf.el] === trend.el);
-    if (sopraffTrasf && segueFinale === true) segueFinale = false;
+    var flussoVersoTi = false, nayinSalva = false;
+    if (sopraffTrasf && bz && bz.yearBranch && bz.monthBranch && bz.dayBranch) {
+      var elsPres = [];
+      [bz.yearBranch, bz.monthBranch, bz.dayBranch].forEach(function (b) {
+        if (elsPres.indexOf(WX[b]) < 0) elsPres.push(WX[b]);
+      });
+      var fRiceve = function (e) { return elsPres.some(function (x) { return GEN[x] === e; }); };
+      var fCede = function (e) { return elsPres.indexOf(GEN[e]) >= 0; };
+      var capolinea = elsPres.filter(function (e) { return fRiceve(e) && !fCede(e); });
+      var sorgenti = elsPres.filter(function (e) { return fCede(e) && !fRiceve(e); });
+      flussoVersoTi = capolinea.indexOf(trend.el) >= 0 ||
+        capolinea.some(function (e) { return GEN[e] === trend.el; });
+      var flussoViaDalTi = sorgenti.indexOf(trend.el) >= 0 ||
+        (fCede(trend.el) && !fRiceve(trend.el) && elsPres.indexOf(trend.el) < 0 && elsPres.indexOf(GEN[trend.el]) >= 0);
+      var nayEl = NAYIN_ESAGRAMMA[supNum + '-' + infNum] || null;
+      var tiStato = stagione(trend.el, WX[bz.monthBranch]);
+      nayinSalva = nayEl === trend.el && (tiStato === '死' || tiStato === '囚') && !flussoViaDalTi;
+    }
+    var sopraffAttiva = sopraffTrasf && !flussoVersoTi && !nayinSalva;
+    if (sopraffAttiva && segueFinale === true) segueFinale = false;
 
     // DRENAGGIO DEL TI (Edu, 09/08/2026): se il Ti genera il trasformato (Ti drenato) e il
     // trasformato è preponderante nel Bazi (netStr >= 3), il corpo si svuota → non segue.
@@ -372,7 +421,7 @@
       superiore: supNum, inferiore: infNum, linea: linea,
       trend: trend, yongOriginale: yongOrig, yongTrasformato: yongTrasf,
       relazione: rel, relazioneTesto: relTesto, pareggio: pareggio,
-      segueBase: segueBase, segue: segueFinale, rafforzato: rafforzato, vuotoPareggio: vuotoPareggio, sopraffTrasf: sopraffTrasf, drenaggio: drenaggio,
+      segueBase: segueBase, segue: segueFinale, rafforzato: rafforzato, vuotoPareggio: vuotoPareggio, sopraffTrasf: sopraffTrasf, sopraffAttiva: sopraffAttiva, flussoVersoTi: flussoVersoTi, nayinSalva: nayinSalva, drenaggio: drenaggio,
       clash: clash,
       original:  { sup: supNum, inf: infNum },
       mutual:    { sup: nucSup, inf: nucInf },
