@@ -339,10 +339,27 @@
       var palT = HOUTIAN[trendNum], ramoT;
       if (palT.length === 1) ramoT = palT[0];
       else { var lineaYangT = (linea % 2 === 1); ramoT = palT.filter(function (b) { return isYang(b) === lineaYangT; })[0]; }
-      if (ramoT != null && clash.vuoti.indexOf(ramoT) >= 0) {
+      // 旺不为空: un ramo prospero di stagione (elemento = elemento del mese) non è davvero vuoto
+      var ramoProsperoT = ramoT != null && bz && WX[ramoT] === WX[bz.monthBranch];
+      if (ramoT != null && clash.vuoti.indexOf(ramoT) >= 0 && !ramoProsperoT) {
         vuotoPareggio = true;
         if (segueFinale === true) segueFinale = false;
       }
+    }
+
+    // SOPRAFFAZIONE DEL TRASFORMATO (Edu, 09/08/2026): se "segue" ma il Yong TRASFORMATO
+    // controlla il Ti (剋), il corpo è sopraffatto → non segue. Qualsiasi mutazione.
+    var sopraffTrasf = (CTRL[yongTrasf.el] === trend.el);
+    if (sopraffTrasf && segueFinale === true) segueFinale = false;
+
+    // DRENAGGIO DEL TI (Edu, 09/08/2026): se il Ti genera il trasformato (Ti drenato) e il
+    // trasformato è preponderante nel Bazi (netStr >= 3), il corpo si svuota → non segue.
+    var drenaggio = false;
+    if (bz && GEN[trend.el] === yongTrasf.el) {
+      var ramiBz = [bz.yearBranch, bz.monthBranch, bz.dayBranch];
+      var nsT = ramiBz.filter(function (b) { return WX[b] === yongTrasf.el || GEN[WX[b]] === yongTrasf.el; }).length
+              - ramiBz.filter(function (b) { return CTRL[WX[b]] === yongTrasf.el; }).length;
+      if (nsT >= 3) { drenaggio = true; if (segueFinale === true) segueFinale = false; }
     }
 
     var trSup = supNum, trInf = infNum;
@@ -355,7 +372,7 @@
       superiore: supNum, inferiore: infNum, linea: linea,
       trend: trend, yongOriginale: yongOrig, yongTrasformato: yongTrasf,
       relazione: rel, relazioneTesto: relTesto, pareggio: pareggio,
-      segueBase: segueBase, segue: segueFinale, rafforzato: rafforzato, vuotoPareggio: vuotoPareggio,
+      segueBase: segueBase, segue: segueFinale, rafforzato: rafforzato, vuotoPareggio: vuotoPareggio, sopraffTrasf: sopraffTrasf, drenaggio: drenaggio,
       clash: clash,
       original:  { sup: supNum, inf: infNum },
       mutual:    { sup: nucSup, inf: nucInf },
