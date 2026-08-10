@@ -315,7 +315,9 @@ function renderTrendPB(cross, chart, dArr, row, p) {
     : (choppy
       ? '<span class="tv no">EMA not consolidated · no trade</span>'
       : (noTradePB
-        ? '<span class="tv no">PAREGGIO · no trade</span>'
+        ? (pb.noTradeClash
+          ? '<span class="tv no">CLASH GIORNO↔MESE · no trade</span>'
+          : '<span class="tv no">PAREGGIO · no trade</span>')
         : (confirmed
           ? '<span class="tv ok">SEGUE il trend</span>'
           : '<span class="tv no">NON SEGUE il trend</span>')));

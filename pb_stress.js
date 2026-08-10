@@ -112,6 +112,20 @@ const pipFactor = c => /JPY$/.test(c) ? 100 : 10000;
 function yearBranchAt(y,m,d){
   return lj.Solar.fromYmdHms(y,m,d,0,0,0).getLunar().getEightChar().getYear().charAt(1);
 }
+function yearStemAt(y,m,d){
+  return lj.Solar.fromYmdHms(y,m,d,0,0,0).getLunar().getEightChar().getYear().charAt(0);
+}
+// stelo del mese con la regola dei Cinque Tigri (五虎遁), dal ramo del mese del motore
+const STEMS10 = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+const WUHU = { '甲':'丙','己':'丙','乙':'戊','庚':'戊','丙':'庚','辛':'庚','丁':'壬','壬':'壬','戊':'甲','癸':'甲' };
+const MESI_DA_YIN = ['寅','卯','辰','巳','午','未','申','酉','戌','亥','子','丑'];
+function monthStemFrom(yearStem, monthBranch){
+  const start = STEMS10.indexOf(WUHU[yearStem]);
+  const idx = MESI_DA_YIN.indexOf(monthBranch);
+  return STEMS10[(start + idx) % 10];
+}
+// clash degli steli (i quattro: 甲庚 乙辛 丙壬 丁癸; 戊己 senza clash)
+const STEMCLASH = { '甲':'庚','庚':'甲','乙':'辛','辛':'乙','丙':'壬','壬':'丙','丁':'癸','癸':'丁' };
 
 /* lettura di base + regola del clash */
 const seedToBranch = s => B[(((s-1)%12)+12)%12];
@@ -229,9 +243,30 @@ function leggi(seed, dayBranch, monthBranch, yearBranch, dayStem, emaRun){
   const FORDINE = { '旺':4, '相':3, '休':2, '囚':1, '死':0 };
   bazi.forEach(x => x.forza = 1);
   const dettForze = [];
+  // CLASH FRA TOMBE (Edu, 10/08/2026, da USDJPY 30/04/2026): il clash fra due rami di
+  // Terra (辰戌 o 丑未) non e' un combattimento: produce piu' Terra e APRE le tombe,
+  // liberando l'elemento custodito (辰 Acqua · 戌 Fuoco · 丑 Metallo · 未 Legno).
+  //   TOMBE=forze   i due rami di Terra non si dimezzano (restano a forza piena)
+  //   TOMBE=flusso  forze + gli elementi liberati entrano nel flusso del qi
+  //   TOMBE=drena   forze + gli elementi liberati contano nel netStr del drenaggio
+  //   TOMBE=tutto   tutte e tre
+  const TOMBA = { '辰':'Water', '戌':'Fire', '丑':'Metal', '未':'Wood' };
+  const TM = process.env.TOMBE;
+  const liberati = [];
+  if (TM) {
+    for (let i=0;i<bazi.length;i++) for (let j=i+1;j<bazi.length;j++){
+      if (CLASH[bazi[i].b] !== bazi[j].b) continue;
+      if (WX[bazi[i].b] === 'Earth' && WX[bazi[j].b] === 'Earth') {
+        liberati.push(TOMBA[bazi[i].b], TOMBA[bazi[j].b]);
+        bazi[i].tomba = true; bazi[j].tomba = true;
+        dettForze.push(bazi[i].b+' e '+bazi[j].b+' clash di tombe → più Terra, liberati '+TOMBA[bazi[i].b]+'/'+TOMBA[bazi[j].b]);
+      }
+    }
+  }
   if (!process.env.NOFORZE) {
     for (let i=0;i<bazi.length;i++) for (let j=i+1;j<bazi.length;j++){
       if (CLASH[bazi[i].b] !== bazi[j].b) continue;
+      if (TM && bazi[i].tomba && bazi[j].tomba) continue;   // clash di tombe: nessun dimezzamento
       let vinc = i, pers = j;
       if (bazi[j].ts) { vinc=j; pers=i; }
       else if (bazi[i].ts) { vinc=i; pers=j; }
@@ -377,7 +412,9 @@ function leggi(seed, dayBranch, monthBranch, yearBranch, dayStem, emaRun){
   // FLUSSO DEL QI DISCRETO (Edu, 10/08/2026): fra gli elementi dei tre rami del Bazi il qi
   // corre lungo la catena generativa. CAPOLINEA = elemento che riceve e non cede a un altro
   // presente: il qi converge su di lui e lo nutre. SORGENTE = cede senza ricevere: si svuota.
-  const elsPres = Array.from(new Set([yearBranch, monthBranch, dayBranch].map(b => WX[b])));
+  const elsPres0 = Array.from(new Set([yearBranch, monthBranch, dayBranch].map(b => WX[b])));
+  const conLib = (TM === 'flusso' || TM === 'tutto');
+  const elsPres = conLib ? Array.from(new Set(elsPres0.concat(liberati))) : elsPres0;
   const fRiceve = e => elsPres.some(x => GEN[x] === e);
   const fCede   = e => elsPres.indexOf(GEN[e]) >= 0;
   const capolinea = elsPres.filter(e => fRiceve(e) && !fCede(e));
@@ -400,8 +437,9 @@ function leggi(seed, dayBranch, monthBranch, yearBranch, dayStem, emaRun){
   // trasformato è preponderante nel Bazi (netStr >= 3: sostenuto da tutti i rami, non
   // controllato), il corpo si svuota → non segue. Solo se il trasformato ha davvero la forza.
   const baziRami = [yearBranch, monthBranch, dayBranch];
-  const nsTrasf = baziRami.filter(b => WX[b] === trasf.el || GEN[WX[b]] === trasf.el).length
-                - baziRami.filter(b => CTRL[WX[b]] === trasf.el).length;
+  const elsDrena = (TM === 'drena' || TM === 'tutto') ? baziRami.map(b=>WX[b]).concat(liberati) : baziRami.map(b=>WX[b]);
+  const nsTrasf = elsDrena.filter(e => e === trasf.el || GEN[e] === trasf.el).length
+                - elsDrena.filter(e => CTRL[e] === trasf.el).length;
   const drenaggio = !!process.env.DRENA && GEN[corpo.el] === trasf.el && nsTrasf >= 3;
   let finale = (ponteYong || scarico || ponteRel || protetto || yongDebole) ? true
              : ((spazzato || bloccato || autopen || rafforzato) ? false : base);
@@ -457,6 +495,7 @@ if (process.env.CARTA) {
 
 const FROM = process.env.FROM || '2020-01-01', TO = process.env.TO || '2026-12-31';
 const rows = [];
+const skipInfo = { n:0, w:0, l:0, pnl:0 };
 // EMA a periodo variabile per lo sweep (EMAPER). Finestra e cambi scalati col periodo.
 function emaTrendVar(closes, period){
   if(!closes || closes.length < period) return { direction:null, consolidated:false };
@@ -495,8 +534,35 @@ Object.keys(hist.crosses).forEach(cross => {
     if(!ch||ch.error) continue;
     const yb=yearBranchAt(p[0],p[1],p[2]);
     const r=leggi(seed, ch.dayBranch, ch.monthBranch, yb, ch.dayStem, runLen);
+    // ASTENSIONE SUI CLASH VALIDI (Edu, 10/08/2026): il clash e' effettivo solo fra
+    // ramo del giorno<->ramo del mese, ramo del giorno<->ramo dell'anno, e stelo del
+    // giorno<->stelo del mese (甲庚 乙辛 丙壬 丁癸).
+    //   SKIPCLASH=tombe|rami|steli|tutti
+    if (process.env.SKIPCLASH) {
+      const SC = process.env.SKIPCLASH;
+      const cGM = CLASH[ch.dayBranch] === ch.monthBranch;
+      const cGA = CLASH[ch.dayBranch] === yb;
+      const isTombe = (a,b2) => WX[a]==='Earth' && WX[b2]==='Earth';
+      const tombeValide = (cGM && isTombe(ch.dayBranch, ch.monthBranch)) || (cGA && isTombe(ch.dayBranch, yb));
+      const ys = yearStemAt(p[0],p[1],p[2]);
+      const ms = monthStemFrom(ys, ch.monthBranch);
+      const cSteli = STEMCLASH[ch.dayStem] === ms;
+      const salta = SC==='tombe' ? tombeValide
+                  : SC==='rami'  ? (cGM || cGA)
+                  : SC==='gm'    ? cGM
+                  : SC==='gmnontombe' ? (cGM && !isTombe(ch.dayBranch, ch.monthBranch))
+                  : SC==='steli' ? cSteli
+                  : SC==='tutti' ? (cGM || cGA || cSteli)
+                  : false;
+      if (salta && r.base !== null) {
+        const pnlS = (ema.direction==='up'?(r.finale?'LONG':'SHORT'):(r.finale?'SHORT':'LONG'))==='LONG'?move:-move;
+        skipInfo.n++; skipInfo.pnl += pnlS; if (pnlS>0) skipInfo.w++; else if (pnlS<0) skipInfo.l++;
+        continue;
+      }
+    }
     if (r.base === null) continue;   // 比和 = NO TRADE
     rows.push({cross,date:d,move,emaDir:ema.direction,via:r.via,linea:r.linea,sup:r.sup,inf:r.inf,
+               yearBranchUsed:yb, dayStemUsed:ch.dayStem,
                base:r.base, finale:r.finale, emaRun:runLen, trendVuoto:r.trendVuoto, oraBranch:r.oraBranch, vuoti:r.vuoti, dayBranchUsed:ch.dayBranch, monthBranchUsed:ch.monthBranch, spazzato:r.spazzato, bloccato:r.bloccato, autopen:r.autopen, ponteYong:r.ponteYong, scarico:r.scarico, ponteRel:r.ponteRel, protetto:r.protetto, yongDebole:r.yongDebole,
                pnlBase: (ema.direction==='up'?(r.base?'LONG':'SHORT'):(r.base?'SHORT':'LONG'))==='LONG'?move:-move,
                pnl:     (ema.direction==='up'?(r.finale?'LONG':'SHORT'):(r.finale?'SHORT':'LONG'))==='LONG'?move:-move});
@@ -558,6 +624,27 @@ console.log('per relazione — base → con la regola');
     '  →  '+(100*b.act).toFixed(2)+'% '+b.pips.toFixed(0).padStart(7));
 });
 require('fs').writeFileSync('/tmp/research_rows.json', JSON.stringify(rows.map(r=>({c:r.cross,d:r.date,finale:r.finale,via:r.via}))));
+if (process.env.CLASHREPORT) {
+  // spaccato per tipo di clash valido (perno = giorno)
+  const gruppi = {
+    'giorno↔mese':      r => CLASH[r.dayBranchUsed] === r.monthBranchUsed,
+    'giorno↔anno':      r => CLASH[r.dayBranchUsed] === r.yearBranchUsed,
+    'g↔m di tombe':     r => CLASH[r.dayBranchUsed] === r.monthBranchUsed && WX[r.dayBranchUsed]==='Earth' && WX[r.monthBranchUsed]==='Earth',
+    'g↔a di tombe':     r => CLASH[r.dayBranchUsed] === r.yearBranchUsed && WX[r.dayBranchUsed]==='Earth' && WX[r.yearBranchUsed]==='Earth',
+    'g↔m NON tombe':    r => CLASH[r.dayBranchUsed] === r.monthBranchUsed && !(WX[r.dayBranchUsed]==='Earth' && WX[r.monthBranchUsed]==='Earth'),
+    'g↔a NON tombe':    r => CLASH[r.dayBranchUsed] === r.yearBranchUsed && !(WX[r.dayBranchUsed]==='Earth' && WX[r.yearBranchUsed]==='Earth'),
+    'steli g↔m':        r => { const p=r.date.split('-').map(Number); const ys=yearStemAt(p[0],p[1],p[2]); return STEMCLASH[r.dayStemUsed]===monthStemFrom(ys, r.monthBranchUsed); },
+    'nessun clash valido': r => CLASH[r.dayBranchUsed]!==r.monthBranchUsed && CLASH[r.dayBranchUsed]!==r.yearBranchUsed,
+  };
+  console.log('\n=== SPACCATO PER TIPO DI CLASH (perno: giorno) ===');
+  console.log('gruppo                 carte   win%     z      pip    pip/carta');
+  for (const nome in gruppi) {
+    const sel = rows.filter(gruppi[nome]);
+    const s = stat(sel);
+    if (!s) { console.log(nome.padEnd(22)+' 0'); continue; }
+    console.log(nome.padEnd(22)+String(sel.length).padStart(6)+'  '+(100*s.act).toFixed(2)+'%  '+s.z.toFixed(2).padStart(6)+'  '+s.pips.toFixed(0).padStart(7)+'  '+(s.pips/sel.length).toFixed(2).padStart(7));
+  }
+}
 if (process.env.DUMP) {
   require('fs').writeFileSync(process.env.DUMP, JSON.stringify(rows.map(r=>({c:r.cross,d:r.date,move:r.move,emaDir:r.emaDir,via:r.via,linea:r.linea,sup:r.sup,inf:r.inf,base:r.base,finale:r.finale,emaRun:r.emaRun,trendVuoto:r.trendVuoto,via:r.via,oraBranch:r.oraBranch,vuoti:r.vuoti,dayBranch:r.dayBranchUsed,monthBranch:r.monthBranchUsed,ponteRel:r.ponteRel,ponteYong:r.ponteYong,scarico:r.scarico,protetto:r.protetto,yongDebole:r.yongDebole,p:r.pnl,b:r.pnlBase}))));
 }
@@ -596,6 +683,7 @@ if (process.env.PERSE) {
 }
 
 if (process.env.PEGGIORI) {
+if (skipInfo.n) console.log('\ncarte SALTATE per clash: '+skipInfo.n+'   (avrebbero dato: '+skipInfo.w+' giuste / '+skipInfo.l+' sbagliate · '+skipInfo.pnl.toFixed(0)+' pip)');
   console.log('\npeggiori 12 carte con la regola attiva');
   rows.slice().sort((a,b)=>a.pnl-b.pnl).slice(0,12).forEach(r=>
     console.log('  '+r.date+' '+r.cross+'  '+r.via+'  '+r.pnl.toFixed(0)+' pip'+(r.spazzato?'  (spazzato)':'')));

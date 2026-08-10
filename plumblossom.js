@@ -411,6 +411,17 @@
       if (nsT >= 3) { drenaggio = true; if (segueFinale === true) segueFinale = false; }
     }
 
+    // NO TRADE SUL CLASH GIORNO↔MESE (Edu, 10/08/2026): il clash e' effettivo solo col
+    // perno sul giorno. Quando il ramo del giorno clasha il ramo del mese, la cornice
+    // stagionale su cui poggiano tutte le letture di forza e' rotta: il sistema non ha
+    // diritto di parola quel giorno → NO TRADE (il verdetto passa a null).
+    var noTradeClash = false;
+    if (bz && bz.dayBranch && bz.monthBranch && CLASH[bz.dayBranch] === bz.monthBranch) {
+      noTradeClash = true;
+      segueFinale = null;
+      relTesto = 'clash giorno↔mese ' + bz.dayBranch + '↔' + bz.monthBranch + ' → NO TRADE';
+    }
+
     var trSup = supNum, trInf = infNum;
     if (linea <= 3) trInf = flipLine(infNum, linea); else trSup = flipLine(supNum, linea - 3);
     var low6 = TRIGRAM[infNum].lines + TRIGRAM[supNum].lines;
@@ -421,7 +432,7 @@
       superiore: supNum, inferiore: infNum, linea: linea,
       trend: trend, yongOriginale: yongOrig, yongTrasformato: yongTrasf,
       relazione: rel, relazioneTesto: relTesto, pareggio: pareggio,
-      segueBase: segueBase, segue: segueFinale, rafforzato: rafforzato, vuotoPareggio: vuotoPareggio, sopraffTrasf: sopraffTrasf, sopraffAttiva: sopraffAttiva, flussoVersoTi: flussoVersoTi, nayinSalva: nayinSalva, drenaggio: drenaggio,
+      segueBase: segueBase, segue: segueFinale, noTradeClash: noTradeClash, rafforzato: rafforzato, vuotoPareggio: vuotoPareggio, sopraffTrasf: sopraffTrasf, sopraffAttiva: sopraffAttiva, flussoVersoTi: flussoVersoTi, nayinSalva: nayinSalva, drenaggio: drenaggio,
       clash: clash,
       original:  { sup: supNum, inf: infNum },
       mutual:    { sup: nucSup, inf: nucInf },
