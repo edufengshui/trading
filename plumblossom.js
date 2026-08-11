@@ -411,6 +411,28 @@
       if (nsT >= 3) { drenaggio = true; if (segueFinale === true) segueFinale = false; }
     }
 
+    // RISCATTO DEL TRASFORMATO MORTO (Edu, 10/08/2026 — da USDJPY 31/07/2024):
+    // base "non segue" per 我生 (il Ti si scarica nel Yong), ma il ramo attivo del
+    // palazzo del Yong ORIGINALE — scelto dall'ORA per polarita', se l'ora non e'
+    // vuota — e' l'elemento prospero del mese E controlla il trasformato, e il Na Yin
+    // dell'esagramma iniziale rinfocola il Ti (stesso elemento): il trasformato nasce
+    // morto (schiacciato in stagione, non nutrito: 土多金埋), il Ti rinfocolato regge
+    // → il verdetto torna "segue".
+    var riscatto = false;
+    if (segueFinale === false && rel === '我生' && bz && clash && !clash.oraVuota) {
+      var palYr = HOUTIAN[yongOrigNum];
+      var ramoYr = palYr.length === 1 ? palYr[0]
+                 : palYr.filter(function (b2) { return isYang(b2) === isYang(clash.oraBranch); })[0];
+      if (ramoYr) {
+        var weR = WX[ramoYr];
+        var nayR = NAYIN_ESAGRAMMA[supNum + '-' + infNum] || null;
+        if (weR === WX[bz.monthBranch] && CTRL[weR] === yongTrasf.el && nayR === trend.el) {
+          riscatto = true;
+          segueFinale = true;
+        }
+      }
+    }
+
     // NO TRADE SUL CLASH GIORNO↔MESE (Edu, 10/08/2026): il clash e' effettivo solo col
     // perno sul giorno. Quando il ramo del giorno clasha il ramo del mese, la cornice
     // stagionale su cui poggiano tutte le letture di forza e' rotta: il sistema non ha
@@ -432,7 +454,7 @@
       superiore: supNum, inferiore: infNum, linea: linea,
       trend: trend, yongOriginale: yongOrig, yongTrasformato: yongTrasf,
       relazione: rel, relazioneTesto: relTesto, pareggio: pareggio,
-      segueBase: segueBase, segue: segueFinale, noTradeClash: noTradeClash, rafforzato: rafforzato, vuotoPareggio: vuotoPareggio, sopraffTrasf: sopraffTrasf, sopraffAttiva: sopraffAttiva, flussoVersoTi: flussoVersoTi, nayinSalva: nayinSalva, drenaggio: drenaggio,
+      segueBase: segueBase, segue: segueFinale, noTradeClash: noTradeClash, riscatto: riscatto, rafforzato: rafforzato, vuotoPareggio: vuotoPareggio, sopraffTrasf: sopraffTrasf, sopraffAttiva: sopraffAttiva, flussoVersoTi: flussoVersoTi, nayinSalva: nayinSalva, drenaggio: drenaggio,
       clash: clash,
       original:  { sup: supNum, inf: infNum },
       mutual:    { sup: nucSup, inf: nucInf },

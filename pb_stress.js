@@ -398,6 +398,10 @@ function leggi(seed, dayBranch, monthBranch, yearBranch, dayStem, emaRun){
   const palTrend = HOUTIAN[corpoNum] || [];
   let ramoTrend;
   if (palTrend.length === 1) ramoTrend = palTrend[0];
+  else if (process.env.VUOTOSEL === 'ora') {
+    const oraY2 = (B.indexOf(oraBranch) % 2) === 0;
+    ramoTrend = palTrend.find(b => ((B.indexOf(b) % 2) === 0) === oraY2);
+  }
   else { const lineaYang = (linea % 2 === 1); ramoTrend = palTrend.find(b => ((B.indexOf(b) % 2) === 0) === lineaYang); }
   const trendVuotoRaw = ramoTrend != null && vuoti.indexOf(ramoTrend) >= 0;
   // 旺不为空: un ramo prospero di stagione non è davvero vuoto
@@ -446,6 +450,36 @@ function leggi(seed, dayBranch, monthBranch, yearBranch, dayStem, emaRun){
   if (vuotoPareggio && finale === true) finale = false;
   if (sopraffAttiva && finale === true) finale = false;
   if (drenaggio && finale === true) finale = false;
+  // RISCATTO DEL TRASFORMATO MORTO (Edu, 10/08/2026, da USDJPY 31/07/2024):
+  // quando la base dice "non segue" ma il ramo attivo del palazzo del Yong ORIGINALE
+  // (scelto dall'ORA per polarita', se l'ora non e' vuota) e' dell'elemento prospero
+  // del mese E quell'elemento controlla il trasformato, il trasformato nasce morto
+  // (schiacciato in stagione, non nutrito) e non minaccia il Ti -> torna "segue".
+  //   RISCATTO=a  base 我生 + ramo=mese + ramo controlla il trasformato
+  //   RISCATTO=b  a + Na Yin dell'esagramma = elemento del Ti (Ti rinfocolato)
+  //   RISCATTO=c  come a ma senza vincolo del mese: ramo preponderante (>=2 nei rami)
+  //   RISCATTO=d  come a ma su qualsiasi base "non segue" (non solo 我生)
+  let riscatto = false;
+  if (process.env.RISCATTO && base === false && !oraVuota) {
+    const palOrig = HOUTIAN[usoNum];
+    const oraY = (B.indexOf(oraBranch) % 2) === 0;
+    const ramoOra = palOrig.length === 1 ? palOrig[0]
+                  : palOrig.filter(b2 => ((B.indexOf(b2) % 2) === 0) === oraY)[0];
+    if (ramoOra) {
+      const we = WX[ramoOra];
+      const controlla = CTRL[we] === trasf.el;
+      const prospero = we === monthEl;
+      const prepond = [yearBranch, monthBranch, dayBranch].filter(b2 => WX[b2] === we).length >= 2;
+      const nayOk = NAYIN_ESAGRAMMA[sup+'-'+inf] === corpo.el;
+      const RV = process.env.RISCATTO;
+      riscatto = RV === 'a' ? (via === '我生' && prospero && controlla)
+               : RV === 'b' ? (via === '我生' && prospero && controlla && nayOk)
+               : RV === 'c' ? (via === '我生' && prepond && controlla)
+               : RV === 'd' ? (prospero && controlla)
+               : false;
+    }
+  }
+  if (riscatto) finale = true;
   return { via, base, trendVuoto, vuotoPareggio, sopraffTrasf, drenaggio, finale, spazzato, rafforzato,
            corpo, uso, trasf, yong, sup, inf, linea, palazzo, palazzoYong, bloccato, autopen, ponteYong, scarico, ponteRel, ramiPonte, protetto, ramiProt, yongDebole, sostegni, dettForze, oraVuota, vuoti, att, dif, dettAtt, dettDif, dettPonte, dettVuoti, dettComb, eccitato, statoTrend, monthEl, oraBranch };
 }
