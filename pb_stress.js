@@ -480,8 +480,140 @@ function leggi(seed, dayBranch, monthBranch, yearBranch, dayStem, emaRun){
     }
   }
   if (riscatto) finale = true;
+  // ATTERRAGGIO NEL VUOTO (Edu, 11/08/2026, da Liu Yao su USDJPY 31/07/2024):
+  // via Na Jia, la linea mutante atterra su un ramo del trigramma TRASFORMATO; se quel
+  // ramo e' vuoto (旬空 del giorno) il trasformato nasce vuoto e non puo' agire.
+  // (旺不为空 NON si applica: la correzione vale solo per il vuoto del Trend.)
+  //   ATTVUOTO=a  il trasformato vuoto non sopraffa' (guardia sulla sopraffazione)
+  //   ATTVUOTO=b  base "non segue" + trasformato vuoto che controllava il Ti -> segue
+  //   ATTVUOTO=c  base "non segue" + trasformato vuoto (qualsiasi) -> segue
+  const NAJIA_IN  = {1:['子','寅','辰'],2:['巳','卯','丑'],3:['卯','丑','亥'],4:['子','寅','辰'],
+                     5:['丑','亥','酉'],6:['寅','辰','午'],7:['辰','午','申'],8:['未','巳','卯']};
+  const NAJIA_OUT = {1:['午','申','戌'],2:['亥','酉','未'],3:['酉','未','巳'],4:['午','申','戌'],
+                     5:['未','巳','卯'],6:['申','戌','子'],7:['戌','子','寅'],8:['丑','亥','酉']};
+  let attVuoto = false;
+  if (process.env.ATTVUOTO) {
+    const interno = linea <= 3;
+    const posL = interno ? linea : linea - 3;
+    const ramoAtt = (interno ? NAJIA_IN : NAJIA_OUT)[usoTrasf][posL - 1];
+    attVuoto = vuoti.indexOf(ramoAtt) >= 0;
+  }
+  if (attVuoto) {
+    const AV = process.env.ATTVUOTO;
+    if (AV === 'a' && sopraffAttiva && base === true) finale = true;
+    if (AV === 'b' && base === false && CTRL[trasf.el] === corpo.el) finale = true;
+    if (AV === 'c' && base === false) finale = true;
+  }
+  // LIUTAG: calcola i dati Liu Yao (palazzo, Shi/Ying, parenti) senza toccare il verdetto
+  let liu = null;
+  if (process.env.LIUTAG || process.env.LIUYAO) {
+    const yangLine2 = (n,p) => ((((n-1) >> (3-p)) & 1) === 0);
+    const bitsOf2 = (i8,s8) => { let s=''; for(let p=1;p<=3;p++) s+=(yangLine2(i8,p)?'1':'0');
+                                for(let p=1;p<=3;p++) s+=(yangLine2(s8,p)?'1':'0'); return s; };
+    if (!global.__PAL2) {
+      global.__PAL2 = {};
+      for (let P=1;P<=8;P++){
+        const pure = bitsOf2(P,P).split('');
+        const seq = [ {fl:[],shi:6},{fl:[1],shi:1},{fl:[1,2],shi:2},{fl:[1,2,3],shi:3},
+                      {fl:[1,2,3,4],shi:4},{fl:[1,2,3,4,5],shi:5},{fl:[1,2,3,5],shi:4},{fl:[5],shi:3} ];
+        for (const g of seq){
+          const b2 = pure.slice(); g.fl.forEach(L => b2[L-1] = b2[L-1]==='1'?'0':'1');
+          global.__PAL2[b2.join('')] = { shi: g.shi, ying: g.shi>3 ? g.shi-3 : g.shi+3, pal: P };
+        }
+      }
+    }
+    const pal2 = global.__PAL2[bitsOf2(inf, sup)];
+    const ramoAl2 = p => p<=3 ? NAJIA_IN[inf][p-1] : NAJIA_OUT[sup][p-4];
+    // linea mobile: partenza (originale) e arrivo (trasformato), semantica di Edu 11/08/2026:
+    //  1. arrivo genera partenza (回頭生)  -> agisce la PARTENZA rafforzata
+    //  2. partenza genera arrivo           -> agisce L'ARRIVO
+    //  3. arrivo controlla partenza (回頭剋)-> linea spezzata, effetto NULLO
+    //  4. partenza controlla arrivo        -> agisce L'ARRIVO
+    //  5. stesso elemento                  -> come 1 (partenza rafforzata)
+    const ramoDep = ramoAl2(linea);
+    const ramoArr = linea<=3 ? NAJIA_IN[usoTrasf][linea-1] : NAJIA_OUT[usoTrasf][linea-4];
+    const depEl = WX[ramoDep], arrEl = WX[ramoArr];
+    let effEl, casoMut;
+    if (GEN[arrEl] === depEl)      { effEl = depEl; casoMut = 1; }
+    else if (GEN[depEl] === arrEl) { effEl = arrEl; casoMut = 2; }
+    else if (CTRL[arrEl] === depEl){ effEl = null;  casoMut = 3; }
+    else if (CTRL[depEl] === arrEl){ effEl = arrEl; casoMut = 4; }
+    else                           { effEl = depEl; casoMut = 5; }
+    // vuoti sulla mutante (Edu, 11/08/2026): la linea che si muove non e' mai vuota
+    // (動不為空, nessuna correzione); se invece L'ARRIVO e' vuoto, il movimento e' NULLO.
+    if (vuoti.indexOf(ramoArr) >= 0) { effEl = null; casoMut = 0; }
+    // sospensione dal giorno (Edu, 11/08/2026): se il ramo del giorno COMBINA (六合) o
+    // CLASHA (六冲) con la partenza o con l'arrivo, la linea non produce risultato ora
+    // (lo produrra' quando combinazione/clash si scioglie — fuori dal nostro orizzonte).
+    if (COMBINA[dayBranch] === ramoDep || COMBINA[dayBranch] === ramoArr ||
+        CLASH[dayBranch] === ramoDep || CLASH[dayBranch] === ramoArr) { effEl = null; casoMut = -1; }
+    const shiB = ramoAl2(pal2.shi), yingB = ramoAl2(pal2.ying);
+    let shiElE = WX[shiB], yingElE = WX[yingB], shiValido = true, yingValido = true;
+    // 1. (Edu, 11/08/2026) l'ARRIVO della mutante COMBINA (六合) con Shi o Ying:
+    //    quello riceve la partenza della linea e "diventa" quella linea
+    if (COMBINA[ramoArr] === shiB)  shiElE = depEl;
+    if (COMBINA[ramoArr] === yingB) yingElE = depEl;
+    // 2. l'ARRIVO CLASHA (六冲) Shi o Ying: quello e' invalidato
+    if (CLASH[ramoArr] === shiB)  shiValido = false;
+    if (CLASH[ramoArr] === yingB) yingValido = false;
+    // 3. forza delle linee: stagione del mese, MA il ramo del giorno resta forte e
+    //    influenza anch'esso — una linea e' forte se 旺/相 nel mese O sostenuta dal giorno
+    const fortLinea = e => { const st = stagione(e, monthEl);
+      if (st === '旺' || st === '相') return true;
+      const de = WX[dayBranch];
+      return de === e || GEN[de] === e; };
+    liu = { shi: pal2.shi, ying: pal2.ying,
+            palEl: TRIGRAM[pal2.pal].el,
+            shiEl: WX[ramoAl2(pal2.shi)], yingEl: WX[ramoAl2(pal2.ying)], mutEl: WX[ramoAl2(linea)],
+            depEl, arrEl, effEl, casoMut,
+            shiB, yingB, shiElE, yingElE, shiValido, yingValido,
+            shiForte: fortLinea(shiElE), yingForte: fortLinea(yingElE) };
+  }
+  // ================= LIU YAO AUTONOMO (Edu, 11/08/2026) =================
+  // Shi (世) = il Trend/Soggetto. Ying (應) e la linea mutante confermano o no.
+  // Palazzi di Jing Fang generati dalla sequenza canonica (puro s6, 1a-5a gen s1-s5,
+  // 游魂 s4, 歸魂 s3), rami via Na Jia. Verificato su Jin=游魂 di Qian, Shi 4a.
+  //   LIUYAO=v1  verdetto dalla sola relazione Ying->Shi (mappa PB); 比和 = NO TRADE
+  //   LIUYAO=v2  verdetto dalla sola linea mutante->Shi; 比和 = NO TRADE
+  //   LIUYAO=v3  base da Ying; la mutante che controlla Shi ribalta segue->non segue
+  //   LIUYAO=v4  base da Ying; la mutante DEVE confermare (stessa direzione), se no NO TRADE
+  if (process.env.LIUYAO) {
+    const yangLine = (n,p) => ((((n-1) >> (3-p)) & 1) === 0);
+    const bitsOf = (i8,s8) => { let s=''; for(let p=1;p<=3;p++) s+=(yangLine(i8,p)?'1':'0');
+                               for(let p=1;p<=3;p++) s+=(yangLine(s8,p)?'1':'0'); return s; };
+    if (!global.__PAL) {
+      global.__PAL = {};
+      const numFromBits = tb => { for(let n=1;n<=8;n++){ let ok=true;
+          for(let p=1;p<=3;p++) if ((yangLine(n,p)?'1':'0')!==tb[p-1]) ok=false; if(ok) return n; } };
+      for (let P=1;P<=8;P++){
+        const pure = bitsOf(P,P).split('');
+        const seq = [];
+        seq.push({fl:[],shi:6}); seq.push({fl:[1],shi:1}); seq.push({fl:[1,2],shi:2});
+        seq.push({fl:[1,2,3],shi:3}); seq.push({fl:[1,2,3,4],shi:4}); seq.push({fl:[1,2,3,4,5],shi:5});
+        seq.push({fl:[1,2,3,5],shi:4}); seq.push({fl:[5],shi:3});
+        for (const g of seq){
+          const b = pure.slice(); g.fl.forEach(L => b[L-1] = b[L-1]==='1'?'0':'1');
+          global.__PAL[b.join('')] = { shi: g.shi, ying: g.shi>3 ? g.shi-3 : g.shi+3 };
+        }
+      }
+    }
+    const key = bitsOf(inf, sup);
+    const pal = global.__PAL[key];
+    const ramoAl = p => p<=3 ? NAJIA_IN[inf][p-1] : NAJIA_OUT[sup][p-4];
+    const shiEl = WX[ramoAl(pal.shi)], yingEl = WX[ramoAl(pal.ying)], mutEl = WX[ramoAl(linea)];
+    const verd = (ti, yo) => yo===ti ? null
+      : GEN[yo]===ti ? true : CTRL[ti]===yo ? true
+      : GEN[ti]===yo ? false : false;
+    const LV = process.env.LIUYAO;
+    let v = null;
+    if (LV==='v1') v = verd(shiEl, yingEl);
+    else if (LV==='v2') v = verd(shiEl, mutEl);
+    else if (LV==='v3') { v = verd(shiEl, yingEl); if (v===true && CTRL[mutEl]===shiEl) v = false; }
+    else if (LV==='v4') { const a2=verd(shiEl,yingEl), b2=verd(shiEl,mutEl); v = (a2!==null && a2===b2) ? a2 : null; }
+    base = v; finale = v;
+  }
   return { via, base, trendVuoto, vuotoPareggio, sopraffTrasf, drenaggio, finale, spazzato, rafforzato,
-           corpo, uso, trasf, yong, sup, inf, linea, palazzo, palazzoYong, bloccato, autopen, ponteYong, scarico, ponteRel, ramiPonte, protetto, ramiProt, yongDebole, sostegni, dettForze, oraVuota, vuoti, att, dif, dettAtt, dettDif, dettPonte, dettVuoti, dettComb, eccitato, statoTrend, monthEl, oraBranch };
+           corpo, uso, trasf, yong, sup, inf, linea, liu, palazzo, palazzoYong, bloccato, autopen, ponteYong, scarico, ponteRel, ramiPonte, protetto, ramiProt, yongDebole, sostegni, dettForze, oraVuota, vuoti, att, dif, dettAtt, dettDif, dettPonte, dettVuoti, dettComb, eccitato, statoTrend, monthEl, oraBranch };
 }
 
 const hist = JSON.parse(fs.readFileSync('full1h.json','utf8'));
@@ -530,6 +662,7 @@ if (process.env.CARTA) {
 const FROM = process.env.FROM || '2020-01-01', TO = process.env.TO || '2026-12-31';
 const rows = [];
 const skipInfo = { n:0, w:0, l:0, pnl:0 };
+const vetoInfo = { n:0, w:0, l:0, pnl:0 };
 // EMA a periodo variabile per lo sweep (EMAPER). Finestra e cambi scalati col periodo.
 function emaTrendVar(closes, period){
   if(!closes || closes.length < period) return { direction:null, consolidated:false };
@@ -595,7 +728,33 @@ Object.keys(hist.crosses).forEach(cross => {
       }
     }
     if (r.base === null) continue;   // 比和 = NO TRADE
+    // VETO ANTI-LONG DAL LIU YAO (Edu, 11/08/2026 — primo abbinamento PB+LY):
+    // il PB decide come sempre; se il segnale risultante e' LONG e il Liu Yao mostra
+    // un Brother sostenuto al Soggetto (Shi=Brother valido, Ying valido e FORTE che
+    // lo genera), si sta fuori.
+    //   LYVETO=up   veto solo sui LONG da trend su (segue col trend in salita) — la cella validata
+    //   LYVETO=all  veto su tutti i segnali LONG (anche i contrarian da trend giu)
+    //   LYVETO=mut  come up, ma serve anche la mutante favorevole (cella stretta)
+    if (process.env.LYVETO && r.liu) {
+      const L = r.liu;
+      const broSost = L.shiValido && L.yingValido && L.shiElE === L.palEl &&
+                      GEN[L.yingElE] === L.shiElE && L.yingForte;
+      const favMut = L.effEl != null && (GEN[L.effEl] === L.shiElE || L.effEl === L.shiElE);
+      const sig = ema.direction==='up' ? (r.finale?'LONG':'SHORT') : (r.finale?'SHORT':'LONG');
+      const M = process.env.LYVETO;
+      const veto = broSost && sig === 'LONG' && (
+          M === 'up'  ? ema.direction === 'up'
+        : M === 'all' ? true
+        : M === 'mut' ? (ema.direction === 'up' && favMut)
+        : false);
+      if (veto) {
+        const pnlV = move;   // LONG evitato: pnl che avremmo avuto
+        vetoInfo.n++; vetoInfo.pnl += pnlV; if (pnlV>0) vetoInfo.w++; else if (pnlV<0) vetoInfo.l++;
+        continue;
+      }
+    }
     rows.push({cross,date:d,move,emaDir:ema.direction,via:r.via,linea:r.linea,sup:r.sup,inf:r.inf,
+               liu:r.liu,
                yearBranchUsed:yb, dayStemUsed:ch.dayStem,
                base:r.base, finale:r.finale, emaRun:runLen, trendVuoto:r.trendVuoto, oraBranch:r.oraBranch, vuoti:r.vuoti, dayBranchUsed:ch.dayBranch, monthBranchUsed:ch.monthBranch, spazzato:r.spazzato, bloccato:r.bloccato, autopen:r.autopen, ponteYong:r.ponteYong, scarico:r.scarico, ponteRel:r.ponteRel, protetto:r.protetto, yongDebole:r.yongDebole,
                pnlBase: (ema.direction==='up'?(r.base?'LONG':'SHORT'):(r.base?'SHORT':'LONG'))==='LONG'?move:-move,
@@ -679,6 +838,60 @@ if (process.env.CLASHREPORT) {
     console.log(nome.padEnd(22)+String(sel.length).padStart(6)+'  '+(100*s.act).toFixed(2)+'%  '+s.z.toFixed(2).padStart(6)+'  '+s.pips.toFixed(0).padStart(7)+'  '+(s.pips/sel.length).toFixed(2).padStart(7));
   }
 }
+if (process.env.LIUREP) {
+  // TEST (Edu, 11/08/2026): Shi = Brother (ramo dello Shi = elemento del palazzo),
+  // EMA giu', Ying genera lo Shi. Quanto rende SEGUIRE il trend (SHORT) in quei giorni?
+  // LFROM/LTO: restringono il periodo del referto (spacco recente/vecchio).
+  const inPer = r => (!process.env.LFROM || r.date >= process.env.LFROM) && (!process.env.LTO || r.date <= process.env.LTO);
+  const seg = sel => {
+    const n = sel.length; if (!n) return null;
+    const w = sel.filter(r => r.move < 0).length;   // EMA giu': seguire = SHORT, vince se il mercato scende
+    const pip = sel.reduce((a,r)=>a + (-r.move), 0);
+    const z = (w/n - 0.5) / Math.sqrt(0.25/n);
+    return { n, w, pct: 100*w/n, z, pip };
+  };
+  const broDown = rows.filter(r => inPer(r) && r.liu && r.emaDir==='down' && r.liu.shiValido && r.liu.yingValido
+    && r.liu.shiElE===r.liu.palEl && GEN[r.liu.yingElE]===r.liu.shiElE && r.liu.yingForte);
+  const broUp   = rows.filter(r => inPer(r) && r.liu && r.emaDir==='up' && r.liu.shiValido && r.liu.yingValido
+    && r.liu.shiElE===r.liu.palEl && GEN[r.liu.yingElE]===r.liu.shiElE && r.liu.yingForte);
+  // raffinamento con la semantica COMPLETA della mutante (Edu, 11/08/2026):
+  // l'elemento efficace effEl (partenza rafforzata nei casi 1/5, arrivo nei casi 2/4,
+  // nullo nel caso 3) favorisce lo Shi se lo genera o e' suo fratello
+  const favor = r => r.liu.effEl != null && (GEN[r.liu.effEl]===r.liu.shiElE || r.liu.effEl===r.liu.shiElE);
+  const broDownMut = broDown.filter(favor);
+  const broUpMut   = broUp.filter(favor);
+  const broDownAll = rows.filter(r => inPer(r) && r.liu && r.emaDir==='down' && r.liu.shiEl===r.liu.palEl);
+  const allDown = rows.filter(r => inPer(r) && r.liu && r.emaDir==='down');
+  const stampa = (nome, s) => console.log(nome.padEnd(46) + (s ? ('n '+String(s.n).padStart(5)+'   segue vince '+s.pct.toFixed(2)+'%   z '+s.z.toFixed(2)+'   pip(SHORT) '+s.pip.toFixed(0)) : 'nessuna'));
+  console.log('\n=== LIU YAO: Shi=Brother · EMA giu · Ying genera Shi (quanto rende SEGUIRE) ===');
+  stampa('B + trend giu + Ying genera Shi:', seg(broDown));
+  stampa('  ... e ANCHE la mutante favorisce B:', seg(broDownMut));
+  stampa('B + trend giu (tutti):', seg(broDownAll));
+  stampa('tutti i trend giu (riferimento):', seg(allDown));
+  const segUp = sel => { const n=sel.length; if(!n) return null;
+    const w = sel.filter(r=>r.move>0).length; const pip = sel.reduce((a,r)=>a+r.move,0);
+    return { n, w, pct:100*w/n, z:(w/n-0.5)/Math.sqrt(0.25/n), pip }; };
+  const su = segUp(broUp);
+  console.log('confronto speculare — B + trend SU + Ying genera Shi:' + (su ? ('  n '+su.n+'   segue vince '+su.pct.toFixed(2)+'%   z '+su.z.toFixed(2)+'   pip(LONG) '+su.pip.toFixed(0)) : ' nessuna'));
+  const suM = segUp(broUpMut);
+  console.log('  ... e ANCHE la mutante favorisce B:' + (suM ? ('           n '+suM.n+'   segue vince '+suM.pct.toFixed(2)+'%   z '+suM.z.toFixed(2)+'   pip(LONG) '+suM.pip.toFixed(0)) : ' nessuna'));
+}
+if (process.env.LYSPACCATO) {
+  // nei giorni Brother-sostenuto + trend su: cosa fa gia' il PB da solo?
+  const inPer2 = r => (!process.env.LFROM || r.date >= process.env.LFROM) && (!process.env.LTO || r.date <= process.env.LTO);
+  const cel = rows.filter(r => { const L=r.liu; return inPer2(r) && L && r.emaDir==='up' && L.shiValido && L.yingValido &&
+    L.shiElE===L.palEl && GEN[L.yingElE]===L.shiElE && L.yingForte; });
+  const seg = cel.filter(r=>r.finale===true), non = cel.filter(r=>r.finale===false);
+  const rid = (nome, s2) => { const w=s2.filter(r=>r.pnl>0).length, l2=s2.filter(r=>r.pnl<0).length;
+    console.log(nome.padEnd(34)+'n '+String(s2.length).padStart(4)+'   vinte '+w+' / perse '+l2+
+      (s2.length?('   win '+(100*w/Math.max(1,w+l2)).toFixed(1)+'%   pip '+s2.reduce((a,r)=>a+r.pnl,0).toFixed(0)):''));
+  };
+  console.log('\n=== giorni Brother-sostenuto + trend SU: il PB da solo ===');
+  rid('PB dice SEGUE (LONG):', seg);
+  rid('PB dice NON SEGUE (SHORT):', non);
+  const mercatoGiu = cel.filter(r=>r.move<0).length;
+  console.log('mercato sceso in '+mercatoGiu+'/'+cel.length+' giorni ('+(100*mercatoGiu/Math.max(1,cel.length)).toFixed(1)+'%)');
+}
 if (process.env.DUMP) {
   require('fs').writeFileSync(process.env.DUMP, JSON.stringify(rows.map(r=>({c:r.cross,d:r.date,move:r.move,emaDir:r.emaDir,via:r.via,linea:r.linea,sup:r.sup,inf:r.inf,base:r.base,finale:r.finale,emaRun:r.emaRun,trendVuoto:r.trendVuoto,via:r.via,oraBranch:r.oraBranch,vuoti:r.vuoti,dayBranch:r.dayBranchUsed,monthBranch:r.monthBranchUsed,ponteRel:r.ponteRel,ponteYong:r.ponteYong,scarico:r.scarico,protetto:r.protetto,yongDebole:r.yongDebole,p:r.pnl,b:r.pnlBase}))));
 }
@@ -718,6 +931,7 @@ if (process.env.PERSE) {
 
 if (process.env.PEGGIORI) {
 if (skipInfo.n) console.log('\ncarte SALTATE per clash: '+skipInfo.n+'   (avrebbero dato: '+skipInfo.w+' giuste / '+skipInfo.l+' sbagliate · '+skipInfo.pnl.toFixed(0)+' pip)');
+if (vetoInfo.n) console.log('\nLONG VETATI dal Liu Yao: '+vetoInfo.n+'   (avrebbero dato: '+vetoInfo.w+' vinti / '+vetoInfo.l+' persi · '+vetoInfo.pnl.toFixed(0)+' pip evitati se negativi)');
   console.log('\npeggiori 12 carte con la regola attiva');
   rows.slice().sort((a,b)=>a.pnl-b.pnl).slice(0,12).forEach(r=>
     console.log('  '+r.date+' '+r.cross+'  '+r.via+'  '+r.pnl.toFixed(0)+' pip'+(r.spazzato?'  (spazzato)':'')));

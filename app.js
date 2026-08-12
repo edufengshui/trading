@@ -288,14 +288,16 @@ function seasonElementFor(y, mo, dd) {
 }
 
 function renderTrendPB(cross, chart, dArr, row, p) {
-  if (!window.XKDGPlumBlossom || !row || row.seed == null || !chart.dayBranch) { p.style.display = 'none'; return; }
+  var lyp = $('lypanel');
+  if (!window.XKDGPlumBlossom || !row || row.seed == null || !chart.dayBranch) {
+    p.style.display = 'none'; if (lyp) lyp.style.display = 'none'; return; }
   var pb = pbManual
     ? window.XKDGPlumBlossom.readManual(pbManual.sup, pbManual.inf, pbManual.linea)
     : window.XKDGPlumBlossom.read(row.seed, chart.dayBranch, chart.monthBranch,
         (chart.source && chart.source.yearPillar) ? chart.source.yearPillar.charAt(1) : null,
         chart.dayStem || null,
         (row && row.emaRun != null) ? row.emaRun : null);
-  if (pb.error) { p.style.display = 'none'; return; }
+  if (pb.error) { p.style.display = 'none'; if (lyp) lyp.style.display = 'none'; return; }
 
   // same downstream logic as the DLR panel: EMA direction + guards decide the final signal
   var dir = row && row.direction ? row.direction : null;         // 'up' | 'down' | 'flat' | null
@@ -376,6 +378,9 @@ function renderTrendPB(cross, chart, dArr, row, p) {
   p.innerHTML = head + seedLine + emaLine + hexBlock + roles + manualRow;
   p.style.display = 'block';
 
+  // Liu Yao: lettura completa sotto il Plum Blossom (correttivo, stessa carta)
+  renderLiuYao(cross, chart, row, lyp);
+
   // wire the manual controls (re-render on change)
   function onManualChange(){
     pbManual = {
@@ -394,12 +399,100 @@ function renderTrendPB(cross, chart, dArr, row, p) {
   });
 }
 
+// ---- Liu Yao (六爻): lettura completa, sotto il Plum Blossom, sulla stessa carta ----
+function renderLiuYao(cross, chart, row, lyp) {
+  if (!lyp) lyp = $('lypanel');
+  if (!lyp) return;
+  if (!window.XKDGLiuYao || !row || row.seed == null || !chart.dayBranch) { lyp.style.display = 'none'; return; }
+
+  var yearBranch = (chart.source && chart.source.yearPillar) ? chart.source.yearPillar.charAt(1) : null;
+  var ly = pbManual
+    ? window.XKDGLiuYao.readManual(pbManual.sup, pbManual.inf, pbManual.linea,
+        chart.dayBranch, chart.monthBranch, yearBranch, chart.dayStem || null)
+    : window.XKDGLiuYao.read(row.seed, chart.dayBranch, chart.monthBranch, yearBranch, chart.dayStem || null);
+  if (ly.error) { lyp.style.display = 'none'; return; }
+
+  var BEAST_COLOR = { '青龍':'#3fb950', '朱雀':'#f85149', '勾陳':'#d4a72c',
+                      '螣蛇':'#a371f7', '白虎':'#8b949e', '玄武':'#58a6ff' };
+  function lineGlyph(yang) {
+    return yang
+      ? '<span style="display:inline-block;width:52px;border-top:9px solid currentColor;vertical-align:middle"></span>'
+      : '<span style="display:inline-block;width:22px;border-top:9px solid currentColor;vertical-align:middle"></span>' +
+        '<span style="display:inline-block;width:8px"></span>' +
+        '<span style="display:inline-block;width:22px;border-top:9px solid currentColor;vertical-align:middle"></span>';
+  }
+
+  var head = '<div class="trendhead"><span>' + cross + ' — 六爻 Liu Yao</span>' +
+    '<span class="tv">correttivo del Plum Blossom</span></div>';
+
+  var palLine = '<div class="trendmsgs">Palazzo 京房 (Jing Fang): <b>' + ly.palName + ' ' + ly.palPinyin +
+    '</b> (' + ly.palElIt + ') · Soggetto 世 L' + ly.shi + ' · Ospite 應 L' + ly.ying +
+    ' · vuoti 旬空: <b>' + (ly.vuoti.length ? ly.vuoti.join(' ') : '—') + '</b>' +
+    ' · Tai Sui 太歲: ' + (ly.taiSuiPos ? 'L' + ly.taiSuiPos : 'nessuna linea') + '</div>';
+
+  var m = ly.mutante;
+  var mutLine = '<div class="trendmsgs">Mutante L' + m.pos + ': <b>' + m.ramoDep + '</b> (' + m.depElIt +
+    ') → <b>' + m.ramoArr + '</b> (' + m.arrElIt + ') — ' + m.casoLabel +
+    (m.movimentoNullo ? ' · <b class="down">movimento NULLO</b>' : '') +
+    (m.atterraggio ? ' · atterra su L' + m.atterraggio.pos + ' (' + m.atterraggio.ramo + ') → ' + m.atterraggio.dir : '') +
+    '</div>';
+
+  // griglia delle sei linee, L6 (alto) → L1 (basso)
+  var rows = '';
+  for (var i = 6; i >= 1; i--) {
+    var l = ly.linee[i-1];
+    var beast = l.bestia
+      ? '<span style="color:' + (BEAST_COLOR[l.bestia.cn] || 'currentColor') + '">' + l.bestia.cn + '</span>' +
+        '<br><small style="opacity:.7">' + l.bestia.it + '</small>'
+      : '—';
+    var fu = l.fushen
+      ? '<small style="opacity:.85">伏 ' + l.fushen.parCn + ' ' + l.fushen.b + '</small>'
+      : '';
+    var orig = '<b>' + l.parCn + '</b> ' + l.ramo + ' <small style="opacity:.75">' + l.elIt + '</small>';
+    var marks = '';
+    if (l.isShi)  marks += '<b style="color:var(--gold,#e3b341)"> 世</b>';
+    if (l.isYing) marks += '<b style="color:var(--azure,#58a6ff)"> 應</b>';
+    if (l.isMobile) marks += '<b class="down"> ✸</b>';
+    if (l.vuoto)  marks += ' <small style="color:var(--void,#8b949e)">空</small>';
+    if (l.isTaiSui) marks += ' <small style="opacity:.8">太</small>';
+    marks += ' <small style="opacity:.6">[' + l.stato + ']</small>';
+    var trasf = (l.isMobile && l.mut)
+      ? '→ <b>' + window.XKDGLiuYao.PAR[l.mut.parArr].cn + '</b> ' + l.mut.ramoArr +
+        ' <small style="opacity:.75">' + window.XKDGLiuYao.EL_IT[l.mut.elArr] + '</small>'
+      : '';
+    var rowStyle = l.isMobile ? ' style="background:rgba(227,179,65,.08)"' : '';
+    rows += '<tr' + rowStyle + '>' +
+      '<td style="padding:5px 8px;text-align:center;white-space:nowrap">' + beast + '</td>' +
+      '<td style="padding:5px 8px;white-space:nowrap">' + fu + '</td>' +
+      '<td style="padding:5px 8px;white-space:nowrap">' + orig + '</td>' +
+      '<td style="padding:5px 10px;text-align:center">' + lineGlyph(l.yang) + '</td>' +
+      '<td style="padding:5px 8px;white-space:nowrap">' + marks + '</td>' +
+      '<td style="padding:5px 8px;white-space:nowrap">' + trasf + '</td>' +
+      '</tr>';
+  }
+  var table = '<table class="lytable" style="border-collapse:collapse;margin-top:8px;font-size:14px">' +
+    '<thead><tr style="opacity:.6;font-size:12px;text-align:left">' +
+    '<th style="padding:2px 8px">六獸 Bestie</th>' +
+    '<th style="padding:2px 8px">伏神 Nascosti</th>' +
+    '<th style="padding:2px 8px">本卦 Originale</th>' +
+    '<th style="padding:2px 10px;text-align:center">爻 Linea</th>' +
+    '<th style="padding:2px 8px">世/應 · stato</th>' +
+    '<th style="padding:2px 8px">變卦 Mutato</th>' +
+    '</tr></thead><tbody>' + rows + '</tbody></table>';
+
+  lyp.innerHTML = head + palLine + mutLine + table;
+  lyp.style.display = 'block';
+}
+
 function renderTrend(cross, chart, dArr, row) {
   lastTrendArgs = { cross: cross, chart: chart, dArr: dArr, row: row };
   var p = $('trendpanel');
 
   // ---- Plum Blossom branch: same seed, same EMA, same filters; only the verdict differs ----
   if (METHOD === 'pb') { renderTrendPB(cross, chart, dArr, row, p); return; }
+
+  // Da Liu Ren: il pannello Liu Yao (correttivo del PB) resta nascosto
+  var lyp = $('lypanel'); if (lyp) lyp.style.display = 'none';
 
   if (!window.XKDGTrend || !chart.transmission || !chart.transmission.three) { p.style.display = 'none'; return; }
   var t3 = chart.transmission.three;
