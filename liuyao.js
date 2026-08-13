@@ -136,6 +136,7 @@
     var monthBranch = ctx.monthBranch || null;
     var yearBranch  = ctx.yearBranch || null;
     var dayStem     = ctx.dayStem || null;
+    var oraBranch   = ctx.oraBranch || null;
     var monthEl = monthBranch ? WX[monthBranch] : null;
     var vuoti   = (dayStem && dayBranch) ? vuotiDi(dayStem, dayBranch) : [];
 
@@ -169,10 +170,30 @@
     var casoMut, effEl;
     if (GEN[arrEl] === depEl)       { effEl = depEl; casoMut = 1; }   // 回頭生
     else if (GEN[depEl] === arrEl)  { effEl = arrEl; casoMut = 2; }   // 泄 (partenza genera arrivo)
-    else if (CTRL[arrEl] === depEl) { effEl = null;  casoMut = 3; }   // 回頭剋
+    else if (CTRL[arrEl] === depEl) {
+      // 回頭剋 (corretto 13/08/2026, da GBPUSD 03/10/2022): l'arrivo CONTROLLA la partenza
+      // e la abbatte — ma l'arrivo stesso e' vivo e AGISCE sulle altre linee. Non e'
+      // un movimento inerte: muore la partenza, non il trasformato.
+      effEl = (process.env && process.env.RITORNO === 'nullo') ? null : arrEl; casoMut = 3; }
     else if (CTRL[depEl] === arrEl) { effEl = arrEl; casoMut = 4; }   // partenza controlla arrivo
-    else                            { effEl = depEl; casoMut = 5; }   // 比和
+    else {
+      // 比和 stesso elemento: distingue 進神 (avanzante) e 退神 (retrocedente).
+      // Coppie classiche in successione oraria: 寅→卯 巳→午 申→酉 亥→子 · Terra 丑→辰→未→戌
+      effEl = depEl; casoMut = 5;
+    }
 
+    // 進神 / 退神 (Edu, 13/08/2026, da EURGBP 18/03/2020) — dottrina classica.
+    // Quando una linea si muove in un'altra dello STESSO elemento: avanza se i due rami
+    // sono in successione oraria, retrocede se in successione antioraria.
+    var AVANZA = { '寅':'卯', '巳':'午', '申':'酉', '亥':'子',
+                   '丑':'辰', '辰':'未', '未':'戌' };
+    var RETRO  = { '卯':'寅', '午':'巳', '酉':'申', '子':'亥',
+                   '戌':'未', '未':'辰', '辰':'丑' };
+    var progressione = null;
+    if (depEl === arrEl) {
+      if (AVANZA[ramoDep] === ramoArr) progressione = 'avanzante';       // 進神
+      else if (RETRO[ramoDep] === ramoArr) progressione = 'retrocedente'; // 退神
+    }
     var motivoNullo = null;
     // arrivo vuoto (旬空): movimento nullo (la mobile non e' mai vuota di suo, 動不為空)
     if (vuoti.indexOf(ramoArr) >= 0) { effEl = null; casoMut = 0;
@@ -197,6 +218,12 @@
     if (fuMob && COMBINA[ramoDep] === fuMob.b && (!dayBranch || CLASH[dayBranch] !== fuMob.b)) {
       effEl = null; casoMut = -2;
       motivoNullo = 'legata dal proprio nascosto 伏神 (' + fuMob.b + ')'; }
+    // AUTOCOMBINAZIONE 自合 (Edu, 13/08/2026, da USDCAD 18/03/2020)
+    // Se la PARTENZA della mobile combina (六合) il proprio ARRIVO, la linea si lega
+    // a se stessa: e' bloccata, non e' piu' "in movimento" e non regge la lettura.
+    var autoComb = (COMBINA[ramoDep] === ramoArr);
+    if (autoComb) { effEl = null; casoMut = -4;
+      motivoNullo = 'autocombinazione 自合 (' + ramoDep + '合' + ramoArr + ')'; }
     var movimentoNullo = (effEl === null);
 
     // viaggio/atterraggio della mobile: se l'arrivo COMBINA con un ramo presente, atterra
@@ -205,6 +232,40 @@
       var coinc = COMBINA[ramoArr];
       for (var a = 1; a <= 6; a++){ if (ramoAl(a) === coinc){
         atterraggio = { pos: a, ramo: coinc, dir: a <= 3 ? 'SHORT' : 'LONG' }; break; } }
+    }
+
+    // ---- SCALA MOBILE (Edu, 13/08/2026, da EURJPY 11/12/2023 / 噬嗑→无妄) ----
+    // L'esagramma trasformato e' UNICO (nasce dalla mutante ufficiale). Una linea piena
+    // clashata dal giorno si muove in 暗動: si SPOSTA dal primo al secondo esagramma senza
+    // mutare -- il suo arrivo e' il ramo alla SUA posizione nell'esagramma trasformato.
+    // Quell'arrivo agisce: puo' combinare, clashare o generare altre linee.
+    // Il trigramma trasformato del lato della mutante e' trigTrasf; l'altro lato resta uguale.
+    var ramoTrasfA = function (p) {
+      if (linea <= 3) {   // muta il trigramma inferiore
+        return p <= 3 ? NAJIA_IN[trigTrasf][p-1] : NAJIA_OUT[supNum][p-4];
+      } else {            // muta il trigramma superiore
+        return p <= 3 ? NAJIA_IN[infNum][p-1] : NAJIA_OUT[trigTrasf][p-4];
+      }
+    };
+    // linee in 暗動: piene, non vuote, clashate effettivamente (regola 1: giorno sempre,
+    // anno se 旺/相, mese solo potenzia) -- il loro arrivo nell'esagramma trasformato
+    var anDong = {};   // pos -> { arr }
+    for (var ad = 1; ad <= 6; ad++) {
+      if (ad === linea) continue;
+      var brA = ramoAl(ad);
+      if (vuoti.indexOf(brA) >= 0) continue;
+      if (!clashSu(brA).eff) continue;
+      anDong[ad] = { arr: ramoTrasfA(ad) };
+    }
+    // ATTERRAGGIO SU LINEA IN MOVIMENTO (Edu, 13/08/2026): se l'arrivo di una linea in
+    // 暗動 COMBINA la partenza di una linea che GIA' si muove (la mutante), il bloccaggio
+    // NON avviene: la combinazione la SALDA al movimento e la linea mossa VINCE.
+    var scalaMobile = null;
+    for (var sm in anDong) {
+      if (COMBINA[anDong[sm].arr] === ramoDep) {
+        scalaMobile = { da: parseInt(sm,10), arrDa: anDong[sm].arr, su: linea };
+        break;
+      }
     }
 
     // ---- Shi/Ying: validita' e trasformazione dall'arrivo della mutante ----
@@ -216,16 +277,49 @@
     if (CLASH[ramoArr] === yingB) yingValido = false;
 
     // stato di forza di una linea (stagione del mese + clash del giorno / dell'arrivo)
+    // ---- CLASH E COMBINAZIONE (Edu, 13/08/2026) ----
+    // Il clash e' EFFETTIVO se viene dal GIORNO (sempre) o dall'ANNO (solo se il ramo
+    // dell'anno e' in 旺/相). Il clash dal MESE non e' effettivo da solo, ma POTENZIA
+    // gli altri due quando e' presente.
+    // La COMBINAZIONE (六合) dal GIORNO agisce sempre come BLOCCANTE, su qualunque linea.
+    var annoTimely = (function () {
+      if (!yearBranch) return false;
+      var s = stagione(WX[yearBranch], monthEl);
+      return s === '旺' || s === '相';
+    })();
+    function clashSu(br) {
+      var dayC   = !!(dayBranch   && CLASH[dayBranch]   === br);
+      var yearC  = !!(yearBranch  && CLASH[yearBranch]  === br && annoTimely);
+      var monthC = !!(monthBranch && CLASH[monthBranch] === br);
+      var eff = dayC || yearC;
+      return { eff: eff, dayC: dayC, yearC: yearC, monthC: monthC,
+               potenza: eff ? ((dayC?1:0) + (yearC?1:0) + (monthC?1:0)) : 0 };
+    }
+    function legataDalGiorno(br) { return !!(dayBranch && COMBINA[dayBranch] === br); }
+
+    // COMBINAZIONE E CLASH (Edu, 13/08/2026)
+    // La combinazione (六合) dal GIORNO blocca sempre il ramo — MA protegge anche il ramo
+    // da un clash diretto: per attaccarlo servono DUE clash, il primo rompe la
+    // combinazione che lo protegge, il secondo colpisce.
+    //   0 clash -> LEGATA (bloccata, fuori dai giochi)
+    //   1 clash -> combinazione rotta, il ramo torna libero (non ancora colpito)
+    //  >=2 clash -> combinazione rotta E ramo colpito
     function statoLin(br, isMoving){
-      if (isMoving) return 'in movimento';            // 動不為空
       var st = stagione(WX[br], monthEl);
       var timely = (st === '旺' || st === '相');
+      var cl = clashSu(br);
+      var nCl = cl.potenza;                            // clash effettivi (col potenziamento del mese)
+      if (legataDalGiorno(br)) {
+        if (nCl === 0) return 'legata';                // bloccata dalla combinazione
+        if (nCl === 1) return isMoving ? (autoComb ? 'autocombinata' : 'in movimento') : 'liberata';
+        return timely ? 'mossa' : 'rotta';             // combo rotta e ramo colpito
+      }
+      if (isMoving) return autoComb ? 'autocombinata' : 'in movimento';   // 動不為空
       if (vuoti.indexOf(br) < 0){
-        if (dayBranch && CLASH[dayBranch] === br) return timely ? 'mossa' : 'rotta';  // 日破
+        if (cl.eff) return timely ? 'mossa' : 'rotta';    // 日破 / 暗動
         return 'piena';
       }
-      var clash = (dayBranch && CLASH[dayBranch] === br) || (CLASH[ramoArr] === br);
-      if (!clash) return 'dormiente';
+      if (!cl.eff && CLASH[ramoArr] !== br) return 'dormiente';
       return timely ? 'attiva' : 'eliminata';
     }
     var fortLinea = function (br){
@@ -238,6 +332,17 @@
 
     // Sei Bestie: dallo stelo del giorno, dalla linea 1 salendo
     var startBestia = (dayStem != null && BESTIA_START[dayStem] != null) ? BESTIA_START[dayStem] : null;
+
+    // stato ed efficacia di Shi e Ying: una linea legata, rotta, dormiente o eliminata
+    // non sopravvive e non puo' reggere la lettura. Se cadono entrambe, la lettura
+    // ripiega sul movimento della linea mobile.
+    var shiStato  = statoLin(shiB,  pal.shi  === linea);
+    var yingStato = statoLin(yingB, pal.ying === linea);
+    var morta = function (s){ return s === 'legata' || s === 'rotta' ||
+                                     s === 'dormiente' || s === 'eliminata' ||
+                                     s === 'autocombinata'; };
+    var shiEff  = shiValido  && !morta(shiStato);
+    var yingEff = yingValido && !morta(yingStato);
 
     // ---- righe complete (posizione 1 in basso -> 6 in alto) ----
     var linee = [];
@@ -271,7 +376,7 @@
     var CASO_LABEL = {
       1:'回頭生 l\'arrivo genera la partenza — partenza rafforzata',
       2:'泄 la partenza genera l\'arrivo — agisce l\'arrivo',
-      3:'回頭剋 l\'arrivo controlla la partenza — effetto nullo',
+      3:'回頭剋 l\'arrivo controlla la partenza — la partenza muore, agisce l\'arrivo',
       4:'la partenza controlla l\'arrivo — agisce l\'arrivo',
       5:'比和 stesso elemento — partenza rafforzata',
       0:'movimento nullo — ' + (motivoNullo || 'arrivo vuoto'),
@@ -286,15 +391,23 @@
       palEl: palEl, palElIt: EL_IT[palEl],
       shi: pal.shi, ying: pal.ying,
       dayBranch: dayBranch, monthBranch: monthBranch, yearBranch: yearBranch, dayStem: dayStem,
+      oraBranch: oraBranch,
       monthEl: monthEl, vuoti: vuoti, taiSuiPos: taiSuiPos,
       linee: linee,
       shiB: shiB, yingB: yingB, shiElE: shiElE, yingElE: yingElE,
       shiValido: shiValido, yingValido: yingValido,
       shiForte: fortLinea(shiB), yingForte: fortLinea(yingB),
+      shiStato: shiStato, yingStato: yingStato,
+      shiEff: shiEff, yingEff: yingEff,
+      shiClash: clashSu(shiB), yingClash: clashSu(yingB),
+      shiLegato: legataDalGiorno(shiB), yingLegato: legataDalGiorno(yingB),
+      ripiegoMobile: (!shiEff && !yingEff),
+      anDong: anDong, scalaMobile: scalaMobile,
       mutante: {
         pos: linea, ramoDep: ramoDep, ramoArr: ramoArr, depEl: depEl, arrEl: arrEl,
         depElIt: EL_IT[depEl], arrElIt: EL_IT[arrEl],
         casoMut: casoMut, casoLabel: CASO_LABEL[casoMut] || '', effEl: effEl,
+        progressione: progressione,
         movimentoNullo: movimentoNullo, motivoNullo: motivoNullo,
         trigBloccato: trigBloccato, trigTrasf: trigTrasf,
         trigTrasfName: TRIGRAM[trigTrasf].name, trigTrasfPinyin: TRIGRAM[trigTrasf].pinyin,
@@ -302,6 +415,9 @@
       }
     };
   }
+
+  // l'ORA dal seme (come nel PB): quarto ramo che partecipa a combinazioni e raduni
+  function oraDalSeme(seed){ return B[(((seed-1)%12)+12)%12]; }
 
   function read(seed, dayBranch, monthBranch, yearBranch, dayStem){
     seed = Math.abs(parseInt(seed, 10));
@@ -313,19 +429,22 @@
     var linea  = mod6(supNum + infNum + dayNum);
     return build(supNum, infNum, linea, {
       dayBranch: dayBranch, monthBranch: monthBranch || null,
-      yearBranch: yearBranch || null, dayStem: dayStem || null });
+      yearBranch: yearBranch || null, dayStem: dayStem || null,
+      oraBranch: oraDalSeme(seed) });
   }
 
-  function readManual(supNum, infNum, linea, dayBranch, monthBranch, yearBranch, dayStem){
+  function readManual(supNum, infNum, linea, dayBranch, monthBranch, yearBranch, dayStem, oraBranch){
     supNum = parseInt(supNum, 10); infNum = parseInt(infNum, 10); linea = parseInt(linea, 10);
     if (!(supNum >= 1 && supNum <= 8)) return { error: 'superiore non valido' };
     if (!(infNum >= 1 && infNum <= 8)) return { error: 'inferiore non valido' };
     if (!(linea >= 1 && linea <= 6)) return { error: 'linea mutante non valida' };
     return build(supNum, infNum, linea, {
       dayBranch: dayBranch || null, monthBranch: monthBranch || null,
-      yearBranch: yearBranch || null, dayStem: dayStem || null });
+      yearBranch: yearBranch || null, dayStem: dayStem || null,
+      oraBranch: oraBranch || null });
   }
 
   return { read: read, readManual: readManual, TRIGRAM: TRIGRAM,
-           PAR: PAR, SEI_BESTIE: SEI_BESTIE, EL_IT: EL_IT, BR_IT: BR_IT };
+           PAR: PAR, SEI_BESTIE: SEI_BESTIE, EL_IT: EL_IT, BR_IT: BR_IT,
+           oraDalSeme: oraDalSeme };
 }));
