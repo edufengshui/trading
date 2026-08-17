@@ -180,7 +180,7 @@
       // 回頭剋 (corretto 13/08/2026, da GBPUSD 03/10/2022): l'arrivo CONTROLLA la partenza
       // e la abbatte — ma l'arrivo stesso e' vivo e AGISCE sulle altre linee. Non e'
       // un movimento inerte: muore la partenza, non il trasformato.
-      effEl = (process.env && process.env.RITORNO === 'nullo') ? null : arrEl; casoMut = 3; }
+      effEl = (typeof process !== 'undefined' && process.env && process.env.RITORNO === 'nullo') ? null : arrEl; casoMut = 3; }
     else if (CTRL[depEl] === arrEl) { effEl = arrEl; casoMut = 4; }   // partenza controlla arrivo
     else {
       // 比和 stesso elemento: distingue 進神 (avanzante) e 退神 (retrocedente).

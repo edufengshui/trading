@@ -140,7 +140,7 @@ function centerCell(c) {
 var WORKER_URL = 'https://trading-forex-seed.decumano16.workers.dev/';
 var FOREX_LON = 0;          // 0° Greenwich for the day pillar & 月將 at 00:00 GMT
 var forexData = null;
-var METHOD = 'dlr';         // 'dlr' | 'pb' — chosen with the toggle, re-renders the trend panel
+var METHOD = 'pb';          // 'dlr' | 'pb' (default PB, 17/08/2026) — chosen with the toggle, re-renders the trend panel
 var lastTrendArgs = null;   // remember the last renderTrend inputs so the toggle can re-render
 var pbManual = null;        // {sup, inf, linea} when the user overrides the trigrams by hand, else null
 
@@ -572,8 +572,14 @@ function wireTermometroToggles(cross, chart, row, lyp, pbCtx) {
   });
 }
 
+// col toggle PB la carta DLR (pilastri, tre trasmissioni, lezioni, griglia) sparisce del tutto
+function applyDlrVisibility() {
+  var b = $('dlrblock'); if (b) b.style.display = (METHOD === 'pb') ? 'none' : '';
+}
+
 function renderTrend(cross, chart, dArr, row) {
   lastTrendArgs = { cross: cross, chart: chart, dArr: dArr, row: row };
+  applyDlrVisibility();
   var p = $('trendpanel');
 
   // ---- Plum Blossom branch: same seed, same EMA, same filters; only the verdict differs ----
@@ -677,10 +683,12 @@ window.addEventListener('DOMContentLoaded', function () {
     METHOD = m;
     $('method-dlr').classList.toggle('active', m === 'dlr');
     $('method-pb').classList.toggle('active', m === 'pb');
+    applyDlrVisibility();
     if (lastTrendArgs) renderTrend(lastTrendArgs.cross, lastTrendArgs.chart, lastTrendArgs.dArr, lastTrendArgs.row);
   }
   $('method-dlr').addEventListener('click', function () { setMethod('dlr'); });
   $('method-pb').addEventListener('click', function () { setMethod('pb'); });
+  applyDlrVisibility();
   build();
 });
 
