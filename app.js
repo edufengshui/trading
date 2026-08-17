@@ -378,8 +378,14 @@ function renderTrendPB(cross, chart, dArr, row, p) {
   p.innerHTML = head + seedLine + emaLine + hexBlock + roles + manualRow;
   p.style.display = 'block';
 
-  // Liu Yao: lettura completa sotto il Plum Blossom (correttivo, stessa carta)
-  renderLiuYao(cross, chart, row, lyp);
+  // Liu Yao: lettura completa sotto il Plum Blossom (correttivo, stessa carta) + termometro S9
+  var pbCtx = {
+    corpoEl: pb.trend ? pb.trend.el : null,
+    emaDir: dir,
+    finalDir: (signal === 'LONG' || signal === 'SHORT') ? signal : null,
+    date: (dArr && dArr.length === 3) ? (dArr[0] + '-' + pad(dArr[1]) + '-' + pad(dArr[2])) : null
+  };
+  renderLiuYao(cross, chart, row, lyp, pbCtx);
 
   // wire the manual controls (re-render on change)
   function onManualChange(){
@@ -400,15 +406,16 @@ function renderTrendPB(cross, chart, dArr, row, p) {
 }
 
 // ---- Liu Yao (六爻): lettura completa, sotto il Plum Blossom, sulla stessa carta ----
-function renderLiuYao(cross, chart, row, lyp) {
+function renderLiuYao(cross, chart, row, lyp, pbCtx) {
   if (!lyp) lyp = $('lypanel');
   if (!lyp) return;
   if (!window.XKDGLiuYao || !row || row.seed == null || !chart.dayBranch) { lyp.style.display = 'none'; return; }
 
   var yearBranch = (chart.source && chart.source.yearPillar) ? chart.source.yearPillar.charAt(1) : null;
+  var oraBranchSeme = (row.seed != null) ? window.XKDGLiuYao.oraDalSeme(row.seed) : null;
   var ly = pbManual
     ? window.XKDGLiuYao.readManual(pbManual.sup, pbManual.inf, pbManual.linea,
-        chart.dayBranch, chart.monthBranch, yearBranch, chart.dayStem || null)
+        chart.dayBranch, chart.monthBranch, yearBranch, chart.dayStem || null, null)
     : window.XKDGLiuYao.read(row.seed, chart.dayBranch, chart.monthBranch, yearBranch, chart.dayStem || null);
   if (ly.error) { lyp.style.display = 'none'; return; }
 
@@ -480,8 +487,89 @@ function renderLiuYao(cross, chart, row, lyp) {
     '<th style="padding:2px 8px">變卦 Mutato</th>' +
     '</tr></thead><tbody>' + rows + '</tbody></table>';
 
-  lyp.innerHTML = head + palLine + mutLine + table;
+  var termHtml = '';
+  if (pbCtx && pbCtx.finalDir) {
+    var ctxT = { oraBranch: oraBranchSeme, emaDir: pbCtx.emaDir, corpoEl: pbCtx.corpoEl, date: pbCtx.date };
+    termHtml = renderTermometro(ly, ctxT, pbCtx.finalDir);
+  }
+
+  lyp.innerHTML = head + palLine + mutLine + table + termHtml;
   lyp.style.display = 'block';
+  wireTermometroToggles(cross, chart, row, lyp, pbCtx);
+}
+
+// ---- Termometro LY: elenco delle vie + rafforzativi, verdetto S9 ----
+var LY_TOGGLE_KEY = 'ly-via-toggles-v1';
+function loadLyToggles() {
+  try { return JSON.parse(localStorage.getItem(LY_TOGGLE_KEY)) || {}; } catch (e) { return {}; }
+}
+function saveLyToggles(t) {
+  try { localStorage.setItem(LY_TOGGLE_KEY, JSON.stringify(t)); } catch (e) {}
+}
+var lyToggles = loadLyToggles();   // { viaId: false } solo per quelle SPENTE; assente = accesa
+
+function renderTermometro(R, ctxT, pbFinalDir) {
+  var LYM = window.XKDGLiuYao;
+  var enabled = {}, enabledRaff = {};
+  LYM.LY_VIE.forEach(function (v) { if (lyToggles[v.id] === false) enabled[v.id] = false; });
+  LYM.LY_RAFFORZATIVI.forEach(function (v) { if (lyToggles[v.id] === false) enabledRaff[v.id] = false; });
+
+  var comb = LYM.combinaS9(R, ctxT, pbFinalDir, enabled, enabledRaff, {});
+  var s9Cls = comb.finale === 'LONG' ? 'long' : 'short';
+  var s9Badge = '<div class="trendmsgs" style="margin-top:10px">' +
+    '<b>Verdetto S9 (PB + LY):</b> <span class="sig ' + s9Cls + '" style="display:inline-block">' + comb.finale + '</span>' +
+    ' <span style="opacity:.75">— chi ha deciso: ' + comb.chi + '</span></div>';
+
+  // stato individuale di OGNI via (indipendente dall'ordine, per capire l'effetto del toggle)
+  var state = { opts: {} };
+  var rows = LYM.LY_VIE.map(function (v) {
+    var dir = v.test(R, ctxT, state);
+    var on = lyToggles[v.id] !== false;
+    var isFiring = comb.via && comb.via.viaId === v.id;
+    var chip = dir ? ('<span class="sig ' + (dir === 'LONG' ? 'long' : 'short') + '" style="padding:1px 8px;font-size:11px">' + dir + '</span>')
+      : '<span style="opacity:.5;font-size:11px">tace</span>';
+    return '<div class="viarow' + (isFiring ? ' viafiring' : '') + '" style="display:flex;align-items:center;gap:8px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06)">' +
+      '<input type="checkbox" class="via-toggle" data-via="' + v.id + '" ' + (on ? 'checked' : '') + '>' +
+      '<span style="min-width:70px;opacity:.7;font-size:12px">' + v.sezione + '</span>' +
+      '<span style="flex:1;font-size:13px">' + v.nome + (isFiring ? ' <b style="color:var(--gold,#e3b341)">← ha deciso</b>' : '') + '</span>' +
+      chip +
+      '</div>' +
+      '<div class="viadoc" style="display:none;font-size:12px;opacity:.8;padding:4px 0 8px 26px">' + v.dottrina + '</div>';
+  }).join('');
+
+  var raffRows = LYM.LY_RAFFORZATIVI.map(function (v) {
+    var dir = v.test(R, ctxT, state);
+    var on = lyToggles[v.id] !== false;
+    return '<div class="viarow" style="display:flex;align-items:center;gap:8px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06)">' +
+      '<input type="checkbox" class="via-toggle" data-via="' + v.id + '" ' + (on ? 'checked' : '') + '>' +
+      '<span style="flex:1;font-size:13px">' + v.nome + '</span>' +
+      (dir ? '<span class="sig long" style="padding:1px 8px;font-size:11px">attivo</span>' : '<span style="opacity:.5;font-size:11px">non applicabile</span>') +
+      '</div>' +
+      '<div class="viadoc" style="display:none;font-size:12px;opacity:.8;padding:4px 0 8px 26px">' + v.dottrina + '</div>';
+  }).join('');
+
+  return s9Badge +
+    '<details style="margin-top:8px"><summary style="cursor:pointer;opacity:.85">Termometro LY — ' + LYM.LY_VIE.length + ' vie + ' + LYM.LY_RAFFORZATIVI.length + ' rafforzativi (clic su una riga per la dottrina)</summary>' +
+    '<div style="margin-top:6px">' + rows + '<div style="margin-top:6px;font-weight:600;opacity:.7;font-size:12px">Rafforzativi (agiscono solo nel contrasto)</div>' + raffRows + '</div>' +
+    '</details>';
+}
+
+function wireTermometroToggles(cross, chart, row, lyp, pbCtx) {
+  lyp.querySelectorAll('.via-toggle').forEach(function (cb) {
+    cb.addEventListener('change', function () {
+      lyToggles[cb.dataset.via] = cb.checked ? undefined : false;
+      if (lyToggles[cb.dataset.via] === undefined) delete lyToggles[cb.dataset.via];
+      saveLyToggles(lyToggles);
+      renderLiuYao(cross, chart, row, lyp, pbCtx);
+    });
+  });
+  lyp.querySelectorAll('.viarow').forEach(function (row2) {
+    row2.addEventListener('click', function (e) {
+      if (e.target.classList.contains('via-toggle')) return;
+      var doc = row2.nextElementSibling;
+      if (doc && doc.classList.contains('viadoc')) doc.style.display = (doc.style.display === 'none') ? 'block' : 'none';
+    });
+  });
 }
 
 function renderTrend(cross, chart, dArr, row) {
