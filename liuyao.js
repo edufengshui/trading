@@ -75,15 +75,20 @@
   var EL_IT = { Wood:'Legno', Fire:'Fuoco', Earth:'Terra', Metal:'Metallo', Water:'Acqua' };
   var BR_IT = { '子':'Zi','丑':'Chou','寅':'Yin','卯':'Mao','辰':'Chen','巳':'Si',
                 '午':'Wu','未':'Wei','申':'Shen','酉':'You','戌':'Xu','亥':'Hai' };
-  var PAR = {  // funzione -> {cn, it}
-    B: { cn:'兄弟', it:'Fratelli' }, C: { cn:'子孫', it:'Figli' },
-    W: { cn:'妻財', it:'Ricchezza' }, G: { cn:'官鬼', it:'Ufficiale' },
-    P: { cn:'父母', it:'Genitori' } };
+  var PAR = {  // funzione -> {cn, it, en}
+    B: { cn:'兄弟', it:'Fratelli', en:'Siblings' }, C: { cn:'子孫', it:'Figli', en:'Children' },
+    W: { cn:'妻財', it:'Ricchezza', en:'Wealth' }, G: { cn:'官鬼', it:'Ufficiale', en:'Officer' },
+    P: { cn:'父母', it:'Genitori', en:'Parents' } };
+  var EL_EN = { Wood:'Wood', Fire:'Fire', Earth:'Earth', Metal:'Metal', Water:'Water' };
+  // stato interno (usato dalle regole) -> etichetta inglese per l'interfaccia
+  var STATO_EN = { piena:'full', mossa:'stirred', rotta:'broken', dormiente:'dormant', attiva:'awakened',
+                   eliminata:'eliminated', 'in movimento':'moving', legata:'bound', liberata:'freed',
+                   autocombinata:'self-combined' };
   // Sei Bestie 六獸 nell'ordine canonico
   var SEI_BESTIE = [
-    { cn:'青龍', it:'Drago Azzurro' }, { cn:'朱雀', it:'Uccello Rosso' },
-    { cn:'勾陳', it:'Gancio (Terra)' }, { cn:'螣蛇', it:'Serpente' },
-    { cn:'白虎', it:'Tigre Bianca' }, { cn:'玄武', it:'Guerriero Nero' } ];
+    { cn:'青龍', it:'Drago Azzurro', en:'Azure Dragon' }, { cn:'朱雀', it:'Uccello Rosso', en:'Red Bird' },
+    { cn:'勾陳', it:'Gancio (Terra)', en:'Hook (Earth)' }, { cn:'螣蛇', it:'Serpente', en:'Snake' },
+    { cn:'白虎', it:'Tigre Bianca', en:'White Tiger' }, { cn:'玄武', it:'Guerriero Nero', en:'Black Warrior' } ];
   // stelo del giorno -> indice della bestia sulla linea 1 (甲乙=0 … 壬癸=5)
   var BESTIA_START = { '甲':0,'乙':0,'丙':1,'丁':1,'戊':2,'己':3,'庚':4,'辛':4,'壬':5,'癸':5 };
 
@@ -203,12 +208,12 @@
     var motivoNullo = null;
     // arrivo vuoto (旬空): movimento nullo (la mobile non e' mai vuota di suo, 動不為空)
     if (vuoti.indexOf(ramoArr) >= 0) { effEl = null; casoMut = 0;
-      motivoNullo = 'arrivo vuoto (旬空)'; }
+      motivoNullo = 'arrival void'; }
     // sospensione dal giorno: il giorno COMBINA (六合) o CLASHA (六冲) partenza o arrivo
     if (dayBranch && (COMBINA[dayBranch] === ramoDep || COMBINA[dayBranch] === ramoArr ||
         CLASH[dayBranch] === ramoDep || CLASH[dayBranch] === ramoArr)) {
       effEl = null; casoMut = -1;
-      motivoNullo = 'sospensione dal giorno (六合/六冲 su partenza o arrivo)'; }
+      motivoNullo = 'suspended by the day (day combines/clashes departure or arrival)'; }
     // trigramma totalmente legato Qian<->Xun: tutte e tre le coppie ramo-controparte combinano
     var trigBloccato = null;
     (function (){
@@ -217,19 +222,19 @@
       for (var k = 0; k < 3; k++){ if (COMBINA[NJ[trigMob][k]] !== NJ[trigTrasf][k]) { tutte3 = false; break; } }
       if (tutte3 && dayBranch && CLASH[dayBranch] !== ramoDep && CLASH[dayBranch] !== ramoArr) {
         effEl = null; casoMut = -3; trigBloccato = linea <= 3 ? 'inf' : 'sup';
-        motivoNullo = 'trigramma legato 乾<->巽 (Qian-Xun)'; }
+        motivoNullo = 'trigram bound Qian-Xun'; }
     })();
     // mutante legata dal proprio nascosto (伏神): partenza combina col nascosto sotto di se'
     var fuMob = fushen[linea] || null;
     if (fuMob && COMBINA[ramoDep] === fuMob.b && (!dayBranch || CLASH[dayBranch] !== fuMob.b)) {
       effEl = null; casoMut = -2;
-      motivoNullo = 'legata dal proprio nascosto 伏神 (' + fuMob.b + ')'; }
+      motivoNullo = 'bound by its own hidden line (' + fuMob.b + ')'; }
     // AUTOCOMBINAZIONE 自合 (Edu, 13/08/2026, da USDCAD 18/03/2020)
     // Se la PARTENZA della mobile combina (六合) il proprio ARRIVO, la linea si lega
     // a se stessa: e' bloccata, non e' piu' "in movimento" e non regge la lettura.
     var autoComb = (COMBINA[ramoDep] === ramoArr);
     if (autoComb) { effEl = null; casoMut = -4;
-      motivoNullo = 'autocombinazione 自合 (' + ramoDep + '合' + ramoArr + ')'; }
+      motivoNullo = 'self-combination (' + ramoDep + '+' + ramoArr + ')'; }
     var movimentoNullo = (effEl === null);
 
     // viaggio/atterraggio della mobile: se l'arrivo COMBINA con un ramo presente, atterra
@@ -380,15 +385,16 @@
     if (yearBranch != null) for (var t = 1; t <= 6; t++) if (ramoAl(t) === yearBranch) { taiSuiPos = t; break; }
 
     var CASO_LABEL = {
-      1:'回頭生 l\'arrivo genera la partenza — partenza rafforzata',
-      2:'泄 la partenza genera l\'arrivo — agisce l\'arrivo',
-      3:'回頭剋 l\'arrivo controlla la partenza — la partenza muore, agisce l\'arrivo',
-      4:'la partenza controlla l\'arrivo — agisce l\'arrivo',
-      5:'比和 stesso elemento — partenza rafforzata',
-      0:'movimento nullo — ' + (motivoNullo || 'arrivo vuoto'),
-      '-1':'movimento nullo — ' + (motivoNullo || 'sospensione dal giorno'),
-      '-2':'movimento nullo — ' + (motivoNullo || 'legata dal nascosto'),
-      '-3':'movimento nullo — ' + (motivoNullo || 'trigramma legato Qian-Xun')
+      1:'return-generation: the arrival generates the departure — departure strengthened',
+      2:'drain: the departure generates the arrival — the arrival acts',
+      3:'return-control: the arrival controls the departure — the departure dies, the arrival acts',
+      4:'the departure controls the arrival — the arrival acts',
+      5:'same element — departure strengthened',
+      0:'null movement — ' + (motivoNullo || 'arrival void'),
+      '-1':'null movement — ' + (motivoNullo || 'suspended by the day'),
+      '-2':'null movement — ' + (motivoNullo || 'bound by the hidden line'),
+      '-3':'null movement — ' + (motivoNullo || 'trigram bound Qian-Xun'),
+      '-4':'null movement — ' + (motivoNullo || 'self-combination')
     };
 
     return {
@@ -506,8 +512,8 @@
   // (dal registro, per la spiegazione al click), test(R, ctx, state) -> 'LONG'|'SHORT'|null.
   var LY_VIE = [];
 
-  LY_VIE.push({ id:'B62', sezione:'§62', nome:'G mobile consegnato al C forte (IN TESTA)',
-    dottrina:'G mobile che ARRIVA nell\'elemento di un C fermo, timely e pieno che lo controlla → il G si consegna al carnefice, il trend muore → OPPOSTO della sede del G (G sotto → LONG, G sopra → SHORT). Pilastro dottrinale (Edu 16/08), sopra soglia statistica ma fissato per dottrina. C è ambivalente: con la W la genera, con un G vicino lo attacca.',
+  LY_VIE.push({ id:'B62', sezione:'§62', nome:'Mobile G delivered to a strong C (FIRST)',
+    dottrina:'A mobile G whose ARRIVAL lands in the element of a fixed C that is timely, full and controls it: the G hands itself to its executioner, the trend dies → OPPOSITE of the G\'s seat (G below → LONG, G above → SHORT). Doctrinal pillar (Edu 16/08), fixed by doctrine. C is ambivalent: it generates a W, but attacks a nearby G.',
     test: function (R, ctx) {
       var m = R.linee[R.mutante.pos-1];
       if (m.par !== 'G') return null;
@@ -533,8 +539,8 @@
     };
   }
 
-  LY_VIE.push({ id:'R1', sezione:'—', nome:'Mobile distrutta: legge la timely',
-    dottrina:'La mobile clashata dal giorno e vuota, e non timely: se una sola altra linea (non C/B) è viva, non vuota, non clashata dal giorno e timely, la sua posizione detta la direzione (opposta alla sua sede).',
+  LY_VIE.push({ id:'R1', sezione:'—', nome:'Destroyed mobile: read the timely line',
+    dottrina:'The mobile is void, clashed by the day and not timely: if exactly one other line (not C/B) is alive, not void, not clashed by the day and timely, its position dictates the direction (opposite of its seat).',
     test: function (R, ctx) {
       var c = _ctx(R);
       var mob = R.linee[R.mutante.pos-1], dep = R.mutante.ramoDep;
@@ -547,8 +553,8 @@
       return cand[0].pos<=3 ? 'SHORT' : 'LONG';
     }});
 
-  LY_VIE.push({ id:'R2', sezione:'—', nome:'Capolinea G drenato dal nascosto',
-    dottrina:'Il capolinea del qi (riceve e non cede) è un G solo, e il suo nascosto lo drena (G genera il nascosto): direzione della sede del G.',
+  LY_VIE.push({ id:'R2', sezione:'—', nome:'Terminal G drained by its hidden line',
+    dottrina:'The terminal of the qi flow (receives, does not give) is a single G, and its hidden line drains it (G generates the hidden): direction of the G\'s seat.',
     test: function (R, ctx) {
       var c = _ctx(R);
       var vivi = R.linee.filter(c.vivo);
@@ -564,8 +570,8 @@
       return capG.pos<=3 ? 'SHORT' : 'LONG';
     }});
 
-  LY_VIE.push({ id:'R3', sezione:'—', nome:'刑 col nascosto, entrambi deboli',
-    dottrina:'Una linea in punizione (刑) col proprio nascosto, ed entrambi non timely: direzione della sede della linea.',
+  LY_VIE.push({ id:'R3', sezione:'—', nome:'Punishment with the hidden line, both weak',
+    dottrina:'A line in punishment (xing) with its own hidden line, both not timely: direction of the line\'s seat.',
     test: function (R, ctx) {
       var c = _ctx(R);
       var TRIPLE=[['寅','巳','申'],['丑','戌','未']], MUT=[['子','卯']];
@@ -581,8 +587,8 @@
       return l.pos<=3 ? 'SHORT' : 'LONG';
     }});
 
-  LY_VIE.push({ id:'R4', sezione:'—', nome:'Capolinea G (senza drenaggio)',
-    dottrina:'Il capolinea del qi è un G solo (anche senza nascosto che lo drena): direzione della sua sede.',
+  LY_VIE.push({ id:'R4', sezione:'—', nome:'Terminal G (no drain)',
+    dottrina:'The terminal of the qi flow is a single G (even without a draining hidden line): direction of its seat.',
     test: function (R, ctx) {
       var c = _ctx(R);
       var vivi = R.linee.filter(c.vivo);
@@ -598,8 +604,8 @@
       return capG.pos<=3 ? 'SHORT' : 'LONG';
     }});
 
-  LY_VIE.push({ id:'R5', sezione:'—', nome:'退神 mobile retrocedente',
-    dottrina:'La mobile retrocede (stesso elemento, ramo antiorario): la sua direzione regge se il clash dell\'anno la colpisce, altrimenti si legge l\'opposto.',
+  LY_VIE.push({ id:'R5', sezione:'—', nome:'Retreating mobile',
+    dottrina:'The mobile retreats (same element, counter-clockwise branch): its direction holds if the year clash hits it, otherwise read the opposite.',
     test: function (R, ctx) {
       var c = _ctx(R);
       if (R.mutante.progressione !== 'retrocedente') return null;
@@ -608,8 +614,8 @@
       return CLASH[c.Y]===dep ? suo : (suo==='LONG' ? 'SHORT' : 'LONG');
     }});
 
-  LY_VIE.push({ id:'R6', sezione:'—', nome:'三會 col mese',
-    dottrina:'Le tre linee di una radunanza stagionale (三會) sono presenti insieme al ramo del mese: se sopra/sotto sono squilibrate, vince la maggioranza.',
+  LY_VIE.push({ id:'R6', sezione:'—', nome:'Seasonal gathering with the month',
+    dottrina:'The three branches of a seasonal gathering are all present together with the month branch: if above/below are unbalanced, the majority wins.',
     test: function (R, ctx) {
       var c = _ctx(R);
       var HUI=[{r:['寅','卯','辰'],el:'Wood'},{r:['巳','午','未'],el:'Fire'},
@@ -623,8 +629,8 @@
       return b_>a_ ? 'SHORT' : 'LONG';
     }});
 
-  LY_VIE.push({ id:'R7_54b', sezione:'§54b', nome:'Mese controlla il Tai Sui + genera il Ti',
-    dottrina:'Il ramo del mese controlla il Tai Sui (anno) e l\'arrivo della mobile genererebbe il Ti (timely): il Ti è nutrito da una fonte instabile → NON segue.',
+  LY_VIE.push({ id:'R7_54b', sezione:'§54b', nome:'Month controls the Tai Sui + feeds the Ti',
+    dottrina:'The month branch controls the Tai Sui (year) and the mobile\'s arrival would generate the Ti (timely): the Ti is fed by an unstable source → does NOT follow.',
     test: function (R, ctx) {
       var c = _ctx(R);
       var A = ctx.corpoEl; if (!A) return null;
@@ -634,8 +640,8 @@
       return ctx.emaDir==='up' ? 'SHORT' : 'LONG';
     }});
 
-  LY_VIE.push({ id:'R8_49', sezione:'§49', nome:'Tai Sui mobile muta nel G del palazzo',
-    dottrina:'La mobile è il Tai Sui e la sua mutazione arriva nell\'elemento Ufficiale del palazzo: la sua direzione conduce.',
+  LY_VIE.push({ id:'R8_49', sezione:'§49', nome:'Mobile Tai Sui turns into the palace\'s G',
+    dottrina:'The mobile is the Tai Sui and its transformation lands in the palace\'s Officer element: its own direction leads.',
     test: function (R, ctx) {
       var mob = R.linee[R.mutante.pos-1];
       if (!mob.isTaiSui) return null;
@@ -646,8 +652,8 @@
       return mob.pos<=3 ? 'SHORT' : 'LONG';
     }});
 
-  LY_VIE.push({ id:'R9_51', sezione:'§51', nome:'Mobile muta nella tomba del proprio elemento',
-    dottrina:'G vibrante (timely) che entra nella propria tomba si spegne → opposto della sua sede. B non vibrante che entra nella propria tomba si spegne → opposto della sua sede.',
+  LY_VIE.push({ id:'R9_51', sezione:'§51', nome:'Mobile enters the tomb of its own element',
+    dottrina:'A vibrant (timely) G entering its own tomb goes out → opposite of its seat. A non-vibrant B entering its own tomb goes out → opposite of its seat.',
     test: function (R, ctx) {
       var c = _ctx(R);
       var mob = R.linee[R.mutante.pos-1], dep = R.mutante.ramoDep;
@@ -661,8 +667,8 @@
       return null;
     }});
 
-  LY_VIE.push({ id:'R11_53c', sezione:'§53c', nome:'Fratello timely in L4 (Ti)',
-    dottrina:'Con lo Yong in basso, se L4 (nel Ti) è un B vivo e timely: NON segue (un fratello nel Ti drena il trend).',
+  LY_VIE.push({ id:'R11_53c', sezione:'§53c', nome:'Timely B on L4 (Ti)',
+    dottrina:'With the Yong below, if L4 (in the Ti) is a live, timely B: does NOT follow (a sibling in the Ti drains the trend).',
     test: function (R, ctx) {
       var c = _ctx(R);
       var yongBasso = R.mutante.pos<=3;
@@ -671,8 +677,8 @@
       return ctx.emaDir==='up' ? 'SHORT' : 'LONG';
     }});
 
-  LY_VIE.push({ id:'R12_53d', sezione:'§53d', nome:'G pieno e timely nel Ti + vuoto nel Ti',
-    dottrina:'Nel Ti c\'è un G timely e pieno, ma anche una linea vuota: falla nel trend → NON segue.',
+  LY_VIE.push({ id:'R12_53d', sezione:'§53d', nome:'Full timely G in the Ti + a void in the Ti',
+    dottrina:'The Ti holds a timely, full G, but also a void line: a breach in the trend → does NOT follow.',
     test: function (R, ctx) {
       var c = _ctx(R);
       var yongBasso = R.mutante.pos<=3;
@@ -684,8 +690,8 @@
       return ctx.emaDir==='up' ? 'SHORT' : 'LONG';
     }});
 
-  LY_VIE.push({ id:'R13_52', sezione:'§52', nome:'Chi non vince perde (azione fallita)',
-    dottrina:'L\'azione della mobile fallisce — 回頭剋, autocombinazione, o l\'arrivo clashato dal giorno: non porta la sua direzione, si legge l\'opposto.',
+  LY_VIE.push({ id:'R13_52', sezione:'§52', nome:'Who does not win, loses (failed action)',
+    dottrina:'The mobile\'s action fails — return-control, self-combination, or arrival clashed by the day: it does not carry its direction, read the opposite.',
     test: function (R, ctx) {
       var c = _ctx(R);
       var mob = R.linee[R.mutante.pos-1];
@@ -697,8 +703,8 @@
       return suo==='LONG' ? 'SHORT' : 'LONG';
     }});
 
-  LY_VIE.push({ id:'R14_50de', sezione:'§50d/e', nome:'Combinazione del bersaglio: generativa/distruttiva',
-    dottrina:'L\'arrivo della mobile combina un bersaglio fermo e pieno. Se la combinazione è DISTRUTTIVA (controllo): il Tai Sui da solo la compie (direzione opposta alla sede del bersaglio); due deboli si legano e porta la sede del bersaglio. Se GENERATIVA: il Tai Sui la porta sempre; altrimenti solo se il bersaglio è timely.',
+  LY_VIE.push({ id:'R14_50de', sezione:'§50d/e', nome:'Combination of the target: generative/destructive',
+    dottrina:'The mobile\'s arrival combines a fixed, full target. If DESTRUCTIVE (control): only the Tai Sui completes it (opposite of the target\'s seat); two weak ones bind and carry the target\'s seat. If GENERATIVE: the Tai Sui always carries it; otherwise only if the target is timely.',
     test: function (R, ctx) {
       var c = _ctx(R);
       var mob = R.linee[R.mutante.pos-1];
@@ -720,8 +726,8 @@
       }
     }});
 
-  LY_VIE.push({ id:'R16_50f', sezione:'§50f', nome:'Arrivo genera una W timely/forte',
-    dottrina:'L\'arrivo della mobile genera una o più linee W ferme, timely o forti (sostenute dal giorno/anno): direzione della maggioranza (sopra/sotto).',
+  LY_VIE.push({ id:'R16_50f', sezione:'§50f', nome:'Arrival generates a timely/strong W',
+    dottrina:'The arrival generates one or more fixed W lines that are timely or strong (backed by day/year): direction of the majority (above/below).',
     test: function (R, ctx) {
       var c = _ctx(R);
       var mob = R.linee[R.mutante.pos-1];
@@ -735,8 +741,8 @@
       return basso>alto ? 'SHORT' : 'LONG';
     }});
 
-  LY_VIE.push({ id:'R17_50g', sezione:'§50g', nome:'Combinazione doppia lega in basso',
-    dottrina:'L\'arrivo combina un ramo presente in due linee ferme e piene, divise sopra/sotto: il legame si compie in basso → SHORT.',
+  LY_VIE.push({ id:'R17_50g', sezione:'§50g', nome:'Double combination binds below',
+    dottrina:'The arrival combines a branch present on two fixed, full lines split above/below: the bond is completed below → SHORT.',
     test: function (R, ctx) {
       var mob = R.linee[R.mutante.pos-1];
       var arr = R.mutante.ramoArr, part = COMBINA[arr];
@@ -748,8 +754,8 @@
       return 'SHORT';
     }});
 
-  LY_VIE.push({ id:'R18_50h', sezione:'§50h', nome:'Nascosto vuoto clashato dall\'arrivo',
-    dottrina:'L\'arrivo clasha il nascosto (vuoto) di una linea ferma sola: con ≥2 sostegni (stagione + giorno + anno) esce dal vuoto e agisce nella sua sede; con 0 sostegni il clash lo sfonda → opposto.',
+  LY_VIE.push({ id:'R18_50h', sezione:'§50h', nome:'Void hidden line clashed by the arrival',
+    dottrina:'The arrival clashes the (void) hidden line of a single fixed line: with ≥2 supports (season + day + year) it leaves the void and acts in its seat; with 0 supports the clash breaks it → opposite.',
     test: function (R, ctx) {
       var c = _ctx(R);
       var mob = R.linee[R.mutante.pos-1];
@@ -768,8 +774,8 @@
       return null;
     }});
 
-  LY_VIE.push({ id:'R21_50k', sezione:'§50k', nome:'Il giorno rompe la combinazione del Tai Sui',
-    dottrina:'Il giorno clasha il ramo dell\'anno (Tai Sui): se una linea ferma sola combina il Tai Sui, la sede di quella linea si ribalta.',
+  LY_VIE.push({ id:'R21_50k', sezione:'§50k', nome:'The day breaks the Tai Sui\'s combination',
+    dottrina:'The day clashes the year branch (Tai Sui): if a single fixed line combines the Tai Sui, that line\'s seat flips.',
     test: function (R, ctx) {
       var c = _ctx(R);
       if (CLASH[c.D]!==c.Y) return null;
@@ -780,8 +786,8 @@
       return dirT==='LONG' ? 'SHORT' : 'LONG';
     }});
 
-  LY_VIE.push({ id:'R22_50kbis', sezione:'§50k-bis', nome:'P vivo drena un G nascosto forte',
-    dottrina:'Un P vivo genera (drena) il proprio G nascosto, e quel G è forte (timely o sostenuto dal giorno/anno): direzione della sede del P.',
+  LY_VIE.push({ id:'R22_50kbis', sezione:'§50k-bis', nome:'Live P drains a strong hidden G',
+    dottrina:'A live P generates (drains) its own hidden G, and that G is strong (timely or backed by day/year): direction of the P\'s seat.',
     test: function (R, ctx) {
       var c = _ctx(R);
       var cand = R.linee.filter(function(l){return l.par==='P' && c.vivo(l) && l.fushen && l.fushen.par==='G' && GEN[l.fushen.el]===l.el;});
@@ -792,8 +798,8 @@
       return cand[0].pos<=3 ? 'SHORT' : 'LONG';
     }});
 
-  LY_VIE.push({ id:'R20_50j', sezione:'§50j', nome:'Due Fratelli divisi, il rafforzato cura la sua sezione',
-    dottrina:'Due B, uno sopra e uno sotto: se la mobile è un B rafforzato (回頭生/比和 o avanzante), guarisce la propria sezione.',
+  LY_VIE.push({ id:'R20_50j', sezione:'§50j', nome:'Two B split, the strengthened one heals its section',
+    dottrina:'Two B, one above and one below: if the mobile is a strengthened B (return-generation/same element or advancing), it heals its own section.',
     test: function (R, ctx, state) {
       if (state.oraNeutra) return null;   // FILTROORA (P/B sulla partenza=ora, spento di default)
       var mob = R.linee[R.mutante.pos-1];
@@ -804,15 +810,15 @@
       return mob.pos<=3 ? 'SHORT' : 'LONG';
     }});
 
-  LY_VIE.push({ id:'R19_50i', sezione:'§50i', nome:'Gua inferiore interamente vuoto',
-    dottrina:'Tutti i rami del trigramma inferiore (Houtian) sono vuoti (旬空): il pavimento cede → SHORT.',
+  LY_VIE.push({ id:'R19_50i', sezione:'§50i', nome:'Lower trigram entirely void',
+    dottrina:'All branches of the lower trigram (Houtian palace) are void: the floor gives way → SHORT.',
     test: function (R, ctx) {
       if (!HOUTIAN[R.inf].every(function(b){return R.vuoti.indexOf(b)>=0;})) return null;
       return 'SHORT';
     }});
 
-  LY_VIE.push({ id:'R23_55', sezione:'§55', nome:'P mobile: l\'arrivo clasha il Tai Sui fermo',
-    dottrina:'Una P mobile il cui ARRIVO clasha il Tai Sui (ramo dell\'anno) fermo: il trend rappresentato dalla sede del Tai Sui si rompe (TS sotto → SALE/LONG, TS sopra → SCENDE/SHORT). Il giorno che combina il Tai Sui lo difende: tace. Subordinata a G e W (criterio di precedenza).',
+  LY_VIE.push({ id:'R23_55', sezione:'§55', nome:'Mobile P: arrival clashes the fixed Tai Sui',
+    dottrina:'A mobile P whose ARRIVAL clashes the fixed Tai Sui (year branch): the trend of the Tai Sui\'s seat breaks (TS below → market RISES/LONG, TS above → market FALLS/SHORT). If the day combines the Tai Sui it is defended: silent. Subordinate to G and W (precedence rule).',
     test: function (R, ctx, state) {
       if (state.oraNeutra) return null;
       var mob = R.linee[R.mutante.pos-1];
@@ -824,8 +830,8 @@
       return ts.pos<=3 ? 'LONG' : 'SHORT';
     }});
 
-  LY_VIE.push({ id:'R24_56', sezione:'§56', nome:'B combina il Tai Sui vuoto, A trasportato ostile',
-    dottrina:'L\'ARRIVO combina un Tai Sui fermo VUOTO, e la PARTENZA (trasportata su di lui) è ostile — lo clasha o lo controlla: la sede del Tai Sui non regge.',
+  LY_VIE.push({ id:'R24_56', sezione:'§56', nome:'Arrival combines a void Tai Sui, hostile departure carried',
+    dottrina:'The ARRIVAL combines a fixed VOID Tai Sui, and the DEPARTURE (carried onto it) is hostile — clashes or controls it: the Tai Sui\'s seat does not hold.',
     test: function (R, ctx, state) {
       if (state.oraNeutra) return null;
       var tsL = R.linee.filter(function(l){return l.isTaiSui && !l.isMobile && l.vuoto;});
@@ -836,8 +842,8 @@
       return ts.pos<=3 ? 'LONG' : 'SHORT';
     }});
 
-  LY_VIE.push({ id:'R25_58', sezione:'§58', nome:'G fermo sul ramo del giorno',
-    dottrina:'Un G fermo siede sul ramo del giorno: il mercato NON segue il trend. Tace se la mobile o l\'ora combinano il giorno, o se la mobile è una W (W comanda). Modalità GGIORNOVIA: ti+yong (default, effetto pieno) oppure solo-ti.',
+  LY_VIE.push({ id:'R25_58', sezione:'§58', nome:'Fixed G on the day branch',
+    dottrina:'A fixed G sits on the day branch: the market does NOT follow the trend. Silent if the mobile or the hour combines the day, or if the mobile is a W (W commands). Mode: ti+yong (default, full effect) or ti-only.',
     opts: { ggiornovia: 'ti+yong' },
     test: function (R, ctx, state) {
       var mob = R.linee[R.mutante.pos-1];
@@ -853,8 +859,8 @@
       return ctx.emaDir==='up' ? 'SHORT' : 'LONG';
     }});
 
-  LY_VIE.push({ id:'R26_59', sezione:'§59', nome:'P mobile con partenza = spirito del giorno',
-    dottrina:'Una P mobile la cui PARTENZA è uno spirito del giorno (Generale del Mese 月將, Ding 丁神, Cavallo Postale 驛馬): il Generale amplifica la natura del drenatore di G → il mercato NON segue il trend.',
+  LY_VIE.push({ id:'R26_59', sezione:'§59', nome:'Mobile P departing from a day spirit',
+    dottrina:'A mobile P whose DEPARTURE is a spirit of the day (Month General, Ding, Post Horse): the General amplifies the G-drainer\'s nature → the market does NOT follow the trend.',
     opts: { genvia: 'spiriti' },
     test: function (R, ctx, state) {
       var mob = R.linee[R.mutante.pos-1];
@@ -874,11 +880,11 @@
 
   // ---- i 2 rafforzativi (agiscono SOLO nel contrasto PB↔LY, non come vie autonome) ----
   var LY_RAFFORZATIVI = [
-    { id:'ORA', nome:'Ora dal seme sostiene chi segue',
-      dottrina:'Se la PARTENZA della mobile è il ramo dell\'ORA dal seme, e chi dice "segue il trend" (fra PB e LY) è il PB: nel contrasto vince il PB (§57, come via da sola RESPINTA — peggiora; come rafforzativo FISSATO).',
+    { id:'ORA', nome:'Hour from the seed backs the follower',
+    dottrina:'If the mobile\'s DEPARTURE is the HOUR branch from the seed and the one saying "follows the trend" (PB vs LY) is the PB: in a conflict the PB wins (§57 — as a stand-alone rule REJECTED, as a reinforcer FIXED).',
       test: function (R, ctx, state) { return !!(ctx.oraBranch && R.mutante.ramoDep === ctx.oraBranch); } },
-    { id:'WVIRTU', nome:'W benedetta (Virtù + Ghost/Tomb) sostiene chi segue',
-      dottrina:'La mobile è una W la cui PARTENZA è 天德, 支德 (Virtù, §60) oppure Ghost 鬼煞 o Tomb 墓煞 dallo stelo del giorno (§61): se chi dice "segue" è il PB, nel contrasto vince il PB. S9 = riferimento del termometro.',
+    { id:'WVIRTU', nome:'Blessed W (Virtues + Ghost/Tomb) backs the follower',
+    dottrina:'The mobile is a W whose DEPARTURE is Heaven Virtue or Branch Virtue (§60), or Ghost Sha / Tomb Sha from the day stem (§61): if the follower is the PB, in a conflict the PB wins. S9 = reference of the thermometer.',
       test: function (R, ctx, state) {
         var mob = R.linee[R.mutante.pos-1];
         if (mob.par!=='W') return false;
@@ -918,8 +924,8 @@
   // ctx.emaDir: 'up'|'down' — usato per capire se il PB "segue" il trend grezzo
   function combinaS9(R, ctx, pbDir, enabled, enabledRaff, opts) {
     var t = termometro(R, ctx, enabled, opts);
-    if (!t.dir) return { finale: pbDir, chi: 'PB solo (LY tace)', via: null, ly: null };
-    if (t.dir === pbDir) return { finale: pbDir, chi: 'PB e LY concordano (via ' + t.sezione + ')', via: t, ly: t.dir };
+    if (!t.dir) return { finale: pbDir, chi: 'PB alone (LY silent)', via: null, ly: null };
+    if (t.dir === pbDir) return { finale: pbDir, chi: 'PB and LY agree (rule ' + t.sezione + ')', via: t, ly: t.dir };
     // contrasto: valuto i rafforzativi in ordine (ora, poi W benedetta)
     var ema = ctx.emaDir === 'up' ? 'LONG' : 'SHORT';
     var pbSegue = (pbDir === ema);
@@ -927,10 +933,10 @@
     var aOra = enabledRaff.ORA !== false && LY_RAFFORZATIVI[0].test(R, ctx);
     var wVirtu = enabledRaff.WVIRTU !== false && LY_RAFFORZATIVI[1].test(R, ctx);
     if ((aOra || wVirtu) && pbSegue) {
-      var chi = aOra ? 'contrasto → rafforzativo ORA sostiene il PB' : 'contrasto → rafforzativo W BENEDETTA sostiene il PB';
+      var chi = aOra ? 'conflict → HOUR reinforcer backs the PB' : 'conflict → BLESSED W reinforcer backs the PB';
       return { finale: pbDir, chi: chi, via: t, ly: t.dir };
     }
-    return { finale: t.dir, chi: 'contrasto → vince LY (via ' + t.sezione + ' ' + t.nome + ')', via: t, ly: t.dir };
+    return { finale: t.dir, chi: 'conflict → LY wins (rule ' + t.sezione + ' ' + t.nome + ')', via: t, ly: t.dir };
   }
 
   return { read: read, readManual: readManual, TRIGRAM: TRIGRAM,
@@ -939,5 +945,6 @@
            LY_VIE: LY_VIE, LY_RAFFORZATIVI: LY_RAFFORZATIVI,
            termometro: termometro, combinaS9: combinaS9,
            generaleDelMese: generaleDelMese, dingSpirit: dingSpirit,
-           tiande: tiande, zhide: zhide, STELO_SPIRITI: STELO_SPIRITI };
+           tiande: tiande, zhide: zhide, STELO_SPIRITI: STELO_SPIRITI,
+           EL_EN: EL_EN, STATO_EN: STATO_EN };
 }));

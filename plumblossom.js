@@ -460,9 +460,9 @@
       mutual:    { sup: nucSup, inf: nucInf },
       transform: { sup: trSup,  inf: trInf },
       movingLine: linea,
-      trendLabel: trend.name + ' ' + trend.pinyin + ' (' + EL_IT[trend.el] + ')',
-      yongOrigLabel: yongOrig.name + ' ' + yongOrig.pinyin + ' (' + EL_IT[yongOrig.el] + ')',
-      yongTrasfLabel: yongTrasf.name + ' ' + yongTrasf.pinyin + ' (' + EL_IT[yongTrasf.el] + ')'
+      trendLabel: trend.pinyin + ' (' + trend.el + ')',
+      yongOrigLabel: yongOrig.pinyin + ' (' + yongOrig.el + ')',
+      yongTrasfLabel: yongTrasf.pinyin + ' (' + yongTrasf.el + ')'
     };
     if (extra) for (var k in extra) out[k] = extra[k];
     return out;

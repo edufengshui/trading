@@ -169,7 +169,7 @@ function renderForexBar() {
   // keep the DATE field honest: in forex mode the date comes from the feed, not from the input
   var fd = forexData.date.split('-');
   var di = $('date');
-  if (di) { di.value = fd[2] + '/' + fd[1] + '/' + fd[0]; di.readOnly = true; di.title = 'In Forex mode the date comes from the feed (00:00 GMT of the trading day). Press "Build chart" to go back to manual mode.'; }
+  if (di) { di.value = forexData.date; di.readOnly = true; di.title = 'In Forex mode the date comes from the feed (00:00 GMT of the trading day). Press "Build chart" to go back to manual mode.'; }
   var head = '<span class="fxdate">Forex · ' + forexData.date + ' 00:00 GMT · 0° Greenwich · date driven by the feed</span>';
   var pills = ok.map(function (r) {
     var known = (r.emaConsolidated === true || r.emaConsolidated === false);
@@ -318,11 +318,11 @@ function renderTrendPB(cross, chart, dArr, row, p) {
       ? '<span class="tv no">EMA not consolidated · no trade</span>'
       : (noTradePB
         ? (pb.noTradeClash
-          ? '<span class="tv no">CLASH GIORNO↔MESE · no trade</span>'
-          : '<span class="tv no">PAREGGIO · no trade</span>')
+          ? '<span class="tv no">DAY↔MONTH CLASH · no trade</span>'
+          : '<span class="tv no">TIE · no trade</span>')
         : (confirmed
-          ? '<span class="tv ok">SEGUE il trend</span>'
-          : '<span class="tv no">NON SEGUE il trend</span>')));
+          ? '<span class="tv ok">FOLLOWS the trend</span>'
+          : '<span class="tv no">does NOT follow the trend</span>')));
   var signalBadge = signal
     ? '<span class="sig ' + (signal === 'NO TRADE' ? 'notrade' : signal.toLowerCase()) + '">' + signal + '</span>'
     : '<span class="sig na">signal n/a — EMA trend missing</span>';
@@ -331,9 +331,9 @@ function renderTrendPB(cross, chart, dArr, row, p) {
   var seedLine = '';
   if (row && row.price != null) {
     seedLine = '<div class="trendmsgs seedline">00:00 GMT open <b class="px">' + row.price + '</b>' +
-      ' → seme <b class="px">' + row.seed + '</b> · giorno <b>' + chart.dayStem + chart.dayBranch + '</b>' +
-      (pbManual ? ' · <b class="down">inserimento manuale</b>' : '') +
-      (fragile ? '<br><b class="down">seme entro 3 pip dal bordo → NO TRADE</b>' : '') + '</div>';
+      ' → seed <b class="px">' + row.seed + '</b> · day <b>' + chart.dayStem + chart.dayBranch + '</b>' +
+      (pbManual ? ' · <b class="down">manual entry</b>' : '') +
+      (fragile ? '<br><b class="down">seed within 3 pip of the bucket edge → NO TRADE</b>' : '') + '</div>';
   }
 
   var arrow = dir === 'up' ? '↑ up (blue)' : dir === 'down' ? '↓ down (red)' : (dir ? dir : 'n/a');
@@ -360,19 +360,19 @@ function renderTrendPB(cross, chart, dArr, row, p) {
     drawHex(pb.mutual,    'Mutual',    null, 0) +
     drawHex(pb.transform, 'Transform', null, 0) + '</div>';
 
-  var roles = '<div class="trendmsgs">Trend (體) <b>' + pb.trendLabel + '</b>' +
-    ' · Yong (用) <b>' + pb.yongOrigLabel + '</b>' +
-    ' → si muove in <b>' + pb.yongTrasfLabel + '</b>' +
+  var roles = '<div class="trendmsgs">Trend (Ti) <b>' + pb.trendLabel + '</b>' +
+    ' · Yong <b>' + pb.yongOrigLabel + '</b>' +
+    ' → moves into <b>' + pb.yongTrasfLabel + '</b>' +
     ' — ' + verdictBadge + '</div>';
 
   // manual override controls: superiore (1-8), inferiore (1-8), linea mutante (1-6)
   function opts(n, sel){ var s=''; for(var i=1;i<=n;i++) s+='<option value="'+i+'"'+(i===sel?' selected':'')+'>'+i+'</option>'; return s; }
   var manualRow = '<div class="pbmanual">' +
-    '<span>Inserimento manuale:</span>' +
-    ' superiore <select id="pb-sup">' + opts(8, pb.superiore) + '</select>' +
-    ' inferiore <select id="pb-inf">' + opts(8, pb.inferiore) + '</select>' +
-    ' linea mutante <select id="pb-line">' + opts(6, pb.linea) + '</select>' +
-    ' <button class="ghost" id="pb-reset" style="padding:4px 12px">Reset al seme</button>' +
+    '<span>Manual entry:</span>' +
+    ' upper <select id="pb-sup">' + opts(8, pb.superiore) + '</select>' +
+    ' lower <select id="pb-inf">' + opts(8, pb.inferiore) + '</select>' +
+    ' mobile line <select id="pb-line">' + opts(6, pb.linea) + '</select>' +
+    ' <button class="ghost" id="pb-reset" style="padding:4px 12px">Reset to seed</button>' +
     '</div>';
 
   p.innerHTML = head + seedLine + emaLine + hexBlock + roles + manualRow;
@@ -405,22 +405,24 @@ function renderTrendPB(cross, chart, dArr, row, p) {
   });
 }
 
-// ---- Liu Yao (六爻): lettura completa, sotto il Plum Blossom, sulla stessa carta ----
+// ---- Liu Yao: full reading below the Plum Blossom, same card, plus the LY thermometer ----
 function renderLiuYao(cross, chart, row, lyp, pbCtx) {
   if (!lyp) lyp = $('lypanel');
   if (!lyp) return;
   if (!window.XKDGLiuYao || !row || row.seed == null || !chart.dayBranch) { lyp.style.display = 'none'; return; }
+  var LYM = window.XKDGLiuYao;
 
   var yearBranch = (chart.source && chart.source.yearPillar) ? chart.source.yearPillar.charAt(1) : null;
-  var oraBranchSeme = (row.seed != null) ? window.XKDGLiuYao.oraDalSeme(row.seed) : null;
+  var oraBranchSeme = (row.seed != null) ? LYM.oraDalSeme(row.seed) : null;
   var ly = pbManual
-    ? window.XKDGLiuYao.readManual(pbManual.sup, pbManual.inf, pbManual.linea,
+    ? LYM.readManual(pbManual.sup, pbManual.inf, pbManual.linea,
         chart.dayBranch, chart.monthBranch, yearBranch, chart.dayStem || null, null)
-    : window.XKDGLiuYao.read(row.seed, chart.dayBranch, chart.monthBranch, yearBranch, chart.dayStem || null);
+    : LYM.read(row.seed, chart.dayBranch, chart.monthBranch, yearBranch, chart.dayStem || null);
   if (ly.error) { lyp.style.display = 'none'; return; }
 
   var BEAST_COLOR = { '青龍':'#3fb950', '朱雀':'#f85149', '勾陳':'#d4a72c',
                       '螣蛇':'#a371f7', '白虎':'#8b949e', '玄武':'#58a6ff' };
+  var EN = LYM.EL_EN, ST = LYM.STATO_EN;
   function lineGlyph(yang) {
     return yang
       ? '<span style="display:inline-block;width:52px;border-top:9px solid currentColor;vertical-align:middle"></span>'
@@ -428,48 +430,49 @@ function renderLiuYao(cross, chart, row, lyp, pbCtx) {
         '<span style="display:inline-block;width:8px"></span>' +
         '<span style="display:inline-block;width:22px;border-top:9px solid currentColor;vertical-align:middle"></span>';
   }
+  function code(par) { return '<b title="' + LYM.PAR[par].en + '">' + par + '</b>'; }
 
-  var head = '<div class="trendhead"><span>' + cross + ' — 六爻 Liu Yao</span>' +
-    '<span class="tv">correttivo del Plum Blossom</span></div>';
+  var head = '<div class="trendhead"><span>' + cross + ' — Liu Yao</span>' +
+    '<span class="tv">corrective of the Plum Blossom</span></div>';
 
-  var palLine = '<div class="trendmsgs">Palazzo 京房 (Jing Fang): <b>' + ly.palName + ' ' + ly.palPinyin +
-    '</b> (' + ly.palElIt + ') · Soggetto 世 L' + ly.shi + ' · Ospite 應 L' + ly.ying +
-    ' · vuoti 旬空: <b>' + (ly.vuoti.length ? ly.vuoti.join(' ') : '—') + '</b>' +
-    ' · Tai Sui 太歲: ' + (ly.taiSuiPos ? 'L' + ly.taiSuiPos : 'nessuna linea') + '</div>';
+  var palLine = '<div class="trendmsgs">Palace: <b>' + ly.palPinyin + '</b> (' + EN[ly.palEl] + ')' +
+    ' · Shi (subject) L' + ly.shi + ' · Ying (object) L' + ly.ying +
+    ' · void branches: <b>' + (ly.vuoti.length ? ly.vuoti.join(' ') : '—') + '</b>' +
+    ' · Tai Sui (year): ' + (ly.taiSuiPos ? 'L' + ly.taiSuiPos : 'no line') +
+    ' · hour from seed: <b>' + (oraBranchSeme || '—') + '</b></div>';
 
   var m = ly.mutante;
-  var mutLine = '<div class="trendmsgs">Mutante L' + m.pos + ': <b>' + m.ramoDep + '</b> (' + m.depElIt +
-    ') → <b>' + m.ramoArr + '</b> (' + m.arrElIt + ') — ' + m.casoLabel +
-    (m.movimentoNullo ? ' · <b class="down">movimento NULLO</b>' : '') +
-    (m.atterraggio ? ' · atterra su L' + m.atterraggio.pos + ' (' + m.atterraggio.ramo + ') → ' + m.atterraggio.dir : '') +
+  var mutLine = '<div class="trendmsgs">Mobile line L' + m.pos + ': <b>' + m.ramoDep + '</b> (' + EN[m.depEl] +
+    ') → <b>' + m.ramoArr + '</b> (' + EN[m.arrEl] + ') — ' + m.casoLabel +
+    (m.progressione ? ' · ' + (m.progressione === 'avanzante' ? 'advancing' : 'retreating') : '') +
+    (m.movimentoNullo ? ' · <b class="down">NULL movement</b>' : '') +
+    (m.atterraggio ? ' · lands on L' + m.atterraggio.pos + ' (' + m.atterraggio.ramo + ') → ' + m.atterraggio.dir : '') +
     '</div>';
 
-  // griglia delle sei linee, L6 (alto) → L1 (basso)
+  // six lines, L6 (top) → L1 (bottom)
   var rows = '';
   for (var i = 6; i >= 1; i--) {
     var l = ly.linee[i-1];
     var beast = l.bestia
-      ? '<span style="color:' + (BEAST_COLOR[l.bestia.cn] || 'currentColor') + '">' + l.bestia.cn + '</span>' +
-        '<br><small style="opacity:.7">' + l.bestia.it + '</small>'
+      ? '<span style="color:' + (BEAST_COLOR[l.bestia.cn] || 'currentColor') + '">' + l.bestia.en + '</span>'
       : '—';
     var fu = l.fushen
-      ? '<small style="opacity:.85">伏 ' + l.fushen.parCn + ' ' + l.fushen.b + '</small>'
+      ? '<small style="opacity:.85">hidden ' + code(l.fushen.par) + ' ' + l.fushen.b + '</small>'
       : '';
-    var orig = '<b>' + l.parCn + '</b> ' + l.ramo + ' <small style="opacity:.75">' + l.elIt + '</small>';
+    var orig = code(l.par) + ' ' + l.ramo + ' <small style="opacity:.75">' + EN[l.el] + '</small>';
     var marks = '';
-    if (l.isShi)  marks += '<b style="color:var(--gold,#e3b341)"> 世</b>';
-    if (l.isYing) marks += '<b style="color:var(--azure,#58a6ff)"> 應</b>';
+    if (l.isShi)  marks += '<b style="color:var(--gold,#e3b341)"> Shi</b>';
+    if (l.isYing) marks += '<b style="color:var(--azure,#58a6ff)"> Ying</b>';
     if (l.isMobile) marks += '<b class="down"> ✸</b>';
-    if (l.vuoto)  marks += ' <small style="color:var(--void,#8b949e)">空</small>';
-    if (l.isTaiSui) marks += ' <small style="opacity:.8">太</small>';
-    marks += ' <small style="opacity:.6">[' + l.stato + ']</small>';
+    if (l.vuoto)  marks += ' <small style="color:var(--void,#8b949e)">void</small>';
+    if (l.isTaiSui) marks += ' <small style="opacity:.8">TS</small>';
+    marks += ' <small style="opacity:.6">[' + (ST[l.stato] || l.stato) + ']</small>';
     var trasf = (l.isMobile && l.mut)
-      ? '→ <b>' + window.XKDGLiuYao.PAR[l.mut.parArr].cn + '</b> ' + l.mut.ramoArr +
-        ' <small style="opacity:.75">' + window.XKDGLiuYao.EL_IT[l.mut.elArr] + '</small>'
+      ? '→ ' + code(l.mut.parArr) + ' ' + l.mut.ramoArr + ' <small style="opacity:.75">' + EN[l.mut.elArr] + '</small>'
       : '';
     var rowStyle = l.isMobile ? ' style="background:rgba(227,179,65,.08)"' : '';
     rows += '<tr' + rowStyle + '>' +
-      '<td style="padding:5px 8px;text-align:center;white-space:nowrap">' + beast + '</td>' +
+      '<td style="padding:5px 8px;text-align:center;white-space:nowrap;font-size:12px">' + beast + '</td>' +
       '<td style="padding:5px 8px;white-space:nowrap">' + fu + '</td>' +
       '<td style="padding:5px 8px;white-space:nowrap">' + orig + '</td>' +
       '<td style="padding:5px 10px;text-align:center">' + lineGlyph(l.yang) + '</td>' +
@@ -479,13 +482,14 @@ function renderLiuYao(cross, chart, row, lyp, pbCtx) {
   }
   var table = '<table class="lytable" style="border-collapse:collapse;margin-top:8px;font-size:14px">' +
     '<thead><tr style="opacity:.6;font-size:12px;text-align:left">' +
-    '<th style="padding:2px 8px">六獸 Bestie</th>' +
-    '<th style="padding:2px 8px">伏神 Nascosti</th>' +
-    '<th style="padding:2px 8px">本卦 Originale</th>' +
-    '<th style="padding:2px 10px;text-align:center">爻 Linea</th>' +
-    '<th style="padding:2px 8px">世/應 · stato</th>' +
-    '<th style="padding:2px 8px">變卦 Mutato</th>' +
-    '</tr></thead><tbody>' + rows + '</tbody></table>';
+    '<th style="padding:2px 8px">Beast</th>' +
+    '<th style="padding:2px 8px">Hidden</th>' +
+    '<th style="padding:2px 8px">Original</th>' +
+    '<th style="padding:2px 10px;text-align:center">Line</th>' +
+    '<th style="padding:2px 8px">Shi/Ying · state</th>' +
+    '<th style="padding:2px 8px">Transformed</th>' +
+    '</tr></thead><tbody>' + rows + '</tbody></table>' +
+    '<div class="trendmsgs" style="font-size:12px;opacity:.6">Codes: G Officer · W Wealth · P Parents · B Siblings · C Children</div>';
 
   var termHtml = '';
   if (pbCtx && pbCtx.finalDir) {
@@ -498,7 +502,7 @@ function renderLiuYao(cross, chart, row, lyp, pbCtx) {
   wireTermometroToggles(cross, chart, row, lyp, pbCtx);
 }
 
-// ---- Termometro LY: elenco delle vie + rafforzativi, verdetto S9 ----
+// ---- LY thermometer: list of rules + reinforcers, S9 verdict ----
 var LY_TOGGLE_KEY = 'ly-via-toggles-v1';
 function loadLyToggles() {
   try { return JSON.parse(localStorage.getItem(LY_TOGGLE_KEY)) || {}; } catch (e) { return {}; }
@@ -506,7 +510,7 @@ function loadLyToggles() {
 function saveLyToggles(t) {
   try { localStorage.setItem(LY_TOGGLE_KEY, JSON.stringify(t)); } catch (e) {}
 }
-var lyToggles = loadLyToggles();   // { viaId: false } solo per quelle SPENTE; assente = accesa
+var lyToggles = loadLyToggles();   // { ruleId: false } only for the ones switched OFF; absent = on
 
 function renderTermometro(R, ctxT, pbFinalDir) {
   var LYM = window.XKDGLiuYao;
@@ -517,21 +521,21 @@ function renderTermometro(R, ctxT, pbFinalDir) {
   var comb = LYM.combinaS9(R, ctxT, pbFinalDir, enabled, enabledRaff, {});
   var s9Cls = comb.finale === 'LONG' ? 'long' : 'short';
   var s9Badge = '<div class="trendmsgs" style="margin-top:10px">' +
-    '<b>Verdetto S9 (PB + LY):</b> <span class="sig ' + s9Cls + '" style="display:inline-block">' + comb.finale + '</span>' +
-    ' <span style="opacity:.75">— chi ha deciso: ' + comb.chi + '</span></div>';
+    '<b>S9 verdict (PB + LY):</b> <span class="sig ' + s9Cls + '" style="display:inline-block">' + comb.finale + '</span>' +
+    ' <span style="opacity:.75">— decided by: ' + comb.chi + '</span></div>';
 
-  // stato individuale di OGNI via (indipendente dall'ordine, per capire l'effetto del toggle)
   var state = { opts: {} };
-  var rows = LYM.LY_VIE.map(function (v) {
+  var rows = LYM.LY_VIE.map(function (v, idx) {
     var dir = v.test(R, ctxT, state);
     var on = lyToggles[v.id] !== false;
     var isFiring = comb.via && comb.via.viaId === v.id;
     var chip = dir ? ('<span class="sig ' + (dir === 'LONG' ? 'long' : 'short') + '" style="padding:1px 8px;font-size:11px">' + dir + '</span>')
-      : '<span style="opacity:.5;font-size:11px">tace</span>';
-    return '<div class="viarow' + (isFiring ? ' viafiring' : '') + '" style="display:flex;align-items:center;gap:8px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06)">' +
+      : '<span style="opacity:.5;font-size:11px">silent</span>';
+    return '<div class="viarow' + (isFiring ? ' viafiring' : '') + '" style="display:flex;align-items:center;gap:8px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06);cursor:pointer">' +
       '<input type="checkbox" class="via-toggle" data-via="' + v.id + '" ' + (on ? 'checked' : '') + '>' +
+      '<span style="min-width:28px;opacity:.6;font-size:12px">' + (idx + 1) + '</span>' +
       '<span style="min-width:70px;opacity:.7;font-size:12px">' + v.sezione + '</span>' +
-      '<span style="flex:1;font-size:13px">' + v.nome + (isFiring ? ' <b style="color:var(--gold,#e3b341)">← ha deciso</b>' : '') + '</span>' +
+      '<span style="flex:1;font-size:13px">' + v.nome + (isFiring ? ' <b style="color:var(--gold,#e3b341)">← decided</b>' : '') + '</span>' +
       chip +
       '</div>' +
       '<div class="viadoc" style="display:none;font-size:12px;opacity:.8;padding:4px 0 8px 26px">' + v.dottrina + '</div>';
@@ -540,25 +544,24 @@ function renderTermometro(R, ctxT, pbFinalDir) {
   var raffRows = LYM.LY_RAFFORZATIVI.map(function (v) {
     var dir = v.test(R, ctxT, state);
     var on = lyToggles[v.id] !== false;
-    return '<div class="viarow" style="display:flex;align-items:center;gap:8px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06)">' +
+    return '<div class="viarow" style="display:flex;align-items:center;gap:8px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06);cursor:pointer">' +
       '<input type="checkbox" class="via-toggle" data-via="' + v.id + '" ' + (on ? 'checked' : '') + '>' +
       '<span style="flex:1;font-size:13px">' + v.nome + '</span>' +
-      (dir ? '<span class="sig long" style="padding:1px 8px;font-size:11px">attivo</span>' : '<span style="opacity:.5;font-size:11px">non applicabile</span>') +
+      (dir ? '<span class="sig long" style="padding:1px 8px;font-size:11px">active</span>' : '<span style="opacity:.5;font-size:11px">not applicable</span>') +
       '</div>' +
       '<div class="viadoc" style="display:none;font-size:12px;opacity:.8;padding:4px 0 8px 26px">' + v.dottrina + '</div>';
   }).join('');
 
   return s9Badge +
-    '<details style="margin-top:8px"><summary style="cursor:pointer;opacity:.85">Termometro LY — ' + LYM.LY_VIE.length + ' vie + ' + LYM.LY_RAFFORZATIVI.length + ' rafforzativi (clic su una riga per la dottrina)</summary>' +
-    '<div style="margin-top:6px">' + rows + '<div style="margin-top:6px;font-weight:600;opacity:.7;font-size:12px">Rafforzativi (agiscono solo nel contrasto)</div>' + raffRows + '</div>' +
+    '<details style="margin-top:8px"><summary style="cursor:pointer;opacity:.85">LY thermometer — ' + LYM.LY_VIE.length + ' rules + ' + LYM.LY_RAFFORZATIVI.length + ' reinforcers (evaluated top-down, first answer wins · click a row for the doctrine)</summary>' +
+    '<div style="margin-top:6px">' + rows + '<div style="margin-top:6px;font-weight:600;opacity:.7;font-size:12px">Reinforcers (act only in a PB ↔ LY conflict)</div>' + raffRows + '</div>' +
     '</details>';
 }
 
 function wireTermometroToggles(cross, chart, row, lyp, pbCtx) {
   lyp.querySelectorAll('.via-toggle').forEach(function (cb) {
     cb.addEventListener('change', function () {
-      lyToggles[cb.dataset.via] = cb.checked ? undefined : false;
-      if (lyToggles[cb.dataset.via] === undefined) delete lyToggles[cb.dataset.via];
+      if (cb.checked) delete lyToggles[cb.dataset.via]; else lyToggles[cb.dataset.via] = false;
       saveLyToggles(lyToggles);
       renderLiuYao(cross, chart, row, lyp, pbCtx);
     });
