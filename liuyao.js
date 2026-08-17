@@ -514,7 +514,7 @@
 
   LY_VIE.push({ id:'B62', sezione:'§62', nome:'Mobile G delivered to a strong C (FIRST)',
     dottrina:'A mobile G whose ARRIVAL lands in the element of a fixed C that is timely, full and controls it: the G hands itself to its executioner, the trend dies → OPPOSITE of the G\'s seat (G below → LONG, G above → SHORT). Doctrinal pillar (Edu 16/08), fixed by doctrine. C is ambivalent: it generates a W, but attacks a nearby G.',
-    test: function (R, ctx) {
+    test: function (R, ctx, state) {
       var m = R.linee[R.mutante.pos-1];
       if (m.par !== 'G') return null;
       var vivo = function (l) { return ['legata','rotta','dormiente','eliminata','autocombinata'].indexOf(l.stato) < 0; };
@@ -525,6 +525,7 @@
       var ok = R.linee.some(function (l) { return l.par==='C' && !l.isMobile && !l.vuoto && vivo(l) &&
         timely(l.el) && CTRL[l.el]===m.el && l.el===arrEl; });
       if (!ok) return null;
+      state.why = 'Mobile <b>G</b> L'+m.pos+' ('+R.mutante.ramoDep+') arrives in <b>'+R.mutante.ramoArr+'</b> ('+arrEl+'), the element of a fixed, timely, full <b>C</b> that controls it: the G is delivered to its executioner → opposite of the G\'s seat ('+(m.pos<=3?'below → LONG':'above → SHORT')+').';
       return m.pos<=3 ? 'LONG' : 'SHORT';
     }});
 
@@ -541,7 +542,7 @@
 
   LY_VIE.push({ id:'R1', sezione:'—', nome:'Destroyed mobile: read the timely line',
     dottrina:'The mobile is void, clashed by the day and not timely: if exactly one other line (not C/B) is alive, not void, not clashed by the day and timely, its position dictates the direction (opposite of its seat).',
-    test: function (R, ctx) {
+    test: function (R, ctx, state) {
       var c = _ctx(R);
       var mob = R.linee[R.mutante.pos-1], dep = R.mutante.ramoDep;
       var AUTOP = ['辰','午','酉','亥'];
@@ -550,12 +551,13 @@
         CLASH[c.D]!==l.ramo && !(l.ramo===c.D && AUTOP.indexOf(l.ramo)>=0) &&
         ['C','B'].indexOf(l.par)<0 && c.timely(l.el); });
       if (cand.length!==1) return null;
+      state.why = 'The mobile L'+mob.pos+' ('+dep+') is <b>void</b> and clashed by the <b>day '+c.D+'</b>, not timely: destroyed. The only timely live line is L'+cand[0].pos+' <b>'+cand[0].par+' '+cand[0].ramo+'</b> → opposite of its seat.';
       return cand[0].pos<=3 ? 'SHORT' : 'LONG';
     }});
 
   LY_VIE.push({ id:'R2', sezione:'—', nome:'Terminal G drained by its hidden line',
     dottrina:'The terminal of the qi flow (receives, does not give) is a single G, and its hidden line drains it (G generates the hidden): direction of the G\'s seat.',
-    test: function (R, ctx) {
+    test: function (R, ctx, state) {
       var c = _ctx(R);
       var vivi = R.linee.filter(c.vivo);
       var els = {}; vivi.forEach(function(l){els[l.el]=true;}); c.bazi.forEach(function(b){els[WX[b]]=true;});
@@ -567,12 +569,13 @@
       });
       var capG = (cap.length===1 && cap[0].par==='G') ? cap[0] : null;
       if (!capG || !capG.fushen || GEN[capG.el]!==capG.fushen.el) return null;
+      state.why = 'The qi flow ends on a single <b>G</b> L'+capG.pos+' ('+capG.ramo+'), drained by its hidden <b>'+capG.fushen.par+' '+capG.fushen.b+'</b> → direction of the G\'s seat.';
       return capG.pos<=3 ? 'SHORT' : 'LONG';
     }});
 
   LY_VIE.push({ id:'R3', sezione:'—', nome:'Punishment with the hidden line, both weak',
     dottrina:'A line in punishment (xing) with its own hidden line, both not timely: direction of the line\'s seat.',
-    test: function (R, ctx) {
+    test: function (R, ctx, state) {
       var c = _ctx(R);
       var TRIPLE=[['寅','巳','申'],['丑','戌','未']], MUT=[['子','卯']];
       var inX = function (a,b){
@@ -584,12 +587,13 @@
       if (cf.length!==1) return null;
       var l = cf[0];
       if (c.timely(l.el) || c.timely(l.fushen.el)) return null;
+      state.why = 'L'+l.pos+' <b>'+l.par+' '+l.ramo+'</b> is in punishment with its hidden <b>'+l.fushen.par+' '+l.fushen.b+'</b>, both weak in the month <b>'+c.Mo+'</b> → direction of the line\'s seat.';
       return l.pos<=3 ? 'SHORT' : 'LONG';
     }});
 
   LY_VIE.push({ id:'R4', sezione:'—', nome:'Terminal G (no drain)',
     dottrina:'The terminal of the qi flow is a single G (even without a draining hidden line): direction of its seat.',
-    test: function (R, ctx) {
+    test: function (R, ctx, state) {
       var c = _ctx(R);
       var vivi = R.linee.filter(c.vivo);
       var els = {}; vivi.forEach(function(l){els[l.el]=true;}); c.bazi.forEach(function(b){els[WX[b]]=true;});
@@ -601,22 +605,25 @@
       });
       var capG = (cap.length===1 && cap[0].par==='G') ? cap[0] : null;
       if (!capG) return null;
+      state.why = 'The qi flow of lines + Bazi (year '+c.Y+', month '+c.Mo+', day '+c.D+') ends on a single <b>G</b> L'+capG.pos+' ('+capG.ramo+') → direction of the G\'s seat.';
       return capG.pos<=3 ? 'SHORT' : 'LONG';
     }});
 
   LY_VIE.push({ id:'R5', sezione:'—', nome:'Retreating mobile',
     dottrina:'The mobile retreats (same element, counter-clockwise branch): its direction holds if the year clash hits it, otherwise read the opposite.',
-    test: function (R, ctx) {
+    test: function (R, ctx, state) {
       var c = _ctx(R);
       if (R.mutante.progressione !== 'retrocedente') return null;
       var mob = R.linee[R.mutante.pos-1], dep = R.mutante.ramoDep;
       var suo = mob.pos<=3 ? 'SHORT' : 'LONG';
-      return CLASH[c.Y]===dep ? suo : (suo==='LONG' ? 'SHORT' : 'LONG');
+      var hitY = CLASH[c.Y]===dep;
+      state.why = 'The mobile L'+mob.pos+' <b>'+mob.par+'</b> retreats '+dep+' → '+R.mutante.ramoArr+'. '+(hitY?'The <b>Tai Sui '+c.Y+'</b> clashes it: its direction holds.':'No year clash: read the opposite of its seat.');
+      return hitY ? suo : (suo==='LONG' ? 'SHORT' : 'LONG');
     }});
 
   LY_VIE.push({ id:'R6', sezione:'—', nome:'Seasonal gathering with the month',
     dottrina:'The three branches of a seasonal gathering are all present together with the month branch: if above/below are unbalanced, the majority wins.',
-    test: function (R, ctx) {
+    test: function (R, ctx, state) {
       var c = _ctx(R);
       var HUI=[{r:['寅','卯','辰'],el:'Wood'},{r:['巳','午','未'],el:'Fire'},
                {r:['申','酉','戌'],el:'Metal'},{r:['亥','子','丑'],el:'Water'}];
@@ -626,35 +633,38 @@
       var ln = R.linee.filter(function (l) { return l.el===fh[0].el; });
       var b_ = ln.filter(function(l){return l.pos<=3;}).length, a_ = ln.length-b_;
       if (b_===a_) return null;
+      state.why = 'Seasonal gathering '+fh[0].r.join('')+' ('+fh[0].el+') complete with the <b>month '+c.Mo+'</b>: '+b_+' lines below vs '+a_+' above → majority.';
       return b_>a_ ? 'SHORT' : 'LONG';
     }});
 
   LY_VIE.push({ id:'R7_54b', sezione:'§54b', nome:'Month controls the Tai Sui + feeds the Ti',
     dottrina:'The month branch controls the Tai Sui (year) and the mobile\'s arrival would generate the Ti (timely): the Ti is fed by an unstable source → does NOT follow.',
-    test: function (R, ctx) {
+    test: function (R, ctx, state) {
       var c = _ctx(R);
       var A = ctx.corpoEl; if (!A) return null;
       var arrEl2 = WX[R.mutante.ramoArr], yEl = WX[c.Y], moEl = WX[c.Mo];
       if (CTRL[moEl]!==yEl) return null;
       if (!(GEN[arrEl2]===A && c.timely(arrEl2))) return null;
+      state.why = 'The <b>month '+c.Mo+'</b> ('+moEl+') controls the <b>Tai Sui '+c.Y+'</b> ('+yEl+'), and the arrival <b>'+R.mutante.ramoArr+'</b> ('+arrEl2+', timely) would feed the Ti ('+A+'): unstable source → does NOT follow the trend.';
       return ctx.emaDir==='up' ? 'SHORT' : 'LONG';
     }});
 
   LY_VIE.push({ id:'R8_49', sezione:'§49', nome:'Mobile Tai Sui turns into the palace\'s G',
     dottrina:'The mobile is the Tai Sui and its transformation lands in the palace\'s Officer element: its own direction leads.',
-    test: function (R, ctx) {
+    test: function (R, ctx, state) {
       var mob = R.linee[R.mutante.pos-1];
       if (!mob.isTaiSui) return null;
       var arrEl2 = WX[R.mutante.ramoArr], gEl = null;
       var els = ['Wood','Fire','Earth','Metal','Water'];
       for (var i=0;i<els.length;i++) if (CTRL[els[i]]===R.palEl) { gEl = els[i]; break; }
       if (arrEl2 !== gEl) return null;
+      state.why = 'The mobile L'+mob.pos+' is the <b>Tai Sui '+mob.ramo+'</b> and turns into <b>'+R.mutante.ramoArr+'</b> ('+arrEl2+'), the Officer element of the palace ('+R.palEl+') → its own seat.';
       return mob.pos<=3 ? 'SHORT' : 'LONG';
     }});
 
   LY_VIE.push({ id:'R9_51', sezione:'§51', nome:'Mobile enters the tomb of its own element',
     dottrina:'A vibrant (timely) G entering its own tomb goes out → opposite of its seat. A non-vibrant B entering its own tomb goes out → opposite of its seat.',
-    test: function (R, ctx) {
+    test: function (R, ctx, state) {
       var c = _ctx(R);
       var mob = R.linee[R.mutante.pos-1], dep = R.mutante.ramoDep;
       var TOMBA = {Fire:'戌',Water:'辰',Metal:'丑',Wood:'未'};
@@ -662,24 +672,25 @@
       if (TOMBA[depEl] !== R.mutante.ramoArr) return null;
       var vibrante = c.timely(depEl);
       var suo = mob.pos<=3 ? 'SHORT' : 'LONG', opp = suo==='LONG' ? 'SHORT' : 'LONG';
-      if (mob.par==='G' && vibrante) return opp;
-      if (mob.par==='B' && !vibrante) return opp;
+      if (mob.par==='G' && vibrante) { state.why = 'Vibrant <b>G</b> L'+mob.pos+' ('+dep+', '+depEl+') enters its own tomb <b>'+R.mutante.ramoArr+'</b> and goes out → opposite of its seat.'; return opp; }
+      if (mob.par==='B' && !vibrante) { state.why = 'Weak <b>B</b> L'+mob.pos+' ('+dep+', '+depEl+') enters its own tomb <b>'+R.mutante.ramoArr+'</b> and goes out → opposite of its seat.'; return opp; }
       return null;
     }});
 
   LY_VIE.push({ id:'R11_53c', sezione:'§53c', nome:'Timely B on L4 (Ti)',
     dottrina:'With the Yong below, if L4 (in the Ti) is a live, timely B: does NOT follow (a sibling in the Ti drains the trend).',
-    test: function (R, ctx) {
+    test: function (R, ctx, state) {
       var c = _ctx(R);
       var yongBasso = R.mutante.pos<=3;
       var l4 = R.linee[3];
       if (!(yongBasso && l4.par==='B' && c.vivo(l4) && c.timely(l4.el))) return null;
+      state.why = 'Yong below; L4 (in the Ti) is a live, timely <b>B '+l4.ramo+'</b> ('+l4.el+') → does NOT follow the trend.';
       return ctx.emaDir==='up' ? 'SHORT' : 'LONG';
     }});
 
   LY_VIE.push({ id:'R12_53d', sezione:'§53d', nome:'Full timely G in the Ti + a void in the Ti',
     dottrina:'The Ti holds a timely, full G, but also a void line: a breach in the trend → does NOT follow.',
-    test: function (R, ctx) {
+    test: function (R, ctx, state) {
       var c = _ctx(R);
       var yongBasso = R.mutante.pos<=3;
       var tiRange = yongBasso ? [4,5,6] : [1,2,3];
@@ -687,12 +698,14 @@
       var gTiPieno = tiLinee.filter(function(l){return l.par==='G' && c.vivo(l) && c.timely(l.el) && !l.vuoto;});
       var tiHaVuoto = tiLinee.some(function(l){return l.vuoto;});
       if (!(gTiPieno.length>=1 && tiHaVuoto)) return null;
+      var vL = tiLinee.filter(function(l){return l.vuoto;}).map(function(l){return 'L'+l.pos+' '+l.ramo;}).join(', ');
+      state.why = 'In the Ti (L'+tiRange.join('/')+'): timely full <b>G '+gTiPieno[0].ramo+'</b> but also a <b>void</b> line ('+vL+', void branches '+R.vuoti.join(' ')+') → breach → does NOT follow the trend.';
       return ctx.emaDir==='up' ? 'SHORT' : 'LONG';
     }});
 
   LY_VIE.push({ id:'R13_52', sezione:'§52', nome:'Who does not win, loses (failed action)',
     dottrina:'The mobile\'s action fails — return-control, self-combination, or arrival clashed by the day: it does not carry its direction, read the opposite.',
-    test: function (R, ctx) {
+    test: function (R, ctx, state) {
       var c = _ctx(R);
       var mob = R.linee[R.mutante.pos-1];
       var huitou = R.mutante.casoMut===3;
@@ -700,12 +713,14 @@
       var clashArr = CLASH[c.D]===R.mutante.ramoArr;
       if (!(huitou || autoc || clashArr)) return null;
       var suo = mob.pos<=3 ? 'SHORT' : 'LONG';
+      var why = huitou ? 'return-control: the arrival <b>'+R.mutante.ramoArr+'</b> controls the departure '+R.mutante.ramoDep : autoc ? 'self-combination '+R.mutante.ramoDep+'+'+R.mutante.ramoArr : 'the arrival <b>'+R.mutante.ramoArr+'</b> is clashed by the <b>day '+c.D+'</b>';
+      state.why = 'The action of the mobile L'+mob.pos+' <b>'+mob.par+'</b> fails ('+why+'): it does not carry its direction → opposite of its seat.';
       return suo==='LONG' ? 'SHORT' : 'LONG';
     }});
 
   LY_VIE.push({ id:'R14_50de', sezione:'§50d/e', nome:'Combination of the target: generative/destructive',
     dottrina:'The mobile\'s arrival combines a fixed, full target. If DESTRUCTIVE (control): only the Tai Sui completes it (opposite of the target\'s seat); two weak ones bind and carry the target\'s seat. If GENERATIVE: the Tai Sui always carries it; otherwise only if the target is timely.',
-    test: function (R, ctx) {
+    test: function (R, ctx, state) {
       var c = _ctx(R);
       var mob = R.linee[R.mutante.pos-1];
       var arr = R.mutante.ramoArr, part = COMBINA[arr];
@@ -716,19 +731,19 @@
       var aEl = WX[arr], tEl = WX[t.ramo];
       if (CTRL[aEl]===tEl) {
         var aTim = c.timely(aEl), tTim = c.timely(tEl);
-        if (aTim && tTim && mob.isTaiSui) return dirB==='LONG' ? 'SHORT' : 'LONG';
-        if (!aTim && !tTim) return dirB;
+        if (aTim && tTim && mob.isTaiSui) { state.why = 'The <b>Tai Sui</b> mobile arrives in <b>'+arr+'</b> and combines L'+t.pos+' <b>'+t.par+' '+t.ramo+'</b> destructively (both timely): the destruction is completed → opposite of the target\'s seat.'; return dirB==='LONG' ? 'SHORT' : 'LONG'; }
+        if (!aTim && !tTim) { state.why = 'The arrival <b>'+arr+'</b> combines L'+t.pos+' <b>'+t.par+' '+t.ramo+'</b> destructively, both weak: they bind → the target\'s seat carries.'; return dirB; }
         return null;
       } else {
-        if (mob.isTaiSui) return dirB;
-        if (c.timely(tEl)) return dirB;
+        if (mob.isTaiSui) { state.why = 'The <b>Tai Sui</b> mobile arrives in <b>'+arr+'</b> and combines L'+t.pos+' <b>'+t.par+' '+t.ramo+'</b> generatively → the target\'s seat.'; return dirB; }
+        if (c.timely(tEl)) { state.why = 'The arrival <b>'+arr+'</b> combines the timely L'+t.pos+' <b>'+t.par+' '+t.ramo+'</b> generatively → the target\'s seat.'; return dirB; }
         return null;
       }
     }});
 
   LY_VIE.push({ id:'R16_50f', sezione:'§50f', nome:'Arrival generates a timely/strong W',
     dottrina:'The arrival generates one or more fixed W lines that are timely or strong (backed by day/year): direction of the majority (above/below).',
-    test: function (R, ctx) {
+    test: function (R, ctx, state) {
       var c = _ctx(R);
       var mob = R.linee[R.mutante.pos-1];
       var arr = R.mutante.ramoArr, aEl = WX[arr];
@@ -738,12 +753,13 @@
       var basso = tgt.filter(function(l){return l.pos<=3;}).length, alto = tgt.length-basso;
       if (basso===alto) return null;
       if (!tgt.some(function(l){return c.timely(l.el) || forte(l.el);})) return null;
+      state.why = 'The arrival <b>'+arr+'</b> ('+aEl+') generates the <b>W</b> line(s) '+tgt.map(function(l){return 'L'+l.pos+' '+l.ramo;}).join(', ')+' (timely or backed by day '+c.D+'/year '+c.Y+') → majority seat.';
       return basso>alto ? 'SHORT' : 'LONG';
     }});
 
   LY_VIE.push({ id:'R17_50g', sezione:'§50g', nome:'Double combination binds below',
     dottrina:'The arrival combines a branch present on two fixed, full lines split above/below: the bond is completed below → SHORT.',
-    test: function (R, ctx) {
+    test: function (R, ctx, state) {
       var mob = R.linee[R.mutante.pos-1];
       var arr = R.mutante.ramoArr, part = COMBINA[arr];
       if (!part) return null;
@@ -751,12 +767,13 @@
       if (tgt.length<2) return null;
       var basso = tgt.filter(function(l){return l.pos<=3;}).length, alto = tgt.length-basso;
       if (!(basso>0 && alto>0)) return null;
+      state.why = 'The arrival <b>'+arr+'</b> combines <b>'+part+'</b>, present on '+tgt.map(function(l){return 'L'+l.pos;}).join(' and ')+' (above and below): the bond is completed below → SHORT.';
       return 'SHORT';
     }});
 
   LY_VIE.push({ id:'R18_50h', sezione:'§50h', nome:'Void hidden line clashed by the arrival',
     dottrina:'The arrival clashes the (void) hidden line of a single fixed line: with ≥2 supports (season + day + year) it leaves the void and acts in its seat; with 0 supports the clash breaks it → opposite.',
-    test: function (R, ctx) {
+    test: function (R, ctx, state) {
       var c = _ctx(R);
       var mob = R.linee[R.mutante.pos-1];
       var arr = R.mutante.ramoArr;
@@ -769,32 +786,35 @@
       var ySup = GEN[WX[c.Y]]===fu.el || WX[c.Y]===fu.el;
       var nSup = (wang?1:0)+(dSup?1:0)+(ySup?1:0);
       var dirH = h.pos<=3 ? 'SHORT' : 'LONG';
-      if (nSup>=2) return dirH;
-      if (nSup===0) return dirH==='LONG' ? 'SHORT' : 'LONG';
+      var supTxt = (wang?'month ':'')+(dSup?'day ':'')+(ySup?'year':'');
+      if (nSup>=2) { state.why = 'The arrival <b>'+arr+'</b> clashes the <b>void</b> hidden <b>'+fu.par+' '+fu.b+'</b> under L'+h.pos+'; with '+nSup+' supports ('+supTxt.trim()+') it leaves the void → seat of L'+h.pos+'.'; return dirH; }
+      if (nSup===0) { state.why = 'The arrival <b>'+arr+'</b> clashes the <b>void</b> hidden <b>'+fu.par+' '+fu.b+'</b> under L'+h.pos+' with no support: broken → opposite of L'+h.pos+'\'s seat.'; return dirH==='LONG' ? 'SHORT' : 'LONG'; }
       return null;
     }});
 
   LY_VIE.push({ id:'R21_50k', sezione:'§50k', nome:'The day breaks the Tai Sui\'s combination',
     dottrina:'The day clashes the year branch (Tai Sui): if a single fixed line combines the Tai Sui, that line\'s seat flips.',
-    test: function (R, ctx) {
+    test: function (R, ctx, state) {
       var c = _ctx(R);
       if (CLASH[c.D]!==c.Y) return null;
       var part = COMBINA[c.Y];
       var tgt = R.linee.filter(function(l){return l.ramo===part && !l.isMobile;});
       if (tgt.length!==1) return null;
       var dirT = tgt[0].pos<=3 ? 'SHORT' : 'LONG';
+      state.why = 'The <b>day '+c.D+'</b> clashes the <b>Tai Sui '+c.Y+'</b>; L'+tgt[0].pos+' <b>'+tgt[0].par+' '+tgt[0].ramo+'</b> combined the Tai Sui and loses it → its seat flips.';
       return dirT==='LONG' ? 'SHORT' : 'LONG';
     }});
 
   LY_VIE.push({ id:'R22_50kbis', sezione:'§50k-bis', nome:'Live P drains a strong hidden G',
     dottrina:'A live P generates (drains) its own hidden G, and that G is strong (timely or backed by day/year): direction of the P\'s seat.',
-    test: function (R, ctx) {
+    test: function (R, ctx, state) {
       var c = _ctx(R);
       var cand = R.linee.filter(function(l){return l.par==='P' && c.vivo(l) && l.fushen && l.fushen.par==='G' && GEN[l.fushen.el]===l.el;});
       if (cand.length!==1) return null;
       var fu = cand[0].fushen;
       var gForte = c.timely(fu.el) || WX[c.D]===fu.el || GEN[WX[c.D]]===fu.el || WX[c.Y]===fu.el;
       if (!gForte) return null;
+      state.why = 'Live <b>P</b> L'+cand[0].pos+' ('+cand[0].ramo+') drains its strong hidden <b>G '+fu.b+'</b> → the P\'s seat.';
       return cand[0].pos<=3 ? 'SHORT' : 'LONG';
     }});
 
@@ -807,13 +827,15 @@
       var bB = Bs.filter(function(l){return l.pos<=3;}), bA = Bs.filter(function(l){return l.pos>3;});
       if (!(bB.length===1 && bA.length===1 && mob.par==='B' &&
         (R.mutante.casoMut===1 || R.mutante.progressione==='avanzante'))) return null;
+      state.why = 'Two <b>B</b> split (L'+bB[0].pos+' below, L'+bA[0].pos+' above); the mobile B L'+mob.pos+' is strengthened ('+(R.mutante.casoMut===1?'return-generation':'advancing')+') → its own section.';
       return mob.pos<=3 ? 'SHORT' : 'LONG';
     }});
 
   LY_VIE.push({ id:'R19_50i', sezione:'§50i', nome:'Lower trigram entirely void',
     dottrina:'All branches of the lower trigram (Houtian palace) are void: the floor gives way → SHORT.',
-    test: function (R, ctx) {
+    test: function (R, ctx, state) {
       if (!HOUTIAN[R.inf].every(function(b){return R.vuoti.indexOf(b)>=0;})) return null;
+      state.why = 'The lower trigram palace ('+HOUTIAN[R.inf].join(' ')+') is entirely <b>void</b> (void branches '+R.vuoti.join(' ')+') → the floor gives way → SHORT.';
       return 'SHORT';
     }});
 
@@ -827,6 +849,7 @@
       if (tsL.length!==1) return null;
       var ts = tsL[0];
       if (!(CLASH[R.mutante.ramoArr]===ts.ramo && COMBINA[R.dayBranch]!==ts.ramo)) return null;
+      state.why = 'Mobile <b>P</b> L'+mob.pos+' arrives in <b>'+R.mutante.ramoArr+'</b>, which clashes the fixed <b>Tai Sui '+ts.ramo+'</b> on L'+ts.pos+' (not defended by the day '+R.dayBranch+'): the trend of the Tai Sui\'s seat breaks → '+(ts.pos<=3?'below → market rises':'above → market falls')+'.';
       return ts.pos<=3 ? 'LONG' : 'SHORT';
     }});
 
@@ -839,6 +862,7 @@
       var ts = tsL[0];
       var A = R.mutante.ramoDep, Bb = R.mutante.ramoArr;
       if (!(COMBINA[Bb]===ts.ramo && (CLASH[A]===ts.ramo || CTRL[WX[A]]===ts.el))) return null;
+      state.why = 'The arrival <b>'+Bb+'</b> combines the <b>void Tai Sui '+ts.ramo+'</b> on L'+ts.pos+', and the departure <b>'+A+'</b> carried onto it is hostile ('+(CLASH[A]===ts.ramo?'clash':'control')+') → the Tai Sui\'s seat does not hold.';
       return ts.pos<=3 ? 'LONG' : 'SHORT';
     }});
 
@@ -856,6 +880,7 @@
       var modo = (state.opts && state.opts.ggiornovia) || 'ti+yong';
       var passa = modo==='off' ? false : modo==='ti+yong' ? true : gInTi;
       if (!(!legMob && !legOra && passa)) return null;
+      state.why = 'Fixed <b>G</b> L'+g.pos+' sits on the <b>day branch '+R.dayBranch+'</b> ('+(gInTi?'in the Ti':'in the Yong')+'), not combined by the mobile or the hour → the market does NOT follow the trend.';
       return ctx.emaDir==='up' ? 'SHORT' : 'LONG';
     }});
 
@@ -875,6 +900,8 @@
         colpisce = colpisce || A===ding || A===cav;
       }
       if (!colpisce) return null;
+      var who = (gen && A===gen) ? 'Month General' : (A===dingSpirit(R.dayStem, R.dayBranch)) ? 'Ding spirit' : 'Post Horse';
+      state.why = 'Mobile <b>P</b> L'+mob.pos+' departs from <b>'+A+'</b> = <b>'+who+'</b> of the day: the spirit amplifies the G-drainer → the market does NOT follow the trend.';
       return ctx.emaDir==='up' ? 'SHORT' : 'LONG';
     }});
 
@@ -896,6 +923,31 @@
       } }
   ];
 
+  function wBless(R, A){
+    var out=[];
+    if (A===tiande(R.monthBranch,R.dayStem,R.dayBranch)) out.push('Heaven Virtue');
+    if (A===zhide(R.dayBranch)) out.push('Branch Virtue');
+    if ((STELO_SPIRITI.ghost[R.dayStem]||[]).indexOf(A)>=0) out.push('Ghost Sha');
+    if ((STELO_SPIRITI.tomb[R.dayStem]||[]).indexOf(A)>=0) out.push('Tomb Sha');
+    return out.length ? '<b>'+out.join(' + ')+'</b>' : '—';
+  }
+  // Day context for the interface: Bazi + hour from seed + spirits/virtues of the day (all as branches)
+  function contestoGiorno(R, ctx){
+    ctx = ctx || {};
+    return {
+      year: R.yearBranch, month: R.monthBranch, day: R.dayBranch, dayStem: R.dayStem,
+      hour: ctx.oraBranch || null,
+      vuoti: R.vuoti, taiSuiPos: R.taiSuiPos,
+      monthGeneral: generaleDelMese(ctx.date),
+      ding: dingSpirit(R.dayStem, R.dayBranch),
+      postHorse: postHorseDelGiorno(R.dayBranch),
+      heavenVirtue: tiande(R.monthBranch, R.dayStem, R.dayBranch),
+      branchVirtue: zhide(R.dayBranch),
+      ghost: STELO_SPIRITI.ghost[R.dayStem] || [],
+      tomb: STELO_SPIRITI.tomb[R.dayStem] || []
+    };
+  }
+
   // ---- motore: valuta le vie in ordine, con toggle per-via (default: tutte accese) ----
   // enabled: { viaId: bool, ... } — se assente o true, la via è attiva. opts: { ggiornovia, genvia }
   function termometro(R, ctx, enabled, opts) {
@@ -913,8 +965,9 @@
       var v = LY_VIE[i];
       if (enabled[v.id] === false) continue;
       var dir = v.test(R, ctx, state);
-      if (dir) return { dir: dir, viaId: v.id, sezione: v.sezione, nome: v.nome,
+      if (dir) return { dir: dir, viaId: v.id, sezione: v.sezione, nome: v.nome, why: state.why || '',
         ramoDep: R.mutante.ramoDep, mobPar: R.linee[R.mutante.pos-1].par };
+      state.why = null;
     }
     return { dir: null, viaId: null, ramoDep: R.mutante.ramoDep, mobPar: R.linee[R.mutante.pos-1].par };
   }
@@ -925,7 +978,7 @@
   function combinaS9(R, ctx, pbDir, enabled, enabledRaff, opts) {
     var t = termometro(R, ctx, enabled, opts);
     if (!t.dir) return { finale: pbDir, chi: 'PB alone (LY silent)', via: null, ly: null };
-    if (t.dir === pbDir) return { finale: pbDir, chi: 'PB and LY agree (rule ' + t.sezione + ')', via: t, ly: t.dir };
+    if (t.dir === pbDir) return { finale: pbDir, chi: 'PB and LY agree (rule ' + t.sezione + ')', via: t, ly: t.dir, why: t.why };
     // contrasto: valuto i rafforzativi in ordine (ora, poi W benedetta)
     var ema = ctx.emaDir === 'up' ? 'LONG' : 'SHORT';
     var pbSegue = (pbDir === ema);
@@ -933,10 +986,13 @@
     var aOra = enabledRaff.ORA !== false && LY_RAFFORZATIVI[0].test(R, ctx);
     var wVirtu = enabledRaff.WVIRTU !== false && LY_RAFFORZATIVI[1].test(R, ctx);
     if ((aOra || wVirtu) && pbSegue) {
-      var chi = aOra ? 'conflict → HOUR reinforcer backs the PB' : 'conflict → BLESSED W reinforcer backs the PB';
-      return { finale: pbDir, chi: chi, via: t, ly: t.dir };
+      var A0 = R.mutante.ramoDep, mob0 = R.linee[R.mutante.pos-1];
+      var chi = aOra
+        ? 'conflict → HOUR reinforcer: the mobile ' + mob0.par + ' departs from <b>' + A0 + '</b> = <b>hour from the seed</b>, and the PB follows the trend → the PB wins'
+        : 'conflict → BLESSED W reinforcer: the mobile <b>W</b> departs from <b>' + A0 + '</b> = ' + wBless(R, A0) + ', and the PB follows the trend → the PB wins';
+      return { finale: pbDir, chi: chi, via: t, ly: t.dir, why: t.why };
     }
-    return { finale: t.dir, chi: 'conflict → LY wins (rule ' + t.sezione + ' ' + t.nome + ')', via: t, ly: t.dir };
+    return { finale: t.dir, chi: 'conflict → LY wins (rule ' + t.sezione + ' ' + t.nome + ')', via: t, ly: t.dir, why: t.why };
   }
 
   return { read: read, readManual: readManual, TRIGRAM: TRIGRAM,
@@ -946,5 +1002,5 @@
            termometro: termometro, combinaS9: combinaS9,
            generaleDelMese: generaleDelMese, dingSpirit: dingSpirit,
            tiande: tiande, zhide: zhide, STELO_SPIRITI: STELO_SPIRITI,
-           EL_EN: EL_EN, STATO_EN: STATO_EN };
+           EL_EN: EL_EN, STATO_EN: STATO_EN, contestoGiorno: contestoGiorno, wBless: wBless };
 }));

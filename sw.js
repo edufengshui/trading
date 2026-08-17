@@ -5,7 +5,7 @@
  */
 'use strict';
 
-var CACHE = 'trading-app-v43';
+var CACHE = 'trading-app-v45';
 
 // Core files precached at install so the app opens offline. Relative paths only.
 var CORE = [

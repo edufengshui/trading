@@ -446,6 +446,24 @@ function renderLiuYao(cross, chart, row, lyp, pbCtx) {
     emaLine = '<div class="trendmsgs">EMA(12) daily trend: <b class="' + (d0 || '') + '">' + arrow0 + '</b>' +
       (pbCtx.finalDir ? ' · PB verdict: <b>' + pbCtx.finalDir + '</b>' + (pbFollow ? ' (' + pbFollow + ')' : '') : '') + '</div>';
   }
+  // Day context: the four pillars (hour from the seed) + spirits/virtues of the day, all as branches
+  var cg = LYM.contestoGiorno(ly, { oraBranch: oraBranchSeme, date: pbCtx ? pbCtx.date : null });
+  var src = chart.source || {};
+  var pil = function (lab, gz, hi) {
+    return '<span style="display:inline-block;margin-right:14px' + (hi ? ';font-weight:700' : '') + '">' + lab + ' <b style="font-size:16px">' + (gz || '—') + '</b></span>';
+  };
+  var hourPillar = src.hourPillar || (oraBranchSeme ? '·' + oraBranchSeme : null);
+  var baziLine = '<div class="trendmsgs">Bazi: ' +
+    pil('Year', src.yearPillar) + pil('Month', src.monthPillar) + pil('Day', src.dayPillar, true) +
+    pil('Hour (from seed ' + row.seed + ')', hourPillar) +
+    '<span style="opacity:.6;font-size:12px">· Tai Sui = year branch ' + (cg.year || '—') + (cg.taiSuiPos ? ' (on L' + cg.taiSuiPos + ')' : ' (not in the hexagram)') + '</span></div>';
+  var lst = function (a) { return (a && a.length) ? a.join(' ') : '—'; };
+  var spiritLine = '<div class="trendmsgs" style="font-size:12px;opacity:.85">Day actors: ' +
+    'void <b>' + lst(cg.vuoti) + '</b> · Month General <b>' + (cg.monthGeneral || '—') + '</b>' +
+    ' · Ding <b>' + (cg.ding || '—') + '</b> · Post Horse <b>' + (cg.postHorse || '—') + '</b>' +
+    ' · Heaven Virtue <b>' + (cg.heavenVirtue || '—') + '</b> · Branch Virtue <b>' + (cg.branchVirtue || '—') + '</b>' +
+    ' · Ghost Sha <b>' + lst(cg.ghost) + '</b> · Tomb Sha <b>' + lst(cg.tomb) + '</b></div>';
+
   // the two hexagrams: original (with the mobile line marked) and transformed
   var TRN = { 1:'Qian', 2:'Dui', 3:'Li', 4:'Zhen', 5:'Xun', 6:'Kan', 7:'Gen', 8:'Kun' };
   function yangOf(n, p) { return ((((n - 1) >> (3 - p)) & 1) === 0); }
@@ -528,7 +546,7 @@ function renderLiuYao(cross, chart, row, lyp, pbCtx) {
     termHtml = renderTermometro(ly, ctxT, pbCtx.finalDir);
   }
 
-  lyp.innerHTML = head + emaLine + hexBlock + palLine + mutLine + table + termHtml;
+  lyp.innerHTML = head + emaLine + baziLine + spiritLine + hexBlock + palLine + mutLine + table + termHtml;
   lyp.style.display = 'block';
   wireTermometroToggles(cross, chart, row, lyp, pbCtx);
 }
@@ -558,11 +576,16 @@ function renderTermometro(R, ctxT, pbFinalDir) {
     '<b>S9 verdict (PB + LY):</b> <span class="sig ' + s9Cls + '" style="display:inline-block">' + comb.finale + '</span>' +
     (s9Follow ? ' <b>' + s9Follow + '</b>' : '') +
     (comb.ly ? ' · LY says <b>' + comb.ly + '</b>' + (lyFollow ? ' (' + lyFollow + ')' : '') : ' · LY silent') +
-    '<br><span style="opacity:.75">decided by: ' + comb.chi + '</span></div>';
+    '<br><span style="opacity:.75">decided by: ' + comb.chi + '</span>' +
+    (comb.why ? '<div style="margin-top:6px;padding:8px 10px;border-left:3px solid var(--gold,#e3b341);background:rgba(227,179,65,.06);font-size:13px">' +
+      '<b>Reading (rule ' + comb.via.sezione + ' — ' + comb.via.nome + '):</b> ' + comb.why + '</div>' : '') +
+    '</div>';
 
   var state = { opts: {} };
   var rows = LYM.LY_VIE.map(function (v, idx) {
+    state.why = null;
     var dir = v.test(R, ctxT, state);
+    var whyRow = dir && state.why ? '<div style="margin-top:4px"><b>On this card:</b> ' + state.why + '</div>' : '';
     var on = lyToggles[v.id] !== false;
     var isFiring = comb.via && comb.via.viaId === v.id;
     var chip = dir ? ('<span class="sig ' + (dir === 'LONG' ? 'long' : 'short') + '" style="padding:1px 8px;font-size:11px">' + dir + '</span>')
@@ -574,7 +597,7 @@ function renderTermometro(R, ctxT, pbFinalDir) {
       '<span style="flex:1;font-size:13px">' + v.nome + (isFiring ? ' <b style="color:var(--gold,#e3b341)">← decided</b>' : '') + '</span>' +
       chip +
       '</div>' +
-      '<div class="viadoc" style="display:none;font-size:12px;opacity:.8;padding:4px 0 8px 26px">' + v.dottrina + '</div>';
+      '<div class="viadoc" style="display:none;font-size:12px;opacity:.8;padding:4px 0 8px 26px">' + v.dottrina + whyRow + '</div>';
   }).join('');
 
   var raffRows = LYM.LY_RAFFORZATIVI.map(function (v) {
@@ -730,7 +753,9 @@ window.addEventListener('DOMContentLoaded', function () {
   $('method-dlr').addEventListener('click', function () { setMethod('dlr'); });
   $('method-pb').addEventListener('click', function () { setMethod('pb'); });
   applyDlrVisibility();
-  build();
+  // Plum Blossom is the default: open straight on the forex feed (00:00 GMT seeds), PB panel first.
+  // "Build chart" / "Now" / "00:00 GMT" still switch to manual mode with the DLR chart.
+  if (METHOD === 'pb') loadForex(); else build();
 });
 
 /* ---------- service worker (relative scope /trading/) ---------- */
