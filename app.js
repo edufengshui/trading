@@ -30,6 +30,8 @@ function build() {
   clearErr();
   var _tp = $('trendpanel'); if (_tp) _tp.style.display = 'none';
   var _fb = $('forexbar'); if (_fb) _fb.style.display = 'none';
+  var _ly = $('lypanel'); if (_ly) _ly.style.display = 'none';
+  var _db = $('dlrblock'); if (_db) _db.style.display = '';   // manual mode: the DLR chart is all there is
   var _di = $('date'); if (_di) { _di.readOnly = false; _di.title = ''; }
   if (!window.XKDGSolarTime || !window.XKDGJieQiGMT || !window.XKDGDaLiuRen || !(window.Solar || window.Lunar)) {
     return showErr('<b>Engine not loaded.</b> This page needs lunar.js, solar-time.js, jieqi-gmt.js and daliuren.js (in that order) in the same folder.');
@@ -433,7 +435,36 @@ function renderLiuYao(cross, chart, row, lyp, pbCtx) {
   function code(par) { return '<b title="' + LYM.PAR[par].en + '">' + par + '</b>'; }
 
   var head = '<div class="trendhead"><span>' + cross + ' — Liu Yao</span>' +
-    '<span class="tv">corrective of the Plum Blossom</span></div>';
+    '<span class="tv" style="margin-left:14px">corrective of the Plum Blossom</span></div>';
+
+  var emaLine = '';
+  if (pbCtx) {
+    var d0 = pbCtx.emaDir;
+    var arrow0 = d0 === 'up' ? '↑ up (blue)' : d0 === 'down' ? '↓ down (red)' : (d0 || 'n/a');
+    var emaSig = d0 === 'up' ? 'LONG' : d0 === 'down' ? 'SHORT' : null;
+    var pbFollow = (pbCtx.finalDir && emaSig) ? (pbCtx.finalDir === emaSig ? 'FOLLOWS the trend' : 'does NOT follow the trend') : '';
+    emaLine = '<div class="trendmsgs">EMA(12) daily trend: <b class="' + (d0 || '') + '">' + arrow0 + '</b>' +
+      (pbCtx.finalDir ? ' · PB verdict: <b>' + pbCtx.finalDir + '</b>' + (pbFollow ? ' (' + pbFollow + ')' : '') : '') + '</div>';
+  }
+  // the two hexagrams: original (with the mobile line marked) and transformed
+  var TRN = { 1:'Qian', 2:'Dui', 3:'Li', 4:'Zhen', 5:'Xun', 6:'Kan', 7:'Gen', 8:'Kun' };
+  function yangOf(n, p) { return ((((n - 1) >> (3 - p)) & 1) === 0); }
+  function drawHexLY(supN, infN, title, moving) {
+    var rowsH = '';
+    for (var pos = 6; pos >= 1; pos--) {
+      var yang = pos <= 3 ? yangOf(infN, pos) : yangOf(supN, pos - 3);
+      var cls = 'pbline' + (yang ? ' yang' : ' yin') + (moving === pos ? ' moving' : '');
+      rowsH += yang
+        ? '<div class="' + cls + '"><span class="seg full"></span></div>'
+        : '<div class="' + cls + '"><span class="seg half"></span><span class="seg gap"></span><span class="seg half"></span></div>';
+    }
+    return '<div class="pbcol"><div class="pbtitle">' + title + '</div>' +
+      '<div class="pbnum">' + supN + ' ' + TRN[supN] + '</div>' + rowsH + '<div class="pbnum">' + infN + ' ' + TRN[infN] + '</div></div>';
+  }
+  var trSup = ly.sup, trInf = ly.inf;
+  if (ly.linea <= 3) trInf = ly.mutante.trigTrasf; else trSup = ly.mutante.trigTrasf;
+  var hexBlock = '<div class="pbhex">' + drawHexLY(ly.sup, ly.inf, 'Original', ly.linea) +
+    drawHexLY(trSup, trInf, 'Transformed', 0) + '</div>';
 
   var palLine = '<div class="trendmsgs">Palace: <b>' + ly.palPinyin + '</b> (' + EN[ly.palEl] + ')' +
     ' · Shi (subject) L' + ly.shi + ' · Ying (object) L' + ly.ying +
@@ -497,7 +528,7 @@ function renderLiuYao(cross, chart, row, lyp, pbCtx) {
     termHtml = renderTermometro(ly, ctxT, pbCtx.finalDir);
   }
 
-  lyp.innerHTML = head + palLine + mutLine + table + termHtml;
+  lyp.innerHTML = head + emaLine + hexBlock + palLine + mutLine + table + termHtml;
   lyp.style.display = 'block';
   wireTermometroToggles(cross, chart, row, lyp, pbCtx);
 }
@@ -520,9 +551,14 @@ function renderTermometro(R, ctxT, pbFinalDir) {
 
   var comb = LYM.combinaS9(R, ctxT, pbFinalDir, enabled, enabledRaff, {});
   var s9Cls = comb.finale === 'LONG' ? 'long' : 'short';
+  var emaSig9 = ctxT.emaDir === 'up' ? 'LONG' : ctxT.emaDir === 'down' ? 'SHORT' : null;
+  var s9Follow = emaSig9 ? (comb.finale === emaSig9 ? 'FOLLOWS the trend' : 'does NOT follow the trend') : '';
+  var lyFollow = (comb.ly && emaSig9) ? (comb.ly === emaSig9 ? 'follows' : 'does not follow') : null;
   var s9Badge = '<div class="trendmsgs" style="margin-top:10px">' +
     '<b>S9 verdict (PB + LY):</b> <span class="sig ' + s9Cls + '" style="display:inline-block">' + comb.finale + '</span>' +
-    ' <span style="opacity:.75">— decided by: ' + comb.chi + '</span></div>';
+    (s9Follow ? ' <b>' + s9Follow + '</b>' : '') +
+    (comb.ly ? ' · LY says <b>' + comb.ly + '</b>' + (lyFollow ? ' (' + lyFollow + ')' : '') : ' · LY silent') +
+    '<br><span style="opacity:.75">decided by: ' + comb.chi + '</span></div>';
 
   var state = { opts: {} };
   var rows = LYM.LY_VIE.map(function (v, idx) {
@@ -553,7 +589,7 @@ function renderTermometro(R, ctxT, pbFinalDir) {
   }).join('');
 
   return s9Badge +
-    '<details style="margin-top:8px"><summary style="cursor:pointer;opacity:.85">LY thermometer — ' + LYM.LY_VIE.length + ' rules + ' + LYM.LY_RAFFORZATIVI.length + ' reinforcers (evaluated top-down, first answer wins · click a row for the doctrine)</summary>' +
+    '<details open style="margin-top:8px"><summary style="cursor:pointer;opacity:.85">LY thermometer — ' + LYM.LY_VIE.length + ' rules + ' + LYM.LY_RAFFORZATIVI.length + ' reinforcers (evaluated top-down, first answer wins · click a row for the doctrine)</summary>' +
     '<div style="margin-top:6px">' + rows + '<div style="margin-top:6px;font-weight:600;opacity:.7;font-size:12px">Reinforcers (act only in a PB ↔ LY conflict)</div>' + raffRows + '</div>' +
     '</details>';
 }
@@ -577,7 +613,9 @@ function wireTermometroToggles(cross, chart, row, lyp, pbCtx) {
 
 // col toggle PB la carta DLR (pilastri, tre trasmissioni, lezioni, griglia) sparisce del tutto
 function applyDlrVisibility() {
-  var b = $('dlrblock'); if (b) b.style.display = (METHOD === 'pb') ? 'none' : '';
+  var b = $('dlrblock'); if (!b) return;
+  var forexOn = !!(forexData && $('forexbar') && $('forexbar').style.display !== 'none');
+  b.style.display = (METHOD === 'pb' && forexOn) ? 'none' : '';
 }
 
 function renderTrend(cross, chart, dArr, row) {
