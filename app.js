@@ -498,6 +498,16 @@ function renderLiuYao(cross, chart, row, lyp, pbCtx) {
     (m.atterraggio ? ' · lands on L' + m.atterraggio.pos + ' (' + m.atterraggio.ramo + ') → ' + m.atterraggio.dir : '') +
     '</div>';
 
+  // force model (Edu 17/08): score of every line, arrival, gatherings
+  var FZ = null;
+  try { FZ = LYM.forzaModello(ly, { oraBranch: oraBranchSeme }, null); } catch (e) { FZ = null; }
+  function fzCell(o) {
+    if (!o) return '';
+    var v = o.score, col = v >= 2 ? 'var(--up,#3fb950)' : v <= -1 ? 'var(--down,#f85149)' : 'inherit';
+    var tip = o.det.join(' · ');
+    return '<span class="fzscore" title="' + tip.replace(/"/g, '&quot;') + '" style="cursor:help;color:' + col + ';font-weight:600">' + (v > 0 ? '+' : '') + v.toFixed(1) + '</span>' +
+      '<div class="fzdoc" style="display:none;font-size:11px;opacity:.75;max-width:260px">' + tip + '</div>';
+  }
   // six lines, L6 (top) → L1 (bottom)
   var rows = '';
   for (var i = 6; i >= 1; i--) {
@@ -527,6 +537,8 @@ function renderLiuYao(cross, chart, row, lyp, pbCtx) {
       '<td style="padding:5px 10px;text-align:center">' + lineGlyph(l.yang) + '</td>' +
       '<td style="padding:5px 8px;white-space:nowrap">' + marks + '</td>' +
       '<td style="padding:5px 8px;white-space:nowrap">' + trasf + '</td>' +
+      '<td style="padding:5px 8px;text-align:right">' + (FZ ? fzCell(FZ.linee[i-1]) : '') + '</td>' +
+      '<td style="padding:5px 8px;text-align:right;font-size:12px">' + (FZ && FZ.linee[i-1].hidden ? fzCell(FZ.linee[i-1].hidden) : '') + '</td>' +
       '</tr>';
   }
   var table = '<table class="lytable" style="border-collapse:collapse;margin-top:8px;font-size:14px">' +
@@ -537,7 +549,12 @@ function renderLiuYao(cross, chart, row, lyp, pbCtx) {
     '<th style="padding:2px 10px;text-align:center">Line</th>' +
     '<th style="padding:2px 8px">Shi/Ying · state</th>' +
     '<th style="padding:2px 8px">Transformed</th>' +
+    '<th style="padding:2px 8px;text-align:right" title="Force model: month always; day/year on the focus; hour 20%; gathering +2; void −2; mobile gets the arrival">Force</th>' +
+    '<th style="padding:2px 8px;text-align:right">Hidden force</th>' +
     '</tr></thead><tbody>' + rows + '</tbody></table>' +
+    (FZ ? '<div class="trendmsgs" style="font-size:12px;opacity:.85">Force model — arrival ' + (FZ.arrivo ? '<b>' + FZ.arrivo.ramo + '</b> ' + fzCell(FZ.arrivo) : '(null movement)') +
+      ' · gatherings: ' + (FZ.raduni.length ? FZ.raduni.map(function (g) { return '<b>' + g.r.join('') + '</b> ' + g.el + ' +2'; }).join(', ') : 'none') +
+      ' · <span style="opacity:.7">click a score to see the breakdown</span></div>' : '') +
     '<div class="trendmsgs" style="font-size:12px;opacity:.6">Codes: G Officer · W Wealth · P Parents · B Siblings · C Children</div>';
 
   var termHtml = '';
@@ -624,6 +641,9 @@ function wireTermometroToggles(cross, chart, row, lyp, pbCtx) {
       saveLyToggles(lyToggles);
       renderLiuYao(cross, chart, row, lyp, pbCtx);
     });
+  });
+  lyp.querySelectorAll('.fzscore').forEach(function (sc) {
+    sc.addEventListener('click', function (e) { e.stopPropagation(); var d = sc.nextElementSibling; if (d) d.style.display = d.style.display === 'none' ? 'block' : 'none'; });
   });
   lyp.querySelectorAll('.viarow').forEach(function (row2) {
     row2.addEventListener('click', function (e) {

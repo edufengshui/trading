@@ -464,7 +464,121 @@
   // Parentele sempre coi codici: G Ufficiale · W Ricchezza · P Genitori · B Fratelli · C Figli.
   // ==========================================================================================
 
-  // ---- spiriti dal GIORNO/MESE (helper, identici a pb_stress.js) ----
+  // ==========================================================================================
+  // FORCE MODEL (Edu, 17/08/2026) — strength score of every line, of the mobile's arrival and of
+  // the gatherings. Doctrine fixed by Edu:
+  //  Month: always, on every line — prosperous +2 · growing +1 · resting 0 · imprisoned −1 · dead −2.
+  //         Earth is prosperous in the four Earth months AND the seasonal element is prosperous too.
+  //  Day / Year: strong only on the FOCUS line (the line a rule is examining) — day: same element
+  //         +1.5, generates +1, controls −1, clashes −1 (the clash FILLS a void line only if timely),
+  //         combines: force unchanged, line bound. Year: same +1, generates +0.5, controls −0.5.
+  //  Hour (from the seed): contributes to timeliness for 20% — same branch +0.4, same element +0.3,
+  //         generates +0.2.
+  //  Gathering: only a COMPLETE three (directional or triple), no half; not valid if one of the three
+  //         is void; +2 to the element of the gathering.
+  //  Void: −2, unless the element is prosperous of month (0).
+  //  Mobile: departure gets the effect of the arrival — return-generation +1 · same element +0.5 ·
+  //         return-control −2 · advancing +1 · retreating −1 · null movement → departure does not act.
+  //  Hidden: force of its own element; a void host lets it out, a full host covers it (−1).
+  //  Fixed lines feed each other only if ADJACENT and only if the mother (the giver) is timely; a
+  //         timely child can also drain an untimely mother (−1 to the mother).
+  // ==========================================================================================
+  var STAGE_SCORE = { '旺':2, '相':1, '休':0, '囚':-1, '死':-2 };
+  var STAGE_EN = { '旺':'prosperous', '相':'growing', '休':'resting', '囚':'imprisoned', '死':'dead' };
+  var EARTH_MONTHS = ['辰','戌','丑','未'];
+  function stadioMese(el, monthBranch){
+    var s1 = stagione(el, WX[monthBranch]), s2 = stagione(el, SEASON[monthBranch]);
+    if (el === 'Earth' && EARTH_MONTHS.indexOf(monthBranch) >= 0) return '旺';
+    var v1 = STAGE_SCORE[s1] != null ? STAGE_SCORE[s1] : 0, v2 = STAGE_SCORE[s2] != null ? STAGE_SCORE[s2] : 0;
+    return v1 >= v2 ? s1 : s2;   // the better of the month branch and the season
+  }
+  function forzaModello(R, ctx, focusPos){
+    ctx = ctx || {};
+    var Mo = R.monthBranch, D = R.dayBranch, Y = R.yearBranch, H = ctx.oraBranch || null;
+    var HUI=[{r:['寅','卯','辰'],el:'Wood'},{r:['巳','午','未'],el:'Fire'},{r:['申','酉','戌'],el:'Metal'},{r:['亥','子','丑'],el:'Water'}];
+    var HE =[{r:['寅','午','戌'],el:'Fire'},{r:['申','子','辰'],el:'Water'},{r:['巳','酉','丑'],el:'Metal'},{r:['亥','卯','未'],el:'Wood'}];
+    // gatherings: fixed lines + arrival + day/month/year; none of the three void
+    var pool = {}; R.linee.forEach(function(l){ pool[l.ramo]=true; });   // all six branches, departure of the mobile included
+    if (!R.mutante.movimentoNullo) pool[R.mutante.ramoArr]=true;
+    [D,Mo,Y].forEach(function(b){ if(b) pool[b]=true; });
+    var raduni = HUI.concat(HE).filter(function(h){ return h.r.every(function(x){ return pool[x] && R.vuoti.indexOf(x)<0; }); });
+    var radEl = {}; raduni.forEach(function(h){ radEl[h.el] = h; });
+
+    function baseEl(el, isFocus, ramo){
+      var st = stadioMese(el, Mo), s = STAGE_SCORE[st] || 0, det = [];
+      det.push('month ' + STAGE_EN[st] + ' ' + (s>=0?'+':'') + s);
+      if (isFocus) {
+        var dEl = WX[D];
+        if (dEl === el) { s += 1.5; det.push('day same +1.5'); }
+        else if (GEN[dEl] === el) { s += 1; det.push('day generates +1'); }
+        else if (CTRL[dEl] === el) { s -= 1; det.push('day controls −1'); }
+        if (Y) { var yEl = WX[Y];
+          if (yEl === el) { s += 1; det.push('year same +1'); }
+          else if (GEN[yEl] === el) { s += 0.5; det.push('year generates +0.5'); }
+          else if (CTRL[yEl] === el) { s -= 0.5; det.push('year controls −0.5'); } }
+      }
+      if (H) { var hEl = WX[H];
+        if (ramo && ramo === H) { s += 0.4; det.push('hour same branch +0.4'); }
+        else if (hEl === el) { s += 0.3; det.push('hour same element +0.3'); }
+        else if (GEN[hEl] === el) { s += 0.2; det.push('hour generates +0.2'); } }
+      if (radEl[el]) { s += 2; det.push('gathering ' + radEl[el].r.join('') + ' +2'); }
+      return { s: s, det: det, stadio: st };
+    }
+    var timelyEl = function(el){ var st = stadioMese(el, Mo); return st==='旺' || st==='相'; };
+
+    var out = R.linee.map(function(l){
+      var isFocus = (focusPos == null) ? true : (l.pos === focusPos);
+      var b = baseEl(l.el, isFocus, l.ramo), s = b.s, det = b.det.slice();
+      // day clash / combination on the branch
+      if (CLASH[D] === l.ramo) {
+        if (l.vuoto && timelyEl(l.el)) { det.push('day clash fills the void (timely) 0'); }
+        else { s -= 1; det.push('day clashes −1'); }
+      }
+      if (COMBINA[D] === l.ramo) det.push('day combines: bound');
+      // void
+      if (l.vuoto) { if (stadioMese(l.el, Mo) === '旺') det.push('void but prosperous 0'); else { s -= 2; det.push('void −2'); } }
+      // mobile: effect of the arrival
+      if (l.isMobile) {
+        var m = R.mutante;
+        if (m.movimentoNullo) det.push('null movement: departure does not act');
+        else {
+          if (m.casoMut === 1) { s += 1; det.push('return-generation +1'); }
+          else if (m.casoMut === 5) { s += 0.5; det.push('same element +0.5'); }
+          else if (m.casoMut === 3) { s -= 2; det.push('return-control −2'); }
+          if (m.progressione === 'avanzante') { s += 1; det.push('advancing +1'); }
+          else if (m.progressione === 'retrocedente') { s -= 1; det.push('retreating −1'); }
+        }
+      }
+      return { pos: l.pos, par: l.par, ramo: l.ramo, el: l.el, score: s, det: det, stadio: b.stadio, timely: timelyEl(l.el) };
+    });
+    // adjacent fixed lines feed / drain (mother timely → child +1; child timely & mother untimely → mother −1)
+    for (var i = 0; i < 6; i++) {
+      var a = R.linee[i]; if (a.isMobile) continue;
+      [i-1, i+1].forEach(function(j){
+        if (j < 0 || j > 5) return; var c = R.linee[j]; if (c.isMobile) return;
+        if (GEN[a.el] === c.el) {
+          if (timelyEl(a.el)) { out[j].score += 1; out[j].det.push('fed by adjacent ' + a.par + ' ' + a.ramo + ' (timely mother) +1'); }
+          else if (timelyEl(c.el)) { out[i].score -= 1; out[i].det.push('drained by adjacent ' + c.par + ' ' + c.ramo + ' (timely child) −1'); }
+        }
+      });
+    }
+    // hidden lines
+    out.forEach(function(o, i){
+      var l = R.linee[i]; if (!l.fushen) return;
+      var b = baseEl(l.fushen.el, (focusPos == null) || (l.pos === focusPos), l.fushen.b), s = b.s, det = b.det.slice();
+      if (!l.vuoto) { s -= 1; det.push('covered by full host −1'); } else det.push('void host lets it out');
+      if (R.vuoti.indexOf(l.fushen.b) >= 0) { s -= 2; det.push('void −2'); }
+      o.hidden = { par: l.fushen.par, ramo: l.fushen.b, el: l.fushen.el, score: s, det: det };
+    });
+    // arrival of the mobile
+    var arrivo = null;
+    if (!R.mutante.movimentoNullo) {
+      var ba = baseEl(R.mutante.arrEl, true, R.mutante.ramoArr);
+      arrivo = { ramo: R.mutante.ramoArr, el: R.mutante.arrEl, score: ba.s, det: ba.det, stadio: ba.stadio };
+    }
+    return { linee: out, arrivo: arrivo, raduni: raduni.map(function(h){ return { r: h.r, el: h.el, score: 2 }; }) };
+  }
+
   function dingSpirit(dayStem, dayBranch){
     var si = S10.indexOf(dayStem), bi = B.indexOf(dayBranch); if (si<0||bi<0) return null;
     var head = ((bi-si)%12+12)%12;
@@ -905,6 +1019,120 @@
       return ctx.emaDir==='up' ? 'SHORT' : 'LONG';
     }});
 
+  LY_VIE.push({ id:'R27_63', sezione:'§63', nome:'Return-generation blocked: go where the action is',
+    dottrina:'The mobile is weak (not timely) — or timely but BESIEGED by a seasonal gathering / triple combination of the element that controls it (§63-bis) — and its arrival would generate it back (return-generation, case 1), but the arrival is busy clashing a single fixed line that is STRONG (timely or backed by day/year): the return-generation does not happen, and by lack of a better priority the clashed line becomes the decider → its seat. Doctrinal pillar (Edu 17/08, from EURJPY 06/02/2025); 17 cards, 70.6%, both periods aligned; below statistical threshold, fixed by doctrine. Evaluated last (only if every other rule is silent).',
+    test: function (R, ctx, state) {
+      var c = _ctx(R);
+      var mob = R.linee[R.mutante.pos-1];
+      if (R.mutante.casoMut !== 1) return null;
+      // §63-bis (17/08/2026): the mobile is disabled also when timely but BESIEGED by a seasonal
+      // gathering / triple combination (fixed lines + day/month/year) of the element that controls it.
+      var HUI=[{r:['寅','卯','辰'],el:'Wood'},{r:['巳','午','未'],el:'Fire'},{r:['申','酉','戌'],el:'Metal'},{r:['亥','子','丑'],el:'Water'}];
+      var HE =[{r:['寅','午','戌'],el:'Fire'},{r:['申','子','辰'],el:'Water'},{r:['巳','酉','丑'],el:'Metal'},{r:['亥','卯','未'],el:'Wood'}];
+      var pool = {}; R.linee.forEach(function(l){ if(!l.isMobile) pool[l.ramo]=true; }); pool[c.D]=true; pool[c.Mo]=true; pool[c.Y]=true;
+      var ctrlEl = null; for (var e in CTRL) if (CTRL[e]===mob.el) ctrlEl = e;
+      var raduno = null;
+      HUI.concat(HE).forEach(function(h){ if (!raduno && h.el===ctrlEl && h.r.every(function(x){return pool[x];})) raduno = h; });
+      var debole = !c.timely(mob.el);
+      if (!debole && !raduno) return null;
+      var arr = R.mutante.ramoArr;
+      var tgt = R.linee.filter(function(l){ return !l.isMobile && CLASH[arr]===l.ramo; });
+      if (tgt.length !== 1) return null;
+      var t = tgt[0];
+      var supp = function(el){ return WX[c.D]===el || GEN[WX[c.D]]===el || WX[c.Y]===el || GEN[WX[c.Y]]===el; };
+      if (!(c.timely(t.el) || supp(t.el))) return null;
+      var motivo = debole ? 'weak' : 'besieged';
+      if (raduno) motivo += (debole ? ' and ' : '') + 'besieged by the <b>'+raduno.el+' gathering '+raduno.r.join('')+'</b> (fixed lines + day/month/year) that controls it';
+      state.why = 'The '+motivo+' mobile <b>'+mob.par+'</b> L'+mob.pos+' ('+R.mutante.ramoDep+') would be generated back by its arrival <b>'+arr+'</b>, but the arrival is busy clashing the strong fixed <b>'+t.par+' '+t.ramo+'</b> on L'+t.pos+': the return-generation does not happen, the clashed line decides → its seat ('+(t.pos<=3?'below → SHORT':'above → LONG')+').';
+      return t.pos<=3 ? 'SHORT' : 'LONG';
+    }});
+
+  LY_VIE.push({ id:'R28_64', sezione:'§64', nome:'Residual priority: G and W silent → strongest P or C decides',
+    dottrina:'Precedence principle (Edu, 16-17/08): G and W speak first; P, B, C are read only when G and W do not speak. When no G or W is alive, full and (timely or mobile), the strongest remaining line among P and C — unique by strength score (timely, Tai Sui, = month, = day, backed by the day) — becomes the decider → its seat (below → SHORT, above → LONG). A residual B never decides (42% — against). Measured last in the thermometer: 116 cards, 56.0%, both periods aligned; P+C ≈ 58%. From AUDUSD 07/03/2023 (C Tai Sui on Ying, month branch, Ding, all else bound/void).',
+    test: function (R, ctx, state) {
+      var c = _ctx(R);
+      var attiva = function (l) { return c.vivo(l) && !l.vuoto; };
+      var gw = R.linee.filter(function (l) { return l.par==='G' || l.par==='W'; });
+      var gwParla = gw.some(function (l) { return attiva(l) && (c.timely(l.el) || l.isMobile); });
+      if (gwParla) return null;
+      var forza = function (l) { return (c.timely(l.el)?1:0)+(l.isTaiSui?1:0)+(l.ramo===c.Mo?1:0)+(l.ramo===c.D?1:0)+((WX[c.D]===l.el||GEN[WX[c.D]]===l.el)?1:0); };
+      var resto = R.linee.filter(function (l) { return l.par!=='G' && l.par!=='W' && attiva(l); });
+      if (!resto.length) return null;
+      var maxF = Math.max.apply(null, resto.map(forza));
+      var top = resto.filter(function (l) { return forza(l)===maxF; });
+      if (top.length !== 1) return null;
+      var dec = top[0];
+      if (dec.par === 'B') return null;
+      var tags = []; if (c.timely(dec.el)) tags.push('timely'); if (dec.isTaiSui) tags.push('Tai Sui'); if (dec.ramo===c.Mo) tags.push('= month'); if (dec.ramo===c.D) tags.push('= day'); if (WX[c.D]===dec.el||GEN[WX[c.D]]===dec.el) tags.push('backed by the day');
+      state.why = 'No <b>G</b> or <b>W</b> speaks (all bound, void, broken, hidden or weak). By residual priority the strongest remaining line is <b>'+dec.par+' '+dec.ramo+'</b> on L'+dec.pos+(dec.isShi?' (Shi)':dec.isYing?' (Ying)':'')+' ['+tags.join(', ')+'] → its seat ('+(dec.pos<=3?'below → SHORT':'above → LONG')+').';
+      return dec.pos<=3 ? 'SHORT' : 'LONG';
+    }});
+
+  LY_VIE.push({ id:'R29_65', sezione:'§65', nome:'Nothing moves: Ying on the day branch decides',
+    dottrina:'When the mobile line has a NULL movement (arrival void, suspended by the day, bound by the hidden line, self-combination, Qian-Xun bound) nothing acts in the hexagram: one reads the only thing there is. If the fixed Ying sits on the DAY branch, the day itself is the Ying → its seat (below → SHORT, above → LONG). Control: with a LIVE mobile the same configuration gives 35% — the day on Ying speaks only in silence. Edu (17/08, EURJPY 05/03/2025): "certain cards have no alternative, so you read the only possible one". 12 cards, 91.7%, both periods aligned; last in the thermometer.',
+    test: function (R, ctx, state) {
+      if (!R.mutante.movimentoNullo) return null;
+      var Yg = R.linee[R.ying-1];
+      if (Yg.isMobile || Yg.ramo !== R.dayBranch) return null;
+      var S = R.linee[R.shi-1];
+      var extra = GEN[S.el]===Yg.el ? ' Shi ('+S.par+' '+S.ramo+') generates it.' : '';
+      state.why = 'The mobile L'+R.mutante.pos+' has a <b>null movement</b> ('+(R.mutante.motivoNullo||'')+'): nothing acts. The fixed <b>Ying</b> L'+Yg.pos+' <b>'+Yg.par+' '+Yg.ramo+'</b> sits on the <b>day branch '+R.dayBranch+'</b> — the day itself is the Ying → its seat ('+(Yg.pos<=3?'below → SHORT':'above → LONG')+').'+extra;
+      return Yg.pos<=3 ? 'SHORT' : 'LONG';
+    }});
+
+  LY_VIE.push({ id:'R31_67', sezione:'§67', nome:'Wood gathering in the lower trigram: strong rises, weak sinks',
+    dottrina:'A complete seasonal gathering (no void branch) formed in the lower trigram by the mobile (departure/arrival) and its fixed lines. Force decides (Edu 17/08, force model): if the mobile\'s force is ≥ 3 (element prosperous/growing of month, day/hour support, advancing…) the gathering is strong and pushes UP → LONG; if < 3 (element dead of month, controller void that does not oppose) the gathering sinks → SHORT. A void controller — even if timely — does not act and does not oppose the gathering. 11 cards, 11/11, both periods; §66 (B advancing below) is a particular case of the strong branch. Last-but-one in the thermometer.',
+    test: function (R, ctx, state) {
+      var mob = R.linee[R.mutante.pos-1];
+      if (mob.pos > 3 || R.mutante.movimentoNullo) return null;
+      var HUI=[{r:['寅','卯','辰'],el:'Wood'},{r:['巳','午','未'],el:'Fire'},{r:['申','酉','戌'],el:'Metal'},{r:['亥','子','丑'],el:'Water'}];
+      var pool = {}; R.linee.forEach(function(l){ if (l.pos<=3) pool[l.ramo]=true; }); pool[R.mutante.ramoArr]=true;
+      var g = null; HUI.forEach(function(h){ if (!g && h.r.every(function(x){ return pool[x] && R.vuoti.indexOf(x)<0; })) g = h; });
+      if (!g) return null;
+      var F = forzaModello(R, ctx, mob.pos); var Fr = F.linee[mob.pos-1].score;
+      var forte = Fr >= 3;
+      state.why = 'The <b>'+g.el+' gathering '+g.r.join('')+'</b> is complete in the lower trigram (mobile '+mob.par+' '+R.mutante.ramoDep+' → '+R.mutante.ramoArr+' + fixed lines). Force of the mobile: <b>'+(Fr>0?'+':'')+Fr.toFixed(1)+'</b> ('+F.linee[mob.pos-1].det.join(', ')+') → '+(forte?'strong gathering pushes up → LONG':'weak gathering sinks → SHORT')+'.';
+      return forte ? 'LONG' : 'SHORT';
+    }});
+
+  LY_VIE.push({ id:'R30_66', sezione:'§66', nome:'B advancing in the lower trigram: the trend wins above',
+    dottrina:'B is notoriously a negative indicator: a B that ADVANCES (same element, clockwise branch) in the lower trigram shows the lower side losing ground — the trend wins on the other side → LONG. Edu (17/08, USDJPY 30/04/2024). Only where no other rule has spoken (elsewhere B advancing gives the opposite, 44%); 11 cards, 72.7%, both periods aligned; last in the thermometer.',
+    test: function (R, ctx, state) {
+      var mob = R.linee[R.mutante.pos-1];
+      if (!(mob.par==='B' && R.mutante.progressione==='avanzante' && mob.pos<=3)) return null;
+      state.why = 'The <b>B</b> L'+mob.pos+' advances <b>'+R.mutante.ramoDep+' → '+R.mutante.ramoArr+'</b> in the lower trigram: the negative indicator gains ground below, the trend wins above → LONG.';
+      return 'LONG';
+    }});
+
+  LY_VIE.push({ id:'R32_68', sezione:'§68', nome:'Arrival clash read by the Yong Shen (who is hit, who hits)',
+    dottrina:'Edu (17/08): "it depends" — the Yong Shen (spirit of the focus) tells how to read. Metaphor: a crowd gathered → you stop there (gathering: the qi stays); a runner crossing the street → you look where he goes (follow the arrival). When the arrival ONLY clashes one full fixed line (no combination): a clashed P gives way → seat OPPOSITE to the clashed line (35 cards, 74% opposite); a clashed G or C holds the blow → seat of the clashed line (G 13 cards 77%, C 25 cards 64%); otherwise, if the mobile is a W, the qi goes where the W goes → seat of the clashed line (33 cards, 61%). B/W clashed by a non-W mobile: no rule. Last in the thermometer.',
+    test: function (R, ctx, state) {
+      if (R.mutante.movimentoNullo) return null;
+      var mob = R.linee[R.mutante.pos-1], arr = R.mutante.ramoArr;
+      var cT = R.linee.filter(function(l){ return !l.isMobile && CLASH[arr]===l.ramo && !l.vuoto; });
+      var kT = R.linee.filter(function(l){ return !l.isMobile && COMBINA[arr]===l.ramo && !l.vuoto; });
+      if (cT.length !== 1 || kT.length) return null;
+      var T = cT[0], seatT = T.pos<=3 ? 'SHORT' : 'LONG', opp = seatT==='LONG' ? 'SHORT' : 'LONG';
+      var lbl = 'L'+T.pos+' <b>'+T.par+' '+T.ramo+'</b>';
+      if (T.par === 'P') { state.why = 'The arrival <b>'+arr+'</b> only clashes '+lbl+': a clashed <b>P</b> gives way → the clashed side loses → '+opp+'.'; return opp; }
+      if (T.par === 'G' || T.par === 'C') { state.why = 'The arrival <b>'+arr+'</b> only clashes '+lbl+': a clashed <b>'+T.par+'</b> holds the blow, the qi stops there → seat of the clashed line → '+seatT+'.'; return seatT; }
+      if (mob.par === 'W') { state.why = 'The mobile <b>W</b> L'+mob.pos+' runs to clash '+lbl+': you look where the W goes → seat of the clashed line → '+seatT+'.'; return seatT; }
+      return null;
+    }});
+
+  LY_VIE.push({ id:'R33_69', sezione:'§69', nome:'Only action: the day clashes one fixed line while nothing moves',
+    dottrina:'Edu (17/08): "when there is no better alternative you go to the only one available, even if you do not like it — the action guides the reading; if a void line is clashed OUT of the void by the day and nothing else happens, THAT is where you must look." Conditions: the mobile has a null movement, no gathering, and the day clashes exactly ONE fixed line: if that line is VOID it is filled by the clash and decides → its seat (USDCHF 27/12/2023, seme 85); if it is FULL it is broken → its side loses → opposite seat (USDJPY 13/02/2024, seme 149). Doctrinal pillar fixed on Edu\'s insistence; statistical support weak (coda 31 cards 61%, periods 72/46). Last in the thermometer.',
+    test: function (R, ctx, state) {
+      if (!R.mutante.movimentoNullo) return null;
+      var cl = R.linee.filter(function(l){ return !l.isMobile && CLASH[R.dayBranch]===l.ramo; });
+      if (cl.length !== 1) return null;
+      var F = forzaModello(R, ctx, cl[0].pos); if (F.raduni.length) return null;
+      var T = cl[0], seatT = T.pos<=3 ? 'SHORT' : 'LONG', opp = seatT==='LONG' ? 'SHORT' : 'LONG';
+      var lbl = 'L'+T.pos+' <b>'+T.par+' '+T.ramo+'</b>'+(T.isYing?' (Ying)':T.isShi?' (Shi)':'');
+      if (T.vuoto) { state.why = 'Nothing moves (null movement: '+(R.mutante.motivoNullo||'')+'), no gathering. The only action: the <b>day '+R.dayBranch+'</b> clashes the <b>void</b> '+lbl+' out of the void — it is filled and decides → its seat → '+seatT+'.'; return seatT; }
+      state.why = 'Nothing moves (null movement: '+(R.mutante.motivoNullo||'')+'), no gathering. The only action: the <b>day '+R.dayBranch+'</b> clashes the full '+lbl+' — it breaks, its side loses → '+opp+'.'; return opp;
+    }});
+
   // ---- i 2 rafforzativi (agiscono SOLO nel contrasto PB↔LY, non come vie autonome) ----
   var LY_RAFFORZATIVI = [
     { id:'ORA', nome:'Hour from the seed backs the follower',
@@ -1002,5 +1230,6 @@
            termometro: termometro, combinaS9: combinaS9,
            generaleDelMese: generaleDelMese, dingSpirit: dingSpirit,
            tiande: tiande, zhide: zhide, STELO_SPIRITI: STELO_SPIRITI,
-           EL_EN: EL_EN, STATO_EN: STATO_EN, contestoGiorno: contestoGiorno, wBless: wBless };
+           EL_EN: EL_EN, STATO_EN: STATO_EN, contestoGiorno: contestoGiorno, wBless: wBless,
+           forzaModello: forzaModello, stadioMese: stadioMese, STAGE_EN: STAGE_EN };
 }));
