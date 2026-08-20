@@ -736,7 +736,7 @@
     }});
 
   LY_VIE.push({ id:'R6', sezione:'—', nome:'Seasonal gathering with the month',
-    dottrina:'The three branches of a seasonal gathering are all present together with the month branch: if above/below are unbalanced, the majority wins.',
+    dottrina:'The three branches of a seasonal gathering are all present together with the month branch: if above/below are unbalanced, the majority wins. Silent when the mobile is G (§77).',
     test: function (R, ctx, state) {
       var c = _ctx(R);
       var HUI=[{r:['寅','卯','辰'],el:'Wood'},{r:['巳','午','未'],el:'Fire'},
@@ -744,6 +744,8 @@
       var tutti = {}; R.linee.forEach(function(l){tutti[l.ramo]=true;}); c.bazi.forEach(function(b){tutti[b]=true;});
       var fh = HUI.filter(function (h) { return h.r.every(function(x){return tutti[x];}) && h.r.indexOf(c.Mo)>=0; });
       if (fh.length!==1) return null;
+      // §77 (19/08/2026): this way is SILENT when the mobile is G (Official): 95 cards at 45.3% (recent 36%).
+      var mobR6 = R.linee[R.mutante.pos-1]; if (mobR6 && mobR6.par==='G') return null;
       var ln = R.linee.filter(function (l) { return l.el===fh[0].el; });
       var b_ = ln.filter(function(l){return l.pos<=3;}).length, a_ = ln.length-b_;
       if (b_===a_) return null;
@@ -818,16 +820,16 @@
     }});
 
   LY_VIE.push({ id:'R13_52', sezione:'§52', nome:'Who does not win, loses (failed action)',
-    dottrina:'The mobile\'s action fails — return-control, self-combination, or arrival clashed by the day: it does not carry its direction, read the opposite.',
+    dottrina:'The mobile\'s action fails — return-control or self-combination: it does not carry its direction, read the opposite. (Arrival clashed by the day removed, §76.)',
     test: function (R, ctx, state) {
       var c = _ctx(R);
       var mob = R.linee[R.mutante.pos-1];
       var huitou = R.mutante.casoMut===3;
       var autoc = mob.stato==='autocombinata';
-      var clashArr = CLASH[c.D]===R.mutante.ramoArr;
-      if (!(huitou || autoc || clashArr)) return null;
+      // §76 (19/08/2026): il sotto-caso "arrival clashed by the day" e' stato TOLTO (211 carte, 49,8%): il clash del giorno attiva la mobile (§74), non fa fallire l'azione.
+      if (!(huitou || autoc)) return null;
       var suo = mob.pos<=3 ? 'SHORT' : 'LONG';
-      var why = huitou ? 'return-control: the arrival <b>'+R.mutante.ramoArr+'</b> controls the departure '+R.mutante.ramoDep : autoc ? 'self-combination '+R.mutante.ramoDep+'+'+R.mutante.ramoArr : 'the arrival <b>'+R.mutante.ramoArr+'</b> is clashed by the <b>day '+c.D+'</b>';
+      var why = huitou ? 'return-control: the arrival <b>'+R.mutante.ramoArr+'</b> controls the departure '+R.mutante.ramoDep : 'self-combination '+R.mutante.ramoDep+'+'+R.mutante.ramoArr;
       state.why = 'The action of the mobile L'+mob.pos+' <b>'+mob.par+'</b> fails ('+why+'): it does not carry its direction → opposite of its seat.';
       return suo==='LONG' ? 'SHORT' : 'LONG';
     }});
