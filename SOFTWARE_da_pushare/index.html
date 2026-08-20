@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1022">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icons/icon.svg">
+<link rel="stylesheet" href="./styles.css">
+<title>Trading Calculator · 大六壬</title>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="title">大六壬<small>Trading Calculator</small></div>
+    <div class="tag">a moment in true solar time becomes a chart</div>
+  </header>
+
+  <div class="controls">
+    <div class="field"><label>Date</label><input type="date" id="date"></div>
+    <div class="field"><label>Time (civil)</label><input type="time" id="time"></div>
+    <div class="field"><label>Longitude °E</label><input type="number" id="longitude" step="0.0001" value="16.3738"></div>
+    <div class="field"><label>UTC offset (h)</label><input type="number" id="utc-offset" step="0.5" value="1"></div>
+    <div class="field chk"><input type="checkbox" id="dst"><label for="dst" class="inline">DST +1h</label></div>
+    <div class="btns">
+      <button class="ghost" id="forex">Forex 00:00 GMT</button>
+      <button class="ghost" id="gmt">00:00 GMT</button>
+      <button class="ghost" id="now">Now</button>
+      <button class="go" id="build">Build chart</button>
+    </div>
+  </div>
+
+  <div class="forexbar" id="forexbar" style="display:none"></div>
+  <div class="methodtoggle" style="display:flex;gap:0;margin:8px 0;border:1px solid #ccc;border-radius:8px;overflow:hidden;width:fit-content">
+    <button class="ghost mtoggle active" id="method-dlr" style="border:0;border-radius:0;margin:0">Da Liu Ren</button>
+    <button class="ghost mtoggle" id="method-pb" style="border:0;border-radius:0;margin:0">Plum Blossom</button>
+  </div>
+  <div class="trendpanel" id="trendpanel" style="display:none"></div>
+  <div class="lypanel" id="lypanel" style="display:none"></div>
+
+  <div class="err" id="err"></div>
+  <div class="pillars" id="pillars"></div>
+  <div class="three" id="three"></div>
+  <div id="methodWrap"></div>
+  <div class="lessons" id="lessons"></div>
+  <div class="grid" id="grid"></div>
+
+  <div class="legend">
+    <span><i class="dot" style="background:var(--gold)"></i>貴人 Nobleman</span>
+    <span><i class="dot" style="background:var(--cinnabar)"></i>朱雀 Red Bird</span>
+    <span><i class="dot" style="background:var(--void)"></i>旬空 Hour Void (空)</span>
+    <span><b style="color:var(--cinnabar)">賊</b> 下克上</span>
+    <span><b style="color:var(--azure)">克</b> 上克下</span>
+  </div>
+  <div class="note" id="note"></div>
+  <div class="status" id="status"></div>
+</div>
+
+<!-- engine pipeline — load order matters, all relative paths -->
+<script src="./lunar.js"></script>
+<script src="./solar-time.js"></script>
+<script src="./jieqi-gmt.js"></script>
+<script src="./daliuren.js"></script>
+<script src="./trend.js"></script>
+<script src="./plumblossom.js"></script>
+<script src="./liuyao.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>
