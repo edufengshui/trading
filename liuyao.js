@@ -209,8 +209,15 @@
     // arrivo vuoto (旬空): movimento nullo (la mobile non e' mai vuota di suo, 動不為空)
     if (vuoti.indexOf(ramoArr) >= 0) { effEl = null; casoMut = 0;
       motivoNullo = 'arrival void'; }
-    // sospensione dal giorno: il giorno COMBINA (六合) o CLASHA (六冲) partenza o arrivo
-    if (dayBranch && (COMBINA[dayBranch] === ramoDep || COMBINA[dayBranch] === ramoArr ||
+    // sospensione dal giorno: il giorno COMBINA (六合) o CLASHA (六冲) partenza o arrivo.
+    // FISSATA (Edu, 21/08/2026): se il GIORNO e' legato in 六合 dal MESE, la sua capacita'
+    // di combinare/clashare e' gia' impegnata e NON sospende la mobile.
+    // Audit: GIORNOLEGATO=off ripristina il comportamento precedente.
+    var _glOff = (typeof process !== 'undefined' && process.env && process.env.GIORNOLEGATO === 'off');
+    var _gioLegatoMese = !_glOff && !!(dayBranch && monthBranch && COMBINA[monthBranch] === dayBranch);
+    var _sbOff = (typeof process !== 'undefined' && process.env && process.env.GIORNOSBLOCCO === 'off');
+    var _sbloccata = !_sbOff && _sblocco;
+    if (!_sbloccata && !_gioLegatoMese && dayBranch && (COMBINA[dayBranch] === ramoDep || COMBINA[dayBranch] === ramoArr ||
         CLASH[dayBranch] === ramoDep || CLASH[dayBranch] === ramoArr)) {
       effEl = null; casoMut = -1;
       motivoNullo = 'suspended by the day (day combines/clashes departure or arrival)'; }
@@ -232,17 +239,48 @@
     // AUTOCOMBINAZIONE 自合 (Edu, 13/08/2026, da USDCAD 18/03/2020)
     // Se la PARTENZA della mobile combina (六合) il proprio ARRIVO, la linea si lega
     // a se stessa: e' bloccata, non e' piu' "in movimento" e non regge la lettura.
+    // REVISIONE Edu 21/08/2026 (stessa carta): blocca solo se il rapporto elementale corre
+    // ALL'INDIETRO (l'arrivo genera la partenza = torna indietro). Se e' la partenza a
+    // generare l'arrivo, il movimento va avanti e non e' bloccato.
+    // Attiva con AUTOCOMB9=indietro; senza flag resta il comportamento originale.
     var autoComb = (COMBINA[ramoDep] === ramoArr);
+    if (autoComb && typeof process !== 'undefined' && process.env && process.env.AUTOCOMB9 === 'off') {
+      autoComb = false;
+    }
+    if (autoComb && typeof process !== 'undefined' && process.env && process.env.AUTOCOMB9 === 'indietro') {
+      autoComb = (GEN[WX[ramoArr]] === WX[ramoDep]);
+    }
+    // variante stretta: tolgo il blocco SOLO dove la partenza genera l'arrivo (avanti),
+    // lasciando invariate le coppie di controllo, su cui Edu non si e' pronunciato.
+    if (autoComb && typeof process !== 'undefined' && process.env && process.env.AUTOCOMB9 === 'soloavanti') {
+      if (GEN[WX[ramoDep]] === WX[ramoArr]) autoComb = false;
+    }
     if (autoComb) { effEl = null; casoMut = -4;
       motivoNullo = 'self-combination (' + ramoDep + '+' + ramoArr + ')'; }
     var movimentoNullo = (effEl === null);
 
-    // viaggio/atterraggio della mobile: se l'arrivo COMBINA con un ramo presente, atterra
+    // viaggio/atterraggio della mobile: se l'arrivo COMBINA con un ramo presente, atterra.
+    // DESTINAZIONE ROTTA (Edu, 23/08/2026, da EURJPY 11/08/2020, DEFINITIVA dottrinale):
+    // se la linea di destinazione e' ROTTA dal giorno (clashata, non timely, ferma, non
+    // vuota) la combinazione non si forma e l'atterraggio e' ANNULLATO.
+    // ECCEZIONE (Edu, 23/08/2026, da GBPUSD 15/01/2021): se la destinazione e' CASA
+    // DELL'ATTORE DEL CAPOLINEA (carica dal condotto, v. setCasaAttore) RESISTE al clash
+    // del giorno e l'atterraggio VALE (carica 80,0% su 10; scarica fallisce 67,9% su 28).
+    // Audit: ATTROTTAOFF=1 ripristina il comportamento precedente.
     var atterraggio = null;
     if (!movimentoNullo){
       var coinc = COMBINA[ramoArr];
       for (var a = 1; a <= 6; a++){ if (ramoAl(a) === coinc){
-        atterraggio = { pos: a, ramo: coinc, dir: a <= 3 ? 'SHORT' : 'LONG' }; break; } }
+        var _arOff = (typeof process !== 'undefined' && process.env && process.env.ATTROTTAOFF === '1');
+        var _destRotta = false;
+        if (!_arOff && dayBranch && a !== linea && vuoti.indexOf(coinc) < 0 &&
+            CLASH[dayBranch] === coinc && !_isCasaAttore(a)) {
+          var _stD = stagione(WX[coinc], monthEl);
+          if (_stD !== '旺' && _stD !== '相') _destRotta = true;
+        }
+        if (!_destRotta)
+          atterraggio = { pos: a, ramo: coinc, dir: a <= 3 ? 'SHORT' : 'LONG' };
+        break; } }
     }
 
     // ---- SCALA MOBILE (Edu, 13/08/2026, da EURJPY 11/12/2023 / 噬嗑→无妄) ----
@@ -260,6 +298,10 @@
     };
     // linee in 暗動: piene, non vuote, clashate effettivamente (regola 1: giorno sempre,
     // anno se 旺/相, mese solo potenzia) -- il loro arrivo nell'esagramma trasformato
+    var _glMode = (typeof process !== 'undefined' && process.env) ? (process.env.GIORNOLEGATO || '') : '';
+    var giornoLegatoDalMese = (_glMode !== 'off') && !!(dayBranch && monthBranch && COMBINA[monthBranch] === dayBranch);
+    var _gioNoComb  = giornoLegatoDalMese;
+    var _gioNoClash = giornoLegatoDalMese;
     var anDong = {};   // pos -> { arr }
     for (var ad = 1; ad <= 6; ad++) {
       if (ad === linea) continue;
@@ -298,15 +340,18 @@
       var s = stagione(WX[yearBranch], monthEl);
       return s === '旺' || s === '相';
     })();
+    // IL GIORNO LEGATO DAL MESE (Edu, 21/08/2026, FISSATA) — vale anche sulle linee:
+    // il giorno legato in 六合 dal mese non combina e non clasha nessuna linea.
+    // Audit: GIORNOLEGATO=off ripristina il comportamento precedente.
     function clashSu(br) {
-      var dayC   = !!(dayBranch   && CLASH[dayBranch]   === br);
+      var dayC   = !!(dayBranch   && CLASH[dayBranch]   === br) && !_gioNoClash;
       var yearC  = !!(yearBranch  && CLASH[yearBranch]  === br && annoTimely);
       var monthC = !!(monthBranch && CLASH[monthBranch] === br);
       var eff = dayC || yearC;
       return { eff: eff, dayC: dayC, yearC: yearC, monthC: monthC,
                potenza: eff ? ((dayC?1:0) + (yearC?1:0) + (monthC?1:0)) : 0 };
     }
-    function legataDalGiorno(br) { return !!(dayBranch && COMBINA[dayBranch] === br); }
+    function legataDalGiorno(br) { return !!(dayBranch && COMBINA[dayBranch] === br) && !_gioNoComb; }
 
     // COMBINAZIONE E CLASH (Edu, 13/08/2026)
     // La combinazione (六合) dal GIORNO blocca sempre il ramo — MA protegge anche il ramo
@@ -427,6 +472,30 @@
       }
     };
   }
+
+  // SBLOCCO DEL GIORNO (Edu, 22/08/2026) — §89 forma definitiva.
+  // Quando il capolinea del flusso del Qi della data siede sulla linea mobile, la linea ha
+  // forza sufficiente a vincere il blocco imposto dal giorno (combinazione o clash): si
+  // muove come una linea normale e si legge col suo caso di mutazione in sede.
+  // pb_stress.js decide carta per carta e comunica la decisione con setSblocco(true/false).
+  // Audit: GIORNOSBLOCCO=off ignora del tutto l'interruttore (comportamento precedente).
+  var _sblocco = false;
+  function setSblocco(v){ _sblocco = !!v; }
+
+  // CASA DELL'ATTORE DEL CAPOLINEA (Edu, 23/08/2026) — per l'eccezione alla §93.
+  // Il chiamante che conosce la data completa (pb_stress.js o l'app) calcola la casa
+  // dell'attore del capolinea del flusso del Qi e la comunica qui PRIMA di chiamare
+  // read/readManual. Se null, vale la §93 senza eccezione.
+  // AGGIORNAMENTO (Edu, 23/08/2026, da EURUSD 30/01/2025): se il terminale non e'
+  // radicato si prende ANCHE lo step precedente -> il valore puo' essere un numero
+  // (1-6) O un array di numeri (piu' case cariche).
+  var _casaAttore = [];
+  function setCasaAttore(p){
+    if (p==null) { _casaAttore = []; return; }
+    var arr = Array.isArray(p) ? p : [p];
+    _casaAttore = arr.filter(function(x){ return x>=1 && x<=6; });
+  }
+  function _isCasaAttore(pos){ return _casaAttore.indexOf(pos) >= 0; }
 
   // l'ORA dal seme (come nel PB): quarto ramo che partecipa a combinazioni e raduni
   function oraDalSeme(seed){ return B[(((seed-1)%12)+12)%12]; }
@@ -1116,6 +1185,15 @@
       if (cT.length !== 1 || kT.length) return null;
       var T = cT[0], seatT = T.pos<=3 ? 'SHORT' : 'LONG', opp = seatT==='LONG' ? 'SHORT' : 'LONG';
       var lbl = 'L'+T.pos+' <b>'+T.par+' '+T.ramo+'</b>';
+      // §68-bis (Edu 20/08/2026, da EURJPY 11/12/2023): if the ARRIVAL also CONTROLS (剋) the element
+      // of the clashed line, this is not a bump but a destruction: the clashed line does not hold,
+      // whoever does not win loses → the mobile prevails (= seat opposite to the clashed line).
+      if (CTRL[WX[arr]] === T.el) {
+        var seatM = mob.pos<=3 ? 'SHORT' : 'LONG';
+        state.why = 'The arrival <b>'+arr+'</b> does not merely clash '+lbl+': it also CONTROLS it (剋). '+
+          'The clashed line is destroyed, not displaced → the mobile prevails → '+seatM+'.';
+        return seatM;
+      }
       if (T.par === 'P') { state.why = 'The arrival <b>'+arr+'</b> only clashes '+lbl+': a clashed <b>P</b> gives way → the clashed side loses → '+opp+'.'; return opp; }
       if (T.par === 'G' || T.par === 'C') { state.why = 'The arrival <b>'+arr+'</b> only clashes '+lbl+': a clashed <b>'+T.par+'</b> holds the blow, the qi stops there → seat of the clashed line → '+seatT+'.'; return seatT; }
       if (mob.par === 'W') { state.why = 'The mobile <b>W</b> L'+mob.pos+' runs to clash '+lbl+': you look where the W goes → seat of the clashed line → '+seatT+'.'; return seatT; }
@@ -1150,6 +1228,20 @@
         var gh = STELO_SPIRITI.ghost[R.dayStem] || [], tb = STELO_SPIRITI.tomb[R.dayStem] || [];
         var stelo = gh.indexOf(A)>=0 || tb.indexOf(A)>=0;
         return virtu || stelo;
+      } },
+    { id:'TSLEGA', nome:'Tai Sui binds the day and backs the follower',
+    dottrina:'§78 — If the DAY branch is bound (六合) by the TAI SUI (year branch) and the one saying "follows the trend" is the PB, the PB is strong and the LY does not override it.',
+      test: function (R, ctx, state) { return !!(R.yearBranch && COMBINA[R.dayBranch] === R.yearBranch); } },
+    { id:'SERPENTE', nome:'Untimely Snake backs the non-follower',
+    dottrina:'§81 — If the Snake (螣蛇) sits on the SHI, the YING or the MOBILE line and is UNTIMELY (囚 or 死 in the month), and the one saying "does not follow the trend" is the PB, the PB is strong and the LY does not override it.',
+      polarita: 'nonSegue',
+      test: function (R, ctx, state) {
+        var S = null;
+        for (var i=0;i<R.linee.length;i++){ var L=R.linee[i]; if (L.bestia && L.bestia.cn==='螣蛇'){ S=L; break; } }
+        if (!S) return false;
+        if (!(S.isShi || S.isYing || S.isMobile)) return false;
+        var st = stagione(S.el, WX[R.monthBranch]);
+        return st === '囚' || st === '死';
       } }
   ];
 
@@ -1215,9 +1307,16 @@
     enabledRaff = enabledRaff || {};
     var aOra = enabledRaff.ORA !== false && LY_RAFFORZATIVI[0].test(R, ctx);
     var wVirtu = enabledRaff.WVIRTU !== false && LY_RAFFORZATIVI[1].test(R, ctx);
-    if ((aOra || wVirtu) && pbSegue) {
+    var tsLega = enabledRaff.TSLEGA !== false && LY_RAFFORZATIVI[2].test(R, ctx);
+    var serpente = enabledRaff.SERPENTE !== false && LY_RAFFORZATIVI[3].test(R, ctx);
+    if (serpente && !pbSegue) {
+      return { finale: pbDir, chi: 'conflict → SNAKE reinforcer (§81): the Snake 螣蛇 sits on the Shi/Ying/mobile and is untimely in the month, and the PB does not follow the trend → the PB wins', via: t, ly: t.dir, why: t.why };
+    }
+    if ((aOra || wVirtu || tsLega) && pbSegue) {
       var A0 = R.mutante.ramoDep, mob0 = R.linee[R.mutante.pos-1];
-      var chi = aOra
+      var chi = !aOra && !wVirtu
+        ? 'conflict → TAI SUI reinforcer (§78): the day <b>' + R.dayBranch + '</b> is bound (六合) by the Tai Sui <b>' + R.yearBranch + '</b>, and the PB follows the trend → the PB wins'
+        : aOra
         ? 'conflict → HOUR reinforcer: the mobile ' + mob0.par + ' departs from <b>' + A0 + '</b> = <b>hour from the seed</b>, and the PB follows the trend → the PB wins'
         : 'conflict → BLESSED W reinforcer: the mobile <b>W</b> departs from <b>' + A0 + '</b> = ' + wBless(R, A0) + ', and the PB follows the trend → the PB wins';
       return { finale: pbDir, chi: chi, via: t, ly: t.dir, why: t.why };
@@ -1225,7 +1324,7 @@
     return { finale: t.dir, chi: 'conflict → LY wins (rule ' + t.sezione + ' ' + t.nome + ')', via: t, ly: t.dir, why: t.why };
   }
 
-  return { read: read, readManual: readManual, TRIGRAM: TRIGRAM,
+  return { read: read, readManual: readManual, setSblocco: setSblocco, setCasaAttore: setCasaAttore, TRIGRAM: TRIGRAM,
            PAR: PAR, SEI_BESTIE: SEI_BESTIE, EL_IT: EL_IT, BR_IT: BR_IT,
            oraDalSeme: oraDalSeme,
            LY_VIE: LY_VIE, LY_RAFFORZATIVI: LY_RAFFORZATIVI,
