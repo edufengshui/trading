@@ -391,8 +391,9 @@
       return timely ? 'attiva' : 'eliminata';
     }
     var fortLinea = function (br){
-      var st = stagione(WX[br], monthEl);
-      if (st === '旺' || st === '相') return true;
+      var st1 = stagione(WX[br], monthEl);
+      var st2 = monthBranch ? stagione(WX[br], SEASON[monthBranch]) : '—';  // doppia tempestività: 辰→Legno, 未→Fuoco, 戌→Metallo, 丑→Acqua
+      if (st1 === '旺' || st1 === '相' || st2 === '旺' || st2 === '相') return true;
       if (!dayBranch) return false;
       var de = WX[dayBranch];
       return de === WX[br] || GEN[de] === WX[br];
@@ -800,6 +801,8 @@
       });
       var capG = (cap.length===1 && cap[0].par==='G') ? cap[0] : null;
       if (!capG) return null;
+      // Guardia mobile (Edu, 25/08/2026, audit): R4 sbaglia con mobile G. GR4G=off ripristina.
+      if ((typeof process==='undefined' || !process.env || process.env.GR4G!=='off') && R.linee[R.mutante.pos-1].par==='G') return null;
       state.why = 'The qi flow of lines + Bazi (year '+c.Y+', month '+c.Mo+', day '+c.D+') ends on a single <b>G</b> L'+capG.pos+' ('+capG.ramo+') → direction of the G\'s seat.';
       return capG.pos<=3 ? 'SHORT' : 'LONG';
     }});
@@ -881,6 +884,9 @@
       var yongBasso = R.mutante.pos<=3;
       var l4 = R.linee[3];
       if (!(yongBasso && l4.par==='B' && c.vivo(l4) && c.timely(l4.el))) return null;
+      // Guardia mobile (Edu, 25/08/2026, audit): §53c sbaglia con mobile G. G53CG=off ripristina.
+      var mob53c=R.linee[R.mutante.pos-1];
+      if ((typeof process==='undefined' || !process.env || process.env.G53CG!=='off') && mob53c.par==='G') return null;
       state.why = 'Yong below; L4 (in the Ti) is a live, timely <b>B '+l4.ramo+'</b> ('+l4.el+') → does NOT follow the trend.';
       return ctx.emaDir==='up' ? 'SHORT' : 'LONG';
     }});
@@ -895,6 +901,11 @@
       var gTiPieno = tiLinee.filter(function(l){return l.par==='G' && c.vivo(l) && c.timely(l.el) && !l.vuoto;});
       var tiHaVuoto = tiLinee.some(function(l){return l.vuoto;});
       if (!(gTiPieno.length>=1 && tiHaVuoto)) return null;
+      // Guardia mobile (Edu, 25/08/2026): §53d sbaglia quando la mobile e' B o P (indicatori
+      // negativi). Scatta solo se la mobile NON e' B/P (G53DMOB=off ripristina il vecchio).
+      var mob53d=R.linee[R.mutante.pos-1];
+      if ((typeof process==='undefined' || !process.env || process.env.G53DMOB!=='off') &&
+          (mob53d.par==='B' || mob53d.par==='P')) return null;
       var vL = tiLinee.filter(function(l){return l.vuoto;}).map(function(l){return 'L'+l.pos+' '+l.ramo;}).join(', ');
       state.why = 'In the Ti (L'+tiRange.join('/')+'): timely full <b>G '+gTiPieno[0].ramo+'</b> but also a <b>void</b> line ('+vL+', void branches '+R.vuoti.join(' ')+') → breach → does NOT follow the trend.';
       return ctx.emaDir==='up' ? 'SHORT' : 'LONG';
@@ -909,6 +920,8 @@
       var autoc = mob.stato==='autocombinata';
       // §76 (19/08/2026): il sotto-caso "arrival clashed by the day" e' stato TOLTO (211 carte, 49,8%): il clash del giorno attiva la mobile (§74), non fa fallire l'azione.
       if (!(huitou || autoc)) return null;
+      // Guardia mobile (Edu, 25/08/2026, audit): §52 sbaglia con mobile B (兄弟). G52B=off ripristina.
+      if ((typeof process==='undefined' || !process.env || process.env.G52B!=='off') && mob.par==='B') return null;
       var suo = mob.pos<=3 ? 'SHORT' : 'LONG';
       var why = huitou ? 'return-control: the arrival <b>'+R.mutante.ramoArr+'</b> controls the departure '+R.mutante.ramoDep : 'self-combination '+R.mutante.ramoDep+'+'+R.mutante.ramoArr;
       state.why = 'The action of the mobile L'+mob.pos+' <b>'+mob.par+'</b> fails ('+why+'): it does not carry its direction → opposite of its seat.';
@@ -1162,6 +1175,8 @@
       if (top.length !== 1) return null;
       var dec = top[0];
       if (dec.par === 'B') return null;
+      // Guardia mobile (Edu, 25/08/2026, audit): §64 sbaglia con mobile B. G64B=off ripristina.
+      if ((typeof process==='undefined' || !process.env || process.env.G64B!=='off') && R.linee[R.mutante.pos-1].par==='B') return null;
       var tags = []; if (c.timely(dec.el)) tags.push('timely'); if (dec.isTaiSui) tags.push('Tai Sui'); if (dec.ramo===c.Mo) tags.push('= month'); if (dec.ramo===c.D) tags.push('= day'); if (WX[c.D]===dec.el||GEN[WX[c.D]]===dec.el) tags.push('backed by the day');
       state.why = 'No <b>G</b> or <b>W</b> speaks (all bound, void, broken, hidden or weak). By residual priority the strongest remaining line is <b>'+dec.par+' '+dec.ramo+'</b> on L'+dec.pos+(dec.isShi?' (Shi)':dec.isYing?' (Ying)':'')+' ['+tags.join(', ')+'] → its seat ('+(dec.pos<=3?'below → SHORT':'above → LONG')+').';
       return dec.pos<=3 ? 'SHORT' : 'LONG';
@@ -1244,6 +1259,40 @@
       var lbl = 'L'+T.pos+' <b>'+T.par+' '+T.ramo+'</b>'+(T.isYing?' (Ying)':T.isShi?' (Shi)':'');
       if (T.vuoto) { state.why = 'Nothing moves (null movement: '+(R.mutante.motivoNullo||'')+'), no gathering. The only action: the <b>day '+R.dayBranch+'</b> clashes the <b>void</b> '+lbl+' out of the void — it is filled and decides → its seat → '+seatT+'.'; return seatT; }
       state.why = 'Nothing moves (null movement: '+(R.mutante.motivoNullo||'')+'), no gathering. The only action: the <b>day '+R.dayBranch+'</b> clashes the full '+lbl+' — it breaks, its side loses → '+opp+'.'; return opp;
+    }});
+
+  LY_VIE.push({ id:'M18', sezione:'M18', nome:'Beast potentiation with overabundant element',
+    dottrina:'When NO stem (year/month/day/hour) has a usable root (rooted AND in the day-polarity scale), the OVERABUNDANT element of the four branches (>=3, no tie) potentiates — through the Beast (六獸) of the MOBILE line — that line, provided the mobile ARRIVAL is VOID. Then read normally: if the abundance GENERATES the arrival (E生arrival) the void arrival is activated and ACTS (mobile Shi/Ying: read control arrival↔opposite pole); otherwise the mobile STAYS and wins its seat (G/W hold, B/P invert, C silent). Guides: USDJPY 31/07/2024 (case A), EURGBP 21/01/2022 (case B). Doctrinal, low n by calendar rarity; removed only by a card that falsifies it in its perimeter. Needs year/month/hour stems in ctx (silent if absent). Evaluated last.',
+    test: function (R, ctx, state) {
+      if (!ctx || ctx.yearStem==null || ctx.monthStem==null) return null;    // steli non forniti → tace
+      if (R.vuoti.indexOf(R.mutante.ramoArr) < 0) return null;               // arrivo del mobile vuoto
+      var SE={'甲':'Wood','乙':'Wood','丙':'Fire','丁':'Fire','戊':'Earth','己':'Earth','庚':'Metal','辛':'Metal','壬':'Water','癸':'Water'};
+      var YANG=['甲','丙','戊','己','庚','壬'];
+      var dS=R.dayStem, lad=(YANG.indexOf(dS)>=0);
+      var inScala=function(s){ return (YANG.indexOf(s)>=0)===lad; };
+      var rami=[R.yearBranch,R.monthBranch,R.dayBranch,ctx.oraBranch].filter(Boolean);
+      var rad=function(s){ for (var i=0;i<rami.length;i++) if (WX[rami[i]]===SE[s]) return true; return false; };
+      var steli=[ctx.yearStem,ctx.monthStem,dS,ctx.hourStem||null].filter(Boolean);
+      for (var k=0;k<steli.length;k++) if (rad(steli[k]) && inScala(steli[k])) return null;   // stelo con radice usabile → fuori
+      var cnt={}; for (var j=0;j<rami.length;j++){ var e=WX[rami[j]]; cnt[e]=(cnt[e]||0)+1; }
+      var dom=null,dn=0,tie=false; for (var e2 in cnt){ if (cnt[e2]>dn){dom=e2;dn=cnt[e2];tie=false;} else if (cnt[e2]===dn) tie=true; }
+      if (dn<3 || tie) return null;
+      var BEL={'青龍':'Wood','朱雀':'Fire','勾陳':'Earth','螣蛇':'Earth','白虎':'Metal','玄武':'Water'};
+      var mob=R.linee[R.mutante.pos-1]; var bst=mob.bestia && mob.bestia.cn;
+      if (!bst || BEL[bst]!==dom) return null;
+      var arrEl=WX[R.mutante.ramoArr];
+      var seat=function(p){ return p<=3?'SHORT':'LONG'; };
+      if (GEN[dom]===arrEl) {                        // CASO B: arrivo generato → attivato, agisce
+        if (mob.isShi || mob.isYing) {
+          var altro = mob.isShi ? R.linee[R.ying-1] : R.linee[R.shi-1];
+          if (CTRL[arrEl]===altro.el) { state.why='No usable stem root; overabundant <b>'+dom+'</b> generates the void arrival <b>'+R.mutante.ramoArr+'</b> (via beast '+bst+') which controls the opposite pole → mobile ('+(mob.isShi?'Shi':'Ying')+') wins → its seat.'; return seat(mob.pos); }
+          if (CTRL[altro.el]===arrEl) { state.why='No usable stem root; the activated arrival is controlled by the opposite pole → mobile loses → opposite pole seat.'; return seat(altro.pos); }
+        }
+        return null;                                 // oltre Shi/Ying nessuna guida → tace
+      }
+      if (mob.par==='G' || mob.par==='W') { state.why='No usable stem root; overabundant <b>'+dom+'</b> potentiates the mobile (beast '+bst+'); the void arrival is not generated → the mobile stays <b>'+mob.par+'</b> and wins its seat.'; return seat(mob.pos); }
+      if (mob.par==='B' || mob.par==='P') { state.why='No usable stem root; the potentiated mobile stays <b>'+mob.par+'</b> (which makes its own team lose) → opposite of its seat.'; return seat(mob.pos)==='SHORT'?'LONG':'SHORT'; }
+      return null;
     }});
 
   // ---- i 2 rafforzativi (agiscono SOLO nel contrasto PB↔LY, non come vie autonome) ----
