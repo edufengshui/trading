@@ -956,6 +956,9 @@
     test: function (R, ctx, state) {
       var c = _ctx(R);
       var mob = R.linee[R.mutante.pos-1];
+      // Guardia movimento nullo (Edu, 25/08/2026, audit): la via agisce sull'ARRIVO, ma col
+      // movimento nullo (caso -1, mobile sospesa dal giorno) l'arrivo non agisce. G50FC1=off ripristina.
+      if ((typeof process==='undefined' || !process.env || process.env.G50FC1!=='off') && R.mutante.casoMut===-1) return null;
       var arr = R.mutante.ramoArr, aEl = WX[arr];
       var forte = function(el){ return WX[c.D]===el || GEN[WX[c.D]]===el || WX[c.Y]===el || GEN[WX[c.Y]]===el; };
       var tgt = R.linee.filter(function(l){return l.pos!==mob.pos && l.par==='W' && GEN[aEl]===l.el;});
@@ -971,6 +974,9 @@
     dottrina:'The arrival combines a branch present on two fixed, full lines split above/below: the bond is completed below → SHORT.',
     test: function (R, ctx, state) {
       var mob = R.linee[R.mutante.pos-1];
+      // Guardia movimento nullo (Edu, 25/08/2026, audit): stessa ragione di §50f — l'arrivo non
+      // agisce quando il movimento e' nullo (caso -1). G50GC1=off ripristina.
+      if ((typeof process==='undefined' || !process.env || process.env.G50GC1!=='off') && R.mutante.casoMut===-1) return null;
       var arr = R.mutante.ramoArr, part = COMBINA[arr];
       if (!part) return null;
       var tgt = R.linee.filter(function(l){return l.pos!==mob.pos && l.ramo===part && !l.vuoto;});
