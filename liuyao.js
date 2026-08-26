@@ -1052,6 +1052,40 @@
       return mob.pos<=3 ? 'SHORT' : 'LONG';
     }});
 
+  LY_VIE.push({ id:'R39_97', sezione:'§97', coda:true, cablata:'2026-08-25',
+    nome:'W in dark movement (暗動) with a void arrival: who does not win, loses',
+    dottrina:'Edu (25/08/2026, guide card GBPUSD 27/11/2024, seme 125): a W woken into dark movement (暗動) by the day clash tries to advance, but its arrival is in the void (旬空): the void arrival does not act — the W cannot win, and who does not win loses → its seat loses → OPPOSITE seat. Measure at cabling: n 21 · 57.1% · +328 · rec 63 (16) / vec 40 (5, thin). PRIORITY ABOVE §50i (Edu, 25/08/2026): the action of the W, even a failed one, precedes the background of the empty floor; swap measured: 1 straightened (+107, the guide) / 1 broken (-52, USDJPY 30/03/2021, to vet). TAIL RULE, frozen. VIA97=off to disable.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIA97==='off') return null;
+      if (!R.anDong) return null;
+      for (var p in R.anDong) {
+        var l=R.linee[p-1];
+        if (l && l.par==='W' && R.vuoti.indexOf(R.anDong[p].arr)>=0) {
+          var seat = l.pos<=3 ? 'LONG' : 'SHORT';
+          state.why = 'The <b>W</b> L'+l.pos+' ('+l.ramo+') is in dark movement (暗動) but its arrival <b>'+R.anDong[p].arr+'</b> is void: the void does not receive — the W cannot win, who does not win loses → '+seat+'.';
+          return seat;
+        }
+      }
+      return null;
+    }});
+
+  LY_VIE.push({ id:'R40_98', sezione:'§98', coda:true, cablata:'2026-08-25',
+    nome:'The day arrives on the line and generates the hidden P',
+    dottrina:'Edu (25/08/2026, guide card EURJPY 10/08/2023, seme 157): the day combines (六合) a fixed line and its branch GENERATES the element of the hidden P (伏神) beneath it: the P wakes up charged, and an active P makes its own team lose → the hosting trigram falls → seat OPPOSITE to the hosting line. (Full column: in the guide 庚 generates 子 generates 卯.) Measure at cabling: n 6 · 5/6 · +256 (rec 5/5 · vec 0/1, loser USDCHF 13/12/2022 to vet). Calendar rarity; TAIL RULE, frozen. PRIORITY ABOVE §50i (Edu, 25/08/2026): whoever touches the day precedes the background of the empty floor; swap measured: 1 straightened (+113, the guide) / 0 broken, S17 58.97 -> 59.00. VIA98=off to disable.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIA98==='off') return null;
+      for (var i=0;i<R.linee.length;i++) { var l=R.linee[i];
+        if (l.isMobile) continue;
+        if (COMBINA[R.dayBranch]!==l.ramo) continue;
+        if (!l.fushen || l.fushen.par!=='P') continue;
+        if (GEN[WX[R.dayBranch]]!==WX[l.fushen.b]) continue;
+        var seat = l.pos<=3 ? 'LONG' : 'SHORT';
+        state.why = 'The day <b>'+R.dayBranch+'</b> arrives on L'+l.pos+' ('+l.ramo+', 六合) and generates the hidden <b>P '+l.fushen.b+'</b>: the P wakes charged, and an active P makes its own team lose → the hosting trigram falls → '+seat+'.';
+        return seat;
+      }
+      return null;
+    }});
+
   LY_VIE.push({ id:'R19_50i', sezione:'§50i', nome:'Lower trigram entirely void',
     dottrina:'All branches of the lower trigram (Houtian palace) are void: the floor gives way → SHORT.',
     test: function (R, ctx, state) {
@@ -1188,6 +1222,19 @@
       return dec.pos<=3 ? 'SHORT' : 'LONG';
     }});
 
+  LY_VIE.push({ id:'R37_94', sezione:'§94', coda:true, cablata:'2026-08-25',
+    nome:'Suspended B cannot advance, cannot lose (tail)',
+    dottrina:'Edu (25/08/2026, guide card USDJPY 24/02/2026, seme 154): a mobile B whose ARRIVAL is combined (六合) by the DAY branch (trapped arrival) cannot complete its movement; since the malus of the B ("the B makes its own team lose") requires the action to be completed, the suspended B cannot harm its trigram → its seat wins (B above → LONG, B below → SHORT). Same principle as the case -1 guards (with null movement the action does not act), applied to the B malus. TAIL RULE: cabled at low n by doctrine, FROZEN at birth, judged in aggregate by the tail class row. PRIORITY ABOVE §65 (Edu, 25/08/2026): §65 is a fallback for when nothing acts, but a suspended B IS a readable action — the reading of the mobile precedes the fallback on the Ying; swap measured: 4 straightened (+497) vs 2 lost (-201), both periods improve. Measure at cabling: n 48 · 60.4% · +804 pip · periods 61/60 (seat above 69.6%/23, seat below 52.0%/25 — asymmetry noted, rule kept SYMMETRIC per doctrine). Removed only by a card that falsifies it in its perimeter with no other explanation. VIA94=off to disable.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIA94==='off') return null;
+      var mob = R.linee[R.mutante.pos-1];
+      if (mob.par !== 'B') return null;
+      if (COMBINA[R.dayBranch] !== R.mutante.ramoArr) return null;   // trapped arrival: the day combines it
+      var seat = mob.pos<=3 ? 'SHORT' : 'LONG';
+      state.why = 'The mobile <b>B</b> L'+mob.pos+' ('+R.mutante.ramoDep+'→'+R.mutante.ramoArr+') is trapped: the day <b>'+R.dayBranch+'</b> combines (六合) its arrival — the B cannot advance, so it cannot make its own team lose → its seat holds → '+seat+'.';
+      return seat;
+    }});
+
   LY_VIE.push({ id:'R29_65', sezione:'§65', nome:'Nothing moves: Ying on the day branch decides',
     dottrina:'When the mobile line has a NULL movement (arrival void, suspended by the day, bound by the hidden line, self-combination, Qian-Xun bound) nothing acts in the hexagram: one reads the only thing there is. If the fixed Ying sits on the DAY branch, the day itself is the Ying → its seat (below → SHORT, above → LONG). Control: with a LIVE mobile the same configuration gives 35% — the day on Ying speaks only in silence. Edu (17/08, EURJPY 05/03/2025): "certain cards have no alternative, so you read the only possible one". 12 cards, 91.7%, both periods aligned; last in the thermometer.',
     test: function (R, ctx, state) {
@@ -1300,6 +1347,25 @@
       if (mob.par==='B' || mob.par==='P') { state.why='No usable stem root; the potentiated mobile stays <b>'+mob.par+'</b> (which makes its own team lose) → opposite of its seat.'; return seat(mob.pos)==='SHORT'?'LONG':'SHORT'; }
       return null;
     }});
+
+
+  LY_VIE.push({ id:'R38_96', sezione:'§96', coda:true, cablata:'2026-08-25',
+    nome:'The arrival that punishes (刑) its own departure fells the mobile',
+    dottrina:'Edu (25/08/2026, guide card EURJPY 14/11/2023, seme 162): when the mutation ARRIVAL punishes (三刑/子卯) its own DEPARTURE and the punisher is POWERFUL (arrival element timely in the month — double seasonality — or of the Tai Sui element), the element-based return-generation is a poisoned gift: by branch, the arrival strikes the mover — the mobile falls, its team loses → OPPOSITE seat. Measure at cabling: powerful n 109 · 59.6% · z 2.01 · +1350 · periods 60/59 (weak punisher 44.9%: without power the punishment does not fell). Note: mobile-G cell 47.1%/17 with contradictory periods — kept by doctrine, to be vetted card by card. TAIL RULE, frozen. VIA96=off to disable.',
+    test: function (R, ctx, state) {
+      if (!(typeof process!=='undefined' && process.env && process.env.VIA96==='1')) return null;   // IN SALVAGUARDIA: default OFF, VIA96=1 per accendere (regressione pipeline -816: 4 su/7 giu)
+      var XING={'寅':'巳','巳':'申','申':'寅','丑':'戌','戌':'未','未':'丑','子':'卯','卯':'子'};
+      if (XING[R.mutante.ramoArr]!==R.mutante.ramoDep) return null;
+      var mEl=WX[R.monthBranch], sEl=SEASON[R.monthBranch], aEl=WX[R.mutante.ramoArr];
+      var pot=(aEl===mEl||GEN[mEl]===aEl)||(aEl===sEl||GEN[sEl]===aEl)||(R.yearBranch&&WX[R.yearBranch]===aEl);
+      if (!pot) return null;
+      var mob=R.linee[R.mutante.pos-1];
+      var seat = mob.pos<=3 ? 'LONG' : 'SHORT';
+      state.why = 'The arrival <b>'+R.mutante.ramoArr+'</b> punishes (刑) its own departure <b>'+R.mutante.ramoDep+'</b>, and the punisher is powerful (timely/Tai Sui): the mobile is struck by its own arrival — it falls, its team loses → opposite seat → '+seat+'.';
+      return seat;
+    }});
+
+
 
   // ---- i 2 rafforzativi (agiscono SOLO nel contrasto PB↔LY, non come vie autonome) ----
   var LY_RAFFORZATIVI = [
