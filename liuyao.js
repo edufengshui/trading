@@ -798,6 +798,72 @@
   //   Solo il DRENAGGIO blocca, non il controllo (剋): gemella EURJPY 08/04/2025 (stesso seme 161,
   //   pressione di controllo) la mobile parte e vince la sua sede. Perimetro stretto e raro (caso 6
   //   + bestia radicata che drena): 2 carte, 2/2. GIORNOBLOCCO=off spegne.
+  LY_VIE.push({ id:'R48_108', sezione:'§108', cablata:'2026-08-27',
+    nome:'Inert double-bound void mobile: the day pillar becomes the line\'s master, the generation duel decides',
+    dottrina:'Edu (27/08/2026, da NZDUSD 22/06/2023 seme 62): caso -1 col DOPPIO LEGAME (il giorno combina la partenza E clasha l\'arrivo, o lo speculare) e mobile IN VUOTO: resta vuota, non parte nemmeno — l\'arrivo non esiste se non c\'e\' partenza. Linea inerte, niente si muove. Il flusso degli steli CON LA COMBINAZIONE DEGLI STELI (甲己 乙庚 丙辛 丁壬 戊癸: lo stelo legato non puo\' essere capolinea), se termina sull\'elemento della BESTIA della linea inerte, vi si ferma e il PILASTRO DEL GIORNO diventa padrone della linea. Duello Shi/Ying per GENERAZIONE, col padrone al posto della linea inerte quando questa e\' Shi o Ying: chi genera cede il Qi, chi riceve vince -> sede del ricevente. 4/4, +256 pip.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.SPECIALE24==='off') return null;
+      if (R.mutante.casoMut !== -1) return null;
+      var D = R.dayBranch, dep = R.mutante.ramoDep, arr = R.mutante.ramoArr;
+      if (!((COMBINA[D]===dep && CLASH[D]===arr) || (CLASH[D]===dep && COMBINA[D]===arr))) return null;
+      var mob = R.linee[R.mutante.pos-1];
+      if (!mob.vuoto || !mob.bestia) return null;
+      var BEL = {'青龍':'Wood','朱雀':'Fire','勾陳':'Earth','螣蛇':'Earth','白虎':'Metal','玄武':'Water'};
+      var bEl = BEL[mob.bestia.cn]; if (!bEl) return null;
+      // flusso con la combinazione degli steli (serve la data completa nel ctx)
+      var ds = R.dayStem, ys = ctx && ctx.yearStem, ms = ctx && ctx.monthStem, os = ctx && ctx.hourStem;
+      if (!ds || !ys || !ms) return null;
+      var SEs = {'甲':'Wood','乙':'Wood','丙':'Fire','丁':'Fire','戊':'Earth','己':'Earth','庚':'Metal','辛':'Metal','壬':'Water','癸':'Water'};
+      var YANGL = ['甲','丙','戊','己','庚','壬'], YINL = ['乙','丁','戊','己','辛','癸'];
+      var ST10 = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+      var HE = {'甲':'己','己':'甲','乙':'庚','庚':'乙','丙':'辛','辛':'丙','丁':'壬','壬':'丁','戊':'癸','癸':'戊'};
+      var lad = (ST10.indexOf(ds)%2===0) ? YANGL : YINL;
+      if (lad.indexOf(ds) < 0) return null;
+      var steli = [ys, ms, ds, os].filter(function(x){return !!x;});
+      var rami = [R.yearBranch, R.monthBranch, R.dayBranch, ctx && ctx.oraBranch].filter(function(x){return !!x;});
+      var legati = {};
+      for (var i2=0;i2<steli.length;i2++) for (var j2=i2+1;j2<steli.length;j2++)
+        if (HE[steli[i2]]===steli[j2]) { legati[i2]=1; legati[j2]=1; }
+      var liberi = steli.filter(function(s,k){ return !legati[k]; });
+      var pres = {};
+      for (var a2=0;a2<steli.length;a2++){ var e2=SEs[steli[a2]]; (pres[e2]=pres[e2]||[]).push(steli[a2]); }
+      for (var b2=0;b2<rami.length;b2++){ var e3=WX[rami[b2]]; if(e3) (pres[e3]=pres[e3]||[]).push(rami[b2]); }
+      var util = function(e){ return liberi.filter(function(s){ return SEs[s]===e && lad.indexOf(s)>=0; }); };
+      var cap=null, lung=-1;
+      for (var pe in pres) {
+        var e4=pe, g4=0, ult=null, passi=0;
+        while (g4++<6) { var g5=GEN[e4]; if (!pres[g5] || !util(g5).length) break; e4=g5; ult=g5; passi++; }
+        if (ult && passi>lung) { lung=passi; cap=ult; }
+      }
+      if (cap !== bEl) return null;                              // il flusso deve fermarsi sulla bestia della mobile
+      var S = R.linee[R.shi-1], Y = R.linee[R.ying-1]; if (!S || !Y) return null;
+      var padr = SEs[ds];
+      var eS = (R.mutante.pos===R.shi) ? padr : S.el;
+      var eY = (R.mutante.pos===R.ying) ? padr : Y.el;
+      var vinc = null;
+      if (GEN[eS]===eY) vinc = Y; else if (GEN[eY]===eS) vinc = S;
+      if (!vinc) return null;                                    // degenere: il principio non parla
+      var dir = vinc.pos<=3 ? 'SHORT' : 'LONG';
+      state.why = 'The void mobile <b>'+mob.ramo+'</b> is bound at both ends by the day: it stays void and does not even depart — no departure, no arrival. The stem flow, corrected for the stem combinations, terminates on its beast '+mob.bestia.cn+' ('+bEl+'), so the day pillar <b>'+ds+D+'</b> becomes the line\'s master. In the generation duel, the side that generates yields its Qi: the '+(vinc===S?'Shi':'Ying')+' receives and wins → '+dir+'.';
+      return dir;
+    }});
+
+  LY_VIE.push({ id:'R47_107', sezione:'§107', cablata:'2026-08-27',
+    nome:'Mobile bound at both ends by the day: the void Ying does not act, the Shi wins',
+    dottrina:'Edu (27/08/2026, da EURGBP 19/11/2025 seme 88): caso -1 col DOPPIO LEGAME — il giorno combina la partenza E clasha l\'arrivo della mobile (o lo speculare). La linea non puo\' ne\' partire ne\' arrivare: e\' inutile per valutare chi vince ed esce dalla decisione, che passa al duello Shi/Ying. La Ying in VUOTO non agisce -> vince lo Shi -> sede dello Shi. 13/13, +874 pip. Lo SPECULARE (Shi vuoto -> vince la Ying) NON vale (44,4%: resta ristretto a §104); senza vuoti il duello non parla (celle di controllo piatte).',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.DUELLO24==='off') return null;
+      if (R.mutante.casoMut !== -1) return null;
+      var D = R.dayBranch, dep = R.mutante.ramoDep, arr = R.mutante.ramoArr;
+      if (!((COMBINA[D]===dep && CLASH[D]===arr) || (CLASH[D]===dep && COMBINA[D]===arr))) return null;
+      var S = R.linee[R.shi-1], Y = R.linee[R.ying-1];
+      if (!S || !Y) return null;
+      if (!Y.vuoto || S.vuoto) return null;                      // solo la Ying vuota; lo speculare non vale
+      var dir = S.pos<=3 ? 'SHORT' : 'LONG';
+      state.why = 'The day <b>'+D+'</b> combines the departure and clashes the arrival of the mobile <b>'+R.linee[R.mutante.pos-1].ramo+'</b>: bound at both ends, it can neither depart nor arrive and leaves the decision. In the Shi/Ying duel the Ying <b>'+Y.ramo+'</b> is void and does not act → the Shi L'+S.pos+' wins → seat of the Shi → '+dir+'.';
+      return dir;
+    }});
+
   LY_VIE.push({ id:'R41_101', sezione:'§101', nome:'Blocked receiving mobile: rooted draining beast on the mobile → opposite seat',
     dottrina:'Edu (26/08/2026, da EURJPY 27/03/2025): nel caso 6 (giorno libera la mobile), se la mobile e\' untimely e la BESTIA sulla sua linea la DRENA (泄), radicata e timely, il movimento non parte -> chi non vince perde -> sede opposta. Solo il drenaggio blocca, non il controllo (gemella EURJPY 08/04/2025, seme 161).',
     test: function (R, ctx, state) {

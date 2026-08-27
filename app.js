@@ -334,8 +334,11 @@ function analizzaCrossPerReport(r, utcMs, dateStr) {
         // del giorno dopo darebbe un verdetto diverso da quello del sistema senza avvisare.
         // Percio' enabled/enabledRaff sono VUOTI = tutte le vie cablate attive, stato canonico.
         var enabled = {}, enabledRaff = {};
-        var ctxT = { oraBranch: LYM.oraDalSeme(r.seed), emaDir: dir, capolineaEl: capolineaDelFlusso(chart),
-                     corpoEl: pb.trend ? pb.trend.el : null, date: dateStr };
+        var oraB0 = LYM.oraDalSeme(r.seed);
+        var stD = steliDiData(dateStr, yearBranch, chart.monthBranch, chart.dayStem || null, oraB0);
+        var ctxT = { oraBranch: oraB0, emaDir: dir, capolineaEl: capolineaDelFlusso(chart),
+                     corpoEl: pb.trend ? pb.trend.el : null, date: dateStr,
+                     yearStem: stD.yearStem, monthStem: stD.monthStem, hourStem: stD.hourStem };
         var comb = LYM.combinaS9(ly, ctxT, pbDir, enabled, enabledRaff, {});
         if (comb && comb.finale) { finale = comb.finale; decisore = comb.chi || ''; }
       }
@@ -579,6 +582,38 @@ function wireRegistro(box) {
 /* Capolinea del flusso degli steli: si cammina la generazione partendo da ogni elemento
  * presente negli otto caratteri e si avanza finché l'elemento generato ha uno stelo della
  * polarità del giorno; l'ultimo raggiunto è il capolinea. Serve alla via §105. */
+// STELI DI ANNO/MESE/ORA DERIVATI DAI RAMI DEL MOTORE (correzione 27/08/2026, sessione 24).
+// MAI prendere steli di anno o mese dal pilastro di un'ora convenzionale: nei giorni a cavallo
+// di un termine solare apparterrebbero al mese (o all'anno) sbagliato rispetto alle 00:00 GMT.
+// Anno: dall'anno civile + ramo d'anno. Mese: 五虎遁 dallo stelo d'anno. Ora: 五鼠遁 dal giorno.
+function steliDiData(dateStr, yearBranch, monthBranch, dayStem, oraBranch) {
+  var STm = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+  var BR12 = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+  var BRm12 = ['寅','卯','辰','巳','午','未','申','酉','戌','亥','子','丑'];
+  var PRIMO = {'甲':'丙','己':'丙','乙':'戊','庚':'戊','丙':'庚','辛':'庚','丁':'壬','壬':'壬','戊':'甲','癸':'甲'};
+  var WUSHU = {'甲':'甲','己':'甲','乙':'丙','庚':'丙','丙':'戊','辛':'戊','丁':'庚','壬':'庚','戊':'壬','癸':'壬'};
+  var out = { yearStem: null, monthStem: null, hourStem: null };
+  try {
+    var y = parseInt(String(dateStr).slice(0, 4), 10);
+    if (y && yearBranch) {
+      var cands = [y, y - 1];
+      for (var i = 0; i < 2; i++) {
+        var Y = cands[i], idx = ((Y - 4) % 12 + 12) % 12;
+        if (BR12[idx] === yearBranch) { out.yearStem = STm[((Y - 4) % 10 + 10) % 10]; break; }
+      }
+    }
+    if (out.yearStem && monthBranch) {
+      var j = BRm12.indexOf(monthBranch), s0 = PRIMO[out.yearStem];
+      if (j >= 0 && s0) out.monthStem = STm[(STm.indexOf(s0) + j) % 10];
+    }
+    if (dayStem && oraBranch) {
+      var h0 = WUSHU[dayStem], hi = BR12.indexOf(oraBranch);
+      if (h0 && hi >= 0) out.hourStem = STm[(STm.indexOf(h0) + hi) % 10];
+    }
+  } catch (e) {}
+  return out;
+}
+
 function capolineaDelFlusso(chart) {
   try {
     var SE = {'甲':'Wood','乙':'Wood','丙':'Fire','丁':'Fire','戊':'Earth','己':'Earth',
@@ -904,7 +939,9 @@ function renderLiuYao(cross, chart, row, lyp, pbCtx) {
 
   var termHtml = '';
   if (pbCtx && pbCtx.finalDir) {
-    var ctxT = { oraBranch: oraBranchSeme, emaDir: pbCtx.emaDir, corpoEl: pbCtx.corpoEl, date: pbCtx.date, capolineaEl: capolineaDelFlusso(chart) };
+    var stD2 = steliDiData(pbCtx.date, ly.yearBranch, ly.monthBranch, ly.dayStem || null, oraBranchSeme);
+    var ctxT = { oraBranch: oraBranchSeme, emaDir: pbCtx.emaDir, corpoEl: pbCtx.corpoEl, date: pbCtx.date, capolineaEl: capolineaDelFlusso(chart),
+                 yearStem: stD2.yearStem, monthStem: stD2.monthStem, hourStem: stD2.hourStem };
     termHtml = renderTermometro(ly, ctxT, pbCtx.finalDir);
   }
 
