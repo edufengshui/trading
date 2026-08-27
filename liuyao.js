@@ -1718,6 +1718,47 @@
     }});
 
 
+
+  // §109 — ULTIMA ISTANZA (deve restare l'ULTIMA via dell'elenco: parla solo se tutte tacciono)
+  LY_VIE.push({ id:'R49_109', sezione:'§109', cablata:'2026-08-27',
+    nome:'Incompatible line with its host trigram (last instance): G/P/W wins, B loses',
+    dottrina:'Edu (27/08/2026, da USDCAD 16/01/2024 seme 134; direzione B CERTIFICATA da Edu). Cinque coppie incompatibili, corpo unico: 丑∈坤, 卯∈兌, 辰∈乾, 午∈坎, 申∈艮 (le speculari non valgono). A movimento nullo (caso -1), la linea incompatibile NON vuota, UNICA, che SI PRENDE BESTIA E STELI (bestia radicata nella data + stelo di data radicato con casa sulla linea) e\' un fattore finale: se e\' G, P o W la sua squadra VINCE; se e\' B la sua squadra PERDE; se e\' C tace. Parla in ultima istanza, prima di ricorrere al duello Shi/Ying.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.INCOMP24==='off') return null;
+      if (R.mutante.casoMut !== -1) return null;
+      var EDU5={'丑':8,'卯':2,'辰':1,'午':6,'申':7};
+      var BEL={'青龍':'Wood','朱雀':'Fire','勾陳':'Earth','螣蛇':'Earth','白虎':'Metal','玄武':'Water'};
+      var SEs={'甲':'Wood','乙':'Wood','丙':'Fire','丁':'Fire','戊':'Earth','己':'Earth','庚':'Metal','辛':'Metal','壬':'Water','癸':'Water'};
+      var WXb={'寅':'Wood','卯':'Wood','巳':'Fire','午':'Fire','辰':'Earth','丑':'Earth','戌':'Earth','未':'Earth','申':'Metal','酉':'Metal','亥':'Water','子':'Water'};
+      var ST10=['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+      var YANGL=['甲','丙','戊','己','庚','壬'], YINL=['乙','丁','戊','己','辛','癸'];
+      var ds=R.dayStem; if(!ds||R.sup==null||R.inf==null) return null;
+      var ys=ctx&&ctx.yearStem, ms=ctx&&ctx.monthStem, os=ctx&&ctx.hourStem;
+      if(!ys||!ms) return null;
+      var steli=[ys,ms,ds,os].filter(function(x){return !!x;});
+      var rami=[R.yearBranch,R.monthBranch,R.dayBranch,ctx&&ctx.oraBranch].filter(function(x){return !!x;});
+      var lad=(ST10.indexOf(ds)%2===0)?YANGL:YINL;
+      var i0=lad.indexOf(ds); if(i0<0) return null;
+      var casa=function(s){var j=lad.indexOf(s); return j<0?null:((j-i0+6)%6)+1;};
+      var rad=function(s){for(var a=0;a<rami.length;a++) if(WXb[rami[a]]===SEs[s]) return true; return false;};
+      var q=[];
+      for(var i=0;i<R.linee.length;i++){var l=R.linee[i];
+        var trig=l.pos<=3?R.inf:R.sup;
+        if(EDU5[l.ramo]!==trig||l.vuoto) continue;
+        var bEl=l.bestia?BEL[l.bestia.cn]:null;
+        if(!bEl) continue;
+        var okB=false; for(var a2=0;a2<rami.length;a2++) if(WXb[rami[a2]]===bEl){okB=true;break;}
+        if(!okB) continue;
+        var okS=false; for(var a3=0;a3<steli.length;a3++){var s=steli[a3]; if(casa(s)===l.pos&&rad(s)){okS=true;break;}}
+        if(okS) q.push(l);
+      }
+      if(q.length!==1) return null;
+      var l1=q[0]; if(l1.par==='C') return null;
+      var vinceSquadra=(l1.par!=='B');
+      var dir=vinceSquadra?(l1.pos<=3?'SHORT':'LONG'):(l1.pos<=3?'LONG':'SHORT');
+      state.why='Last instance: the line <b>'+l1.ramo+'</b> on L'+l1.pos+' is incompatible with its host trigram, and it takes the beast and the rooted stems of the date. As a '+l1.par+', '+(vinceSquadra?'its side wins':'its side loses (B certified by Edu)')+' → '+dir+'.';
+      return dir;
+    }});
   // ---- i 2 rafforzativi (agiscono SOLO nel contrasto PB↔LY, non come vie autonome) ----
   var LY_RAFFORZATIVI = [
     { id:'ORA', nome:'Hour from the seed backs the follower',
