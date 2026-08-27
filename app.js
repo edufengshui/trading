@@ -328,10 +328,13 @@ function analizzaCrossPerReport(r, utcMs, dateStr) {
     if (LYM) {
       var ly = LYM.read(r.seed, chart.dayBranch, chart.monthBranch, yearBranch, chart.dayStem || null);
       if (ly && !ly.error) {
+        // TERMOMETRO CANONICO (Edu, 27/08/2026): il report usa SOLO le vie cablate e decise,
+        // niente altro. Gli interruttori del termometro a schermo (localStorage) servono per
+        // le prove e NON devono entrare qui: se ne resta uno spento per distrazione, il report
+        // del giorno dopo darebbe un verdetto diverso da quello del sistema senza avvisare.
+        // Percio' enabled/enabledRaff sono VUOTI = tutte le vie cablate attive, stato canonico.
         var enabled = {}, enabledRaff = {};
-        LYM.LY_VIE.forEach(function (v) { if (lyToggles[v.id] === false) enabled[v.id] = false; });
-        LYM.LY_RAFFORZATIVI.forEach(function (v) { if (lyToggles[v.id] === false) enabledRaff[v.id] = false; });
-        var ctxT = { oraBranch: LYM.oraDalSeme(r.seed), emaDir: dir,
+        var ctxT = { oraBranch: LYM.oraDalSeme(r.seed), emaDir: dir, capolineaEl: capolineaDelFlusso(chart),
                      corpoEl: pb.trend ? pb.trend.el : null, date: dateStr };
         var comb = LYM.combinaS9(ly, ctxT, pbDir, enabled, enabledRaff, {});
         if (comb && comb.finale) { finale = comb.finale; decisore = comb.chi || ''; }
@@ -340,6 +343,13 @@ function analizzaCrossPerReport(r, utcMs, dateStr) {
     out.signal = finale;
     out.segue = (finale === out.trend);
     out.decisore = decisore;
+    // dati della carta, per poterla rileggere a fine giornata dal registro
+    out.seed = r.seed;
+    out.sup = (ly && ly.sup) || null;
+    out.inf = (ly && ly.inf) || null;
+    out.linea = (ly && ly.linea) || null;
+    out.bazi = (chart.source && chart.source.yearPillar ? chart.source.yearPillar : '') + ' ' +
+               (chart.monthBranch || '') + ' ' + (chart.dayStem || '') + (chart.dayBranch || '');
     return out;
   } catch (e) {
     out.signal = 'NO TRADE'; out.motivo = 'errore di lettura: ' + e.message; return out;
@@ -393,6 +403,15 @@ function renderReportGiornaliero() {
   var nL = tradabili.filter(function (e) { return e.signal === 'LONG'; }).length;
   var nS = tradabili.filter(function (e) { return e.signal === 'SHORT'; }).length;
 
+  salvaNelRegistro(forexData.date, tradabili);   // il report finisce nel registro dei trade
+
+  // il report gira sempre col termometro canonico: se a schermo qualche via e' spenta lo dice
+  var spente = Object.keys(lyToggles).filter(function (k) { return lyToggles[k] === false; }).length;
+  var notaCanonica = '<div style="padding:6px 14px;font-size:12px;background:rgba(63,185,80,.08);' +
+    'border-bottom:1px solid rgba(255,255,255,.08)">Termometro <b>canonico</b>: tutte le vie cablate attive.' +
+    (spente ? ' <b style="color:#e3b341">Nota: a schermo hai ' + spente + ' via' + (spente > 1 ? ' spente' : ' spenta') +
+      ' — il report le ignora e le usa comunque accese.</b>' : '') + '</div>';
+
   box.style.display = 'block';
   box.innerHTML =
     '<div style="' + css.card + '">' +
@@ -400,14 +419,14 @@ function renderReportGiornaliero() {
         '<b style="font-size:16px">Report giornaliero · ' + forexData.date + ' 00:00 GMT</b>' +
         '<span style="font-size:12px;opacity:.8">' + tradabili.length + ' da tradare (' + nL + ' long, ' + nS +
         ' short) · ' + esclusi.length + ' da non tradare · verdetto S9 (Plum Blossom + Liu Yao)</span>' +
-      '</div>' +
+      '</div>' + notaCanonica +
       '<div style="' + css.sect + '">' +
         '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">DA TRADARE</div>' + righeOk +
       '</div>' +
       '<div style="' + css.sect + ';background:rgba(248,81,73,.05);border-top:1px solid rgba(255,255,255,.10)">' +
         '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">DA NON TRADARE</div>' + righeNo +
       '</div>' +
-    '</div>';
+    '</div>' + '<div id="regbox">' + htmlRegistro() + '</div>';
 
   // una riga del report apre il cross corrispondente nel pannello sopra
   box.querySelectorAll('.repline').forEach(function (el) {
@@ -416,7 +435,178 @@ function renderReportGiornaliero() {
       if (pill) { selectForexCross(pill.dataset.cross, pill.dataset.branch, pill); pill.scrollIntoView({ block: 'center' }); }
     });
   });
+  wireRegistro(box);
   box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ---------------- REGISTRO DEI TRADE PROPOSTI (Edu, 27/08/2026) ----------------
+ * Ogni report viene salvato. A fine giornata, per ogni trade proposto si scrive quanti
+ * pip ha fatto (segno + o -). I trade andati male restano evidenziati e il pulsante
+ * "Copia i trade perdenti" prepara il blocco da incollare in chat per capire perche'.
+ * La carta viene salvata per intero (seme, trigrammi, mutante, Bazi) cosi' e' rileggibile
+ * anche a distanza di giorni senza rifare il feed.
+ */
+/* Esiti automatici: il feed porta i pip fatti dal giorno di trade precedente (campi
+ * prevDate / prevMovePip del Worker). Qui si convertono nel guadagno del trade proposto:
+ * se il sistema diceva LONG il trade guadagna quanto ha fatto il mercato, se diceva SHORT
+ * guadagna il contrario. Un esito scritto a mano non viene mai sovrascritto. */
+function aggiornaEsitiDalFeed() {
+  if (!forexData || !forexData.rows) return { scritti: 0, disponibile: false };
+  var reg = leggiRegistro(), n = 0, disponibile = false;
+  forexData.rows.forEach(function (r) {
+    if (!r || r.prevDate == null || r.prevMovePip == null) return;
+    disponibile = true;
+    var giorno = reg[r.prevDate]; if (!giorno) return;
+    giorno.forEach(function (t) {
+      if (t.cross !== r.cross) return;
+      if (typeof t.esito === 'number') return;         // gia' scritto: non toccarlo
+      t.esito = Math.round((t.signal === 'LONG') ? r.prevMovePip : -r.prevMovePip);
+      t.auto = true; n++;
+    });
+  });
+  if (n) scriviRegistro(reg);
+  return { scritti: n, disponibile: disponibile };
+}
+
+var REG_KEY = 'report-registro-v1';
+function leggiRegistro() {
+  try { return JSON.parse(localStorage.getItem(REG_KEY)) || {}; } catch (e) { return {}; }
+}
+function scriviRegistro(reg) {
+  try { localStorage.setItem(REG_KEY, JSON.stringify(reg)); } catch (e) {}
+}
+function salvaNelRegistro(data, tradabili) {
+  var reg = leggiRegistro();
+  var vecchi = {};
+  (reg[data] || []).forEach(function (t) { vecchi[t.cross] = t.esito; });   // non perdere gli esiti gia' scritti
+  reg[data] = tradabili.map(function (e) {
+    return { cross: e.cross, signal: e.signal, trend: e.trend, segue: e.segue,
+             decisore: e.decisore, seed: e.seed, sup: e.sup, inf: e.inf, linea: e.linea,
+             bazi: e.bazi, esito: (e.cross in vecchi) ? vecchi[e.cross] : null };
+  });
+  var giorni = Object.keys(reg).sort();
+  while (giorni.length > 60) delete reg[giorni.shift()];                    // tieni due mesi
+  scriviRegistro(reg);
+}
+function htmlRegistro() {
+  var auto = aggiornaEsitiDalFeed();
+  var reg = leggiRegistro();
+  var giorni = Object.keys(reg).sort().reverse().slice(0, 10);
+  if (!giorni.length) return '';
+  var rowS = 'display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:6px 0;' +
+             'border-bottom:1px solid rgba(255,255,255,.07)';
+  var corpo = giorni.map(function (d) {
+    var trades = reg[d] || [];
+    if (!trades.length) return '';
+    var aperti = trades.filter(function (t) { return t.esito === null || t.esito === undefined; }).length;
+    var persi = trades.filter(function (t) { return typeof t.esito === 'number' && t.esito < 0; });
+    var vinti = trades.filter(function (t) { return typeof t.esito === 'number' && t.esito > 0; });
+    var righe = trades.map(function (t) {
+      var col = t.signal === 'LONG' ? '#3fb950' : '#f85149';
+      var val = (t.esito === null || t.esito === undefined) ? '' : t.esito;
+      var stato = (t.esito === null || t.esito === undefined) ? ''
+        : (t.esito < 0 ? '<b style="color:#f85149">da capire</b>' : '<span style="color:#3fb950">ok</span>');
+      return '<div style="' + rowS + '">' +
+        '<span style="min-width:90px;font-weight:700">' + t.cross + '</span>' +
+        '<span style="color:' + col + ';font-weight:800;min-width:56px">' + t.signal + '</span>' +
+        '<span style="font-size:12px;opacity:.85;min-width:130px">' + (t.segue ? 'segue il trend' : 'non segue il trend') + '</span>' +
+        '<input class="esito" data-d="' + d + '" data-c="' + t.cross + '" type="number" step="1" value="' + val + '" ' +
+        'placeholder="pip" style="width:82px;padding:3px 6px;border-radius:5px;border:1px solid rgba(255,255,255,.2);' +
+        'background:transparent;color:inherit">' +
+        '<span style="font-size:12px">' + stato + '</span>' +
+        '<span style="flex:1;min-width:160px;font-size:11px;opacity:.6">' + (t.decisore || '') + '</span>' +
+      '</div>';
+    }).join('');
+    return '<div style="padding:8px 14px;border-top:1px solid rgba(255,255,255,.10)">' +
+      '<div style="font-size:12px;opacity:.75;margin-bottom:4px"><b>' + d + '</b> · ' + trades.length + ' trade · ' +
+      vinti.length + ' ok · ' + persi.length + ' da capire' + (aperti ? ' · ' + aperti + ' senza esito' : '') + '</div>' +
+      righe + '</div>';
+  }).join('');
+  return '<div style="margin:18px 0;border:1px solid rgba(255,255,255,.14);border-radius:10px;overflow:hidden">' +
+    '<div style="padding:10px 14px;background:rgba(255,255,255,.05);display:flex;flex-wrap:wrap;gap:10px;' +
+    'align-items:center;justify-content:space-between">' +
+      '<b style="font-size:15px">Registro dei trade · esiti di fine giornata</b>' +
+      '<button id="copiapersi" class="ghost" style="font-size:12px">Copia i trade perdenti</button>' +
+    '</div>' +
+    '<div style="padding:6px 14px 2px;font-size:12px;opacity:.7">' +
+    (auto.disponibile
+      ? 'Gli esiti arrivano <b>da soli</b> dal feed del giorno dopo (entrata alle 00:00 GMT, uscita alle 21:00 GMT). ' +
+        (auto.scritti ? '<b style="color:#3fb950">' + auto.scritti + ' appena compilati.</b> ' : '') +
+        'Puoi comunque correggere a mano un numero scrivendolo sopra.'
+      : '<b style="color:#e3b341">Il feed non porta ancora gli esiti</b> — aggiorna il Worker su Cloudflare. ' +
+        'Intanto scrivi a mano i pip fatti da ogni trade, col segno.') +
+    ' Quelli negativi restano segnati <b>da capire</b>: il pulsante qui sopra prepara il blocco da incollare in chat.</div>' +
+    corpo + '</div>';
+}
+function wireRegistro(box) {
+  box.querySelectorAll('input.esito').forEach(function (inp) {
+    inp.addEventListener('change', function () {
+      var reg = leggiRegistro(), d = inp.dataset.d, c = inp.dataset.c;
+      (reg[d] || []).forEach(function (t) {
+        if (t.cross === c) t.esito = (inp.value === '') ? null : Number(inp.value);
+      });
+      scriviRegistro(reg);
+      var rb = $('regbox');           // ridisegna SOLO il registro: niente rianalisi, niente salto di pagina
+      if (rb) { rb.innerHTML = htmlRegistro(); wireRegistro(rb); }
+    });
+  });
+  var btn = box.querySelector('#copiapersi');
+  if (btn) btn.addEventListener('click', function () {
+    var reg = leggiRegistro(), out = [];
+    Object.keys(reg).sort().forEach(function (d) {
+      (reg[d] || []).forEach(function (t) {
+        if (typeof t.esito === 'number' && t.esito < 0) {
+          out.push(t.cross + ', ' + d +
+            '\nTrend EMA: ' + t.trend +
+            '\nIl sistema dice: ' + t.signal + ' (' + (t.segue ? 'segue' : 'non segue') + ' il trend)' +
+            '\nEsito: ' + t.esito + ' pip' +
+            '\nSeme ' + t.seed + ' · superiore ' + t.sup + ' · inferiore ' + t.inf + ' · mutante L' + t.linea +
+            '\nBazi: ' + (t.bazi || '') +
+            '\nDeciso da: ' + (t.decisore || ''));
+        }
+      });
+    });
+    var testo = out.length
+      ? 'Trade perdenti del report:\n\n' + out.join('\n\n')
+      : 'Nessun trade perdente da capire.';
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(testo).then(function () { btn.textContent = 'Copiato ✓'; },
+        function () { window.prompt('Copia a mano:', testo); });
+    } else window.prompt('Copia a mano:', testo);
+  });
+}
+
+/* Capolinea del flusso degli steli: si cammina la generazione partendo da ogni elemento
+ * presente negli otto caratteri e si avanza finché l'elemento generato ha uno stelo della
+ * polarità del giorno; l'ultimo raggiunto è il capolinea. Serve alla via §105. */
+function capolineaDelFlusso(chart) {
+  try {
+    var SE = {'甲':'Wood','乙':'Wood','丙':'Fire','丁':'Fire','戊':'Earth','己':'Earth',
+              '庚':'Metal','辛':'Metal','壬':'Water','癸':'Water'};
+    var EB = {'子':'Water','丑':'Earth','寅':'Wood','卯':'Wood','辰':'Earth','巳':'Fire',
+              '午':'Fire','未':'Earth','申':'Metal','酉':'Metal','戌':'Earth','亥':'Water'};
+    var GENF = {Wood:'Fire',Fire:'Earth',Earth:'Metal',Metal:'Water',Water:'Wood'};
+    var ST = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+    var s = chart && chart.source; if (!s) return null;
+    var pil = [s.yearPillar, s.monthPillar, s.dayPillar, s.hourPillar];
+    var steli = [], rami = [];
+    pil.forEach(function (p) { if (p && p.length >= 2) { steli.push(p.charAt(0)); rami.push(p.charAt(1)); } });
+    var dayStem = s.dayPillar ? s.dayPillar.charAt(0) : null;
+    if (!dayStem) return null;
+    var pari = ST.indexOf(dayStem) % 2;                       // polarità del giorno
+    var pres = {};
+    steli.forEach(function (x) { if (SE[x]) (pres[SE[x]] = pres[SE[x]] || []).push(x); });
+    rami.forEach(function (x) { if (EB[x]) (pres[EB[x]] = pres[EB[x]] || []).push(x); });
+    var utile = function (e) { return steli.filter(function (x) {
+      return SE[x] === e && ST.indexOf(x) % 2 === pari; }); };
+    var cap = null;
+    Object.keys(pres).forEach(function (part) {
+      var e = part, guard = 0, ultimo = null;
+      while (guard++ < 6) { var g = GENF[e]; if (!pres[g] || !utile(g).length) break; e = g; ultimo = g; }
+      if (ultimo) cap = ultimo;
+    });
+    return cap;
+  } catch (e) { return null; }
 }
 
 async function reportGiornaliero() {
@@ -714,7 +904,7 @@ function renderLiuYao(cross, chart, row, lyp, pbCtx) {
 
   var termHtml = '';
   if (pbCtx && pbCtx.finalDir) {
-    var ctxT = { oraBranch: oraBranchSeme, emaDir: pbCtx.emaDir, corpoEl: pbCtx.corpoEl, date: pbCtx.date };
+    var ctxT = { oraBranch: oraBranchSeme, emaDir: pbCtx.emaDir, corpoEl: pbCtx.corpoEl, date: pbCtx.date, capolineaEl: capolineaDelFlusso(chart) };
     termHtml = renderTermometro(ly, ctxT, pbCtx.finalDir);
   }
 

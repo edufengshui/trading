@@ -851,6 +851,99 @@
       return opp;
     }});
 
+  LY_VIE.push({ id:'R43_103', sezione:'§103', nome:'The arrival\'s twin jumps into the mobile\'s seat → rooting of the mobile decides',
+    dottrina:'Edu (27/08/2026, da USDCAD 11/04/2022): caso 6 (il giorno libera la mobile clashando l\'arrivo). Se una linea FERMA porta lo STESSO ramo dell\'arrivo, quel ramo e\' clashato dal giorno anche su di lei e salta nella sede della mobile a sostituire l\'arrivo reso inefficace. Decide il RADICAMENTO della mobile: con almeno DUE radici del suo elemento fra ANNO e MESE la mobile regge la sostituzione e tiene la propria sede; con una o nessuna la linea che salta la rimpiazza davvero e il trigramma della mobile perde -> sede opposta. Il giorno non si conta: in questo perimetro e\' sempre il clash dell\'arrivo, quindi costante.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.GIORNOSALTO==='off') return null;
+      if (R.mutante.casoMut !== 6) return null;
+      var arr = R.mutante.ramoArr;
+      var mob = R.linee[R.mutante.pos-1];
+      var gemelle = R.linee.filter(function(l){ return l.ramo===arr && l.pos!==mob.pos; });
+      if (!gemelle.length) return null;                       // nessuna gemella dell'arrivo
+      var rad = [R.yearBranch, R.monthBranch].filter(function(b){ return b && WX[b]===mob.el; }).length;
+      var suo = mob.pos<=3 ? 'SHORT' : 'LONG';                // sede della mobile
+      var opp = mob.pos<=3 ? 'LONG'  : 'SHORT';               // sede opposta
+      if (rad >= 2) {
+        state.why = 'The day frees the mobile, and the fixed line L'+gemelle[0].pos+' carrying the same branch <b>'+arr+
+          '</b> jumps into its seat; but the mobile <b>'+mob.ramo+'</b> has '+rad+' roots of its element between year and month, so it withstands the substitution and keeps its own seat → '+suo+'.';
+        return suo;
+      }
+      state.why = 'The day frees the mobile and nullifies its arrival <b>'+arr+'</b>; the fixed line L'+gemelle[0].pos+
+        ' carrying the same branch jumps into the mobile\'s seat and replaces it. The mobile <b>'+mob.ramo+'</b> has '+rad+
+        ' root'+(rad===1?'':'s')+' between year and month, not enough to hold: its trigram loses → opposite seat → '+opp+'.';
+      return opp;
+    }});
+
+  LY_VIE.push({ id:'R44_104', sezione:'§104', nome:'Untimely mobile without its return-generation: the Shi/Ying duel decides',
+    dottrina:'Edu (27/08/2026, da EURUSD 22/08/2023): caso 6 (il giorno libera la mobile clashando l\'arrivo). Se la mobile e\' untimely e l\'unica cosa che potrebbe sostenerla e\' la generazione all\'indietro dall\'arrivo (回頭生), il clash del giorno spegne proprio quella: la mobile parte e non conclude. Chi non vince perde -> la mobile esce dalla decisione, che passa al duello Shi/Ying. Dove la Ying controlla lo Shi: se la Ying e\' in VUOTO non agisce e vince lo Shi; se e\' piena controlla lo Shi e vince lei. Verdetto = sede del vincitore.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.GIORNODUELLO==='off') return null;
+      if (R.mutante.casoMut !== 6) return null;
+      var mob = R.linee[R.mutante.pos-1];
+      if (GEN[WX[R.mutante.ramoArr]] !== mob.el) return null;   // solo 回頭生 spento dal giorno
+      var mEl = WX[R.monthBranch], sEl = SEASON[R.monthBranch];
+      var timely = function(el){ var a=stagione(el,mEl), b=stagione(el,sEl);
+        return a==='旺'||a==='相'||b==='旺'||b==='相'; };
+      if (timely(mob.el)) return null;                          // mobile untimely
+      var S = R.linee[R.shi-1], Y = R.linee[R.ying-1];
+      if (!S || !Y || CTRL[Y.el] !== S.el) return null;          // la Ying attaccherebbe lo Shi
+      var v = Y.vuoto ? S : Y;                                   // il vuoto non agisce
+      var dir = v.pos<=3 ? 'SHORT' : 'LONG';
+      state.why = 'The day frees the mobile but clashes away the very return-generation <b>'+R.mutante.ramoArr+
+        '</b> that the untimely mobile <b>'+mob.ramo+'</b> would need: it starts and does not arrive, and who does not win loses. ' +
+        'The decision passes to the Shi/Ying duel: the Ying <b>'+Y.ramo+'</b> ' +
+        (Y.vuoto ? 'is void and does not act, so the Shi L'+S.pos+' holds' : 'is full and controls the Shi L'+S.pos) +
+        ' → seat of the winner → '+dir+'.';
+      return dir;
+    }});
+
+  LY_VIE.push({ id:'R45_105', sezione:'§105', nome:'Timely mobile at the flow terminus: the Qi lands on the P',
+    dottrina:'Edu (27/08/2026, da USDCAD 20/03/2023): caso 6 (il giorno clasha l\'arrivo). Se la mobile e\' una G (o una W), e\' TIMELY ed e\' il punto TERMINALE del flusso degli steli, si muove per GENERARE IN AVANTI l\'arrivo, e il clash del giorno non ferma nulla perche\' una G/W carica spinge con forza. Il Qi arriva sulla P, e la P fa perdere la propria squadra -> sede opposta alla mobile. Il capolinea e\' cio\' che separa questa carta dalla gemella USDCAD 08/03/2023 (stesso esagramma, stesso ramo di giorno): li\' il flusso finisce nel Legno, la mobile non e\' caricata, resta libera e vince la propria squadra -> LONG.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.GIORNOCAPOLINEA==='off') return null;
+      if (R.mutante.casoMut !== 6) return null;
+      var mob = R.linee[R.mutante.pos-1];
+      if (['G','W'].indexOf(mob.par) < 0) return null;            // una G (o una W) che spinge
+      var arrEl = WX[R.mutante.ramoArr];
+      if (GEN[mob.el] !== arrEl) return null;                     // genera IN AVANTI l'arrivo
+      var mEl = WX[R.monthBranch], sEl = SEASON[R.monthBranch];
+      var timely = function(el){ var a=stagione(el,mEl), b=stagione(el,sEl);
+        return a==='旺'||a==='相'||b==='旺'||b==='相'; };
+      if (!timely(mob.el)) return null;                           // mobile timely
+      var lB = R.linee.filter(function(l){ return l.par==='B'; })[0];
+      if (!lB) return null;
+      var gong = lB.el;
+      var parArr = arrEl===gong ? 'B' : (GEN[arrEl]===gong ? 'P' : (GEN[gong]===arrEl ? 'C' :
+                   (CTRL[arrEl]===gong ? 'G' : 'W')));
+      if (parArr !== 'P') return null;                            // il Qi arriva su una P
+      var cap = ctx && ctx.capolineaEl;
+      if (!cap) return null;                                      // senza il flusso non si giudica
+      if (cap !== mob.el) return null;                            // la mobile E' il capolinea
+      var dir = mob.pos<=3 ? 'LONG' : 'SHORT';
+      state.why = 'The mobile <b>'+mob.ramo+'</b> ('+mob.par+') is timely and is the terminus of the stem flow, so it moves to generate its arrival <b>'+
+        R.mutante.ramoArr+'</b> forward; the day\'s clash does not stop a charged '+mob.par+'. The Qi lands on the P, and the P makes its own side lose → opposite seat → '+dir+'.';
+      return dir;
+    }});
+
+  LY_VIE.push({ id:'R46_106', sezione:'§106', nome:'Forceless mobile with a void Shi: the Ying wins',
+    dottrina:'Edu (27/08/2026, da AUDUSD 14/09/2021): caso 6. Se la mobile e\' untimely non ha forza e non riesce a fare niente, quindi esce dalla decisione. Fra Shi e Ying vince la Ying quando lo SHI e\' in VUOTO (il vuoto non agisce) e la Ying no -> sede della Ying. Il ramo speculare (Ying vuota -> vince lo Shi) NON vale da solo: misurato fa 3/7 ed e\' lasciato a §104, che lo restringe alla 回頭生 spenta dal giorno. Senza il vincolo della mobile senza forza il perimetro sbaglia proprio la gemella USDCAD 08/03/2023, dove la mobile e\' timely e agisce.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.GIORNOSHIVUOTO==='off') return null;
+      if (R.mutante.casoMut !== 6) return null;
+      var mob = R.linee[R.mutante.pos-1];
+      var mEl = WX[R.monthBranch], sEl = SEASON[R.monthBranch];
+      var timely = function(el){ var a=stagione(el,mEl), b=stagione(el,sEl);
+        return a==='旺'||a==='相'||b==='旺'||b==='相'; };
+      if (timely(mob.el)) return null;                        // la mobile non ha forza
+      var S = R.linee[R.shi-1], Y = R.linee[R.ying-1];
+      if (!S || !Y || !S.vuoto || Y.vuoto) return null;        // Shi in vuoto, Ying no
+      var dir = Y.pos<=3 ? 'SHORT' : 'LONG';
+      state.why = 'The mobile <b>'+mob.ramo+'</b> is untimely: it has no force and achieves nothing, so it drops out of the decision. ' +
+        'Between Shi and Ying, the Shi L'+S.pos+' <b>'+S.ramo+'</b> is void and does not act, so the Ying L'+Y.pos+' <b>'+Y.ramo+
+        '</b> wins → its seat → '+dir+'.';
+      return dir;
+    }});
+
   LY_VIE.push({ id:'B62', sezione:'§62', nome:'Mobile G delivered to a strong C (FIRST)',
     dottrina:'A mobile G whose ARRIVAL lands in the element of a fixed C that is timely, full and controls it: the G hands itself to its executioner, the trend dies → OPPOSITE of the G\'s seat (G below → LONG, G above → SHORT). Doctrinal pillar (Edu 16/08), fixed by doctrine. C is ambivalent: it generates a W, but attacks a nearby G.',
     test: function (R, ctx, state) {
