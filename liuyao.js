@@ -206,6 +206,18 @@
       else if (RETRO[ramoDep] === ramoArr) progressione = 'retrocedente'; // 退神
     }
     var motivoNullo = null;
+    // IL GIORNO LIBERA LA MOBILE (Edu, 26/08/2026, da USDCAD 08/03/2023).
+    // NOME CORRETTO (Edu, 26/08/2026): NON e' un "autoclash" — la linea non si clasha da sola:
+    // e' il GIORNO che clasha l'ARRIVO. La mobile e' legata al proprio arrivo (自合: la partenza
+    // combina 六合 l'arrivo); il giorno clasha (六冲) quell'arrivo, la combinazione si ROMPE e la
+    // mobile e' LIBERATA. La linea si MUOVE ma NON si trasforma (l'arrivo e' rotto): resta se'
+    // stessa e agisce con l'elemento di PARTENZA.
+    // Guida: la G 午 di L4 si muove ma non puo' diventare P 未 perche' il giorno 丑 clasha 未.
+    // ACCESA di default (Edu, 26/08/2026: tecnica confermata, non va cancellata).
+    // Audit: GIORNOLIBERA=off ripristina il comportamento precedente (movimento nullo).
+    var _giornoLibera = !(typeof process !== 'undefined' && process.env && process.env.GIORNOLIBERA === 'off')
+        && (COMBINA[ramoDep] === ramoArr) && !!dayBranch && (CLASH[dayBranch] === ramoArr)
+        && (vuoti.indexOf(ramoArr) < 0);
     // arrivo vuoto (旬空): movimento nullo (la mobile non e' mai vuota di suo, 動不為空)
     if (vuoti.indexOf(ramoArr) >= 0) { effEl = null; casoMut = 0;
       motivoNullo = 'arrival void'; }
@@ -217,7 +229,7 @@
     var _gioLegatoMese = !_glOff && !!(dayBranch && monthBranch && COMBINA[monthBranch] === dayBranch);
     var _sbOff = (typeof process !== 'undefined' && process.env && process.env.GIORNOSBLOCCO === 'off');
     var _sbloccata = !_sbOff && _sblocco;
-    if (!_sbloccata && !_gioLegatoMese && dayBranch && (COMBINA[dayBranch] === ramoDep || COMBINA[dayBranch] === ramoArr ||
+    if (!_giornoLibera && !_sbloccata && !_gioLegatoMese && dayBranch && (COMBINA[dayBranch] === ramoDep || COMBINA[dayBranch] === ramoArr ||
         CLASH[dayBranch] === ramoDep || CLASH[dayBranch] === ramoArr)) {
       effEl = null; casoMut = -1;
       motivoNullo = 'suspended by the day (day combines/clashes departure or arrival)'; }
@@ -255,8 +267,12 @@
     if (autoComb && typeof process !== 'undefined' && process.env && process.env.AUTOCOMB9 === 'soloavanti') {
       if (GEN[WX[ramoDep]] === WX[ramoArr]) autoComb = false;
     }
+    if (_giornoLibera) autoComb = false;
     if (autoComb) { effEl = null; casoMut = -4;
       motivoNullo = 'self-combination (' + ramoDep + '+' + ramoArr + ')'; }
+    // mobile liberata dal clash del giorno sull'arrivo: muove come se' stessa (elemento di
+    // partenza), nessun prodotto di trasformazione.
+    if (_giornoLibera) { effEl = depEl; casoMut = 6; motivoNullo = null; }
     var movimentoNullo = (effEl === null);
 
     // viaggio/atterraggio della mobile: se l'arrivo COMBINA con un ramo presente, atterra.
@@ -414,9 +430,73 @@
     var yingEff = yingValido && !morta(yingStato);
 
     // ---- righe complete (posizione 1 in basso -> 6 in alto) ----
+    // COMBINAZIONE DIREZIONALE COL CAPO NEL MESE (Edu, 26/08/2026): quando si forma una
+    // combinazione DIREZIONALE 三會 (亥子丑 Acqua · 寅卯辰 Legno · 巳午未 Fuoco · 申酉戌 Metallo)
+    // e il CAPO (il ramo CENTRALE: 子 · 卯 · 午 · 酉) e' il ramo del MESE, gli altri due membri
+    // PERDONO LO STATUS che avevano e assumono l'ELEMENTO DEL MESE.
+    // NOTA (Edu, 26/08/2026): NON e' il trigono 三合 (申子辰...) — quella era una lettura
+    // sbagliata di Claude, corretta da Edu. Sono le TRE stagionali direzionali qui sopra.
+    // La conversione avviene PRIMA delle vie: tutte le letture a valle vedono la nuova parentela.
+    // Terzo membro ammesso da 伏神 o dai rami di data non vuoti.
+    // Audit: TRIGCAPO=off ripristina il comportamento precedente.
+    // CONDIZIONE DI TRIGRAMMA (Edu, 26/08/2026): le due laterali devono stare ENTRAMBE
+    // NELLO STESSO TRIGRAMMA — entrambe fra L1-L3 (inferiore) o entrambe fra L4-L6 (superiore),
+    // l'ordine non conta. Se una delle due manca dall'esagramma puo' venire dai rami di data
+    // (giorno/mese/anno, non vuoti): in quel caso basta l'unica laterale presente nel trigramma.
+    // Se le laterali sono divise fra i due trigrammi la combinazione NON si forma.
+    // Se ENTRAMBI i trigrammi contengono la coppia, entrambi si convertono.
+    // Si convertono solo le linee laterali del/dei trigramma/i che qualificano.
+    var _trigCapo = null, _convPos = {}, _nHalf = 0;
+    (function(){
+      // ANNULLATA (Edu, 26/08/2026): falsificata da EURGBP 20/03/2026 (seme 86, sup 2, inf 6,
+      // mutante L2). Li' la combinazione 寅卯辰 col capo nel mese 卯 e le due laterali 寅(L1) e
+      // 辰(L2) nello stesso trigramma inferiore convertirebbe L2 da P a W -> SHORT; ma il mercato
+      // sale, e il LONG si spiega solo con L2 辰 che RESTA P e, generata indietro (回頭生), fa
+      // perdere la propria squadra. Nessun altro attore la spiega (imbuto completo).
+      // Default SPENTA. Audit: TRIGCAPO=1 la riaccende.
+      if (!(typeof process !== 'undefined' && process.env && process.env.TRIGCAPO === '1')) return;
+      if (!monthBranch) return;
+      var TRIG = [['亥','子','丑'],['寅','卯','辰'],['巳','午','未'],['申','酉','戌']];
+      var dati = [yearBranch, monthBranch, dayBranch].filter(function(b){ return b && vuoti.indexOf(b)<0; });
+      for (var t=0;t<TRIG.length;t++){
+        var T = TRIG[t];
+        if (T[1] !== monthBranch) continue;                    // il CAPO dev'essere il mese
+        var lat = [T[0], T[2]];                                // le due laterali
+        var trovato = false;
+        for (var half=0; half<2; half++){                      // 0 = inferiore L1-3, 1 = superiore L4-6
+          var lo = half*3 + 1, hi = half*3 + 3;
+          var dentro = [], pos = [];
+          for (var p=lo; p<=hi; p++){
+            var b = ramoAl(p);
+            if (lat.indexOf(b) >= 0 && dentro.indexOf(b) < 0) { dentro.push(b); }
+            if (lat.indexOf(b) >= 0) pos.push(p);
+            var fh = fushen[p];
+            if (fh && lat.indexOf(fh.b) >= 0 && dentro.indexOf(fh.b) < 0) dentro.push(fh.b);
+          }
+          if (!dentro.length) continue;                        // nessuna laterale in questo trigramma
+          // la coppia si completa dentro il trigramma, oppure la mancante viene dai rami di data
+          var mancanti = lat.filter(function(b){ return dentro.indexOf(b)<0; });
+          var ok = mancanti.every(function(b){ return dati.indexOf(b)>=0; });
+          if (!ok) continue;
+          trovato = true;
+          _nHalf++;
+          for (var k=0;k<pos.length;k++) _convPos[pos[k]] = true;
+        }
+        if (!trovato) continue;
+        // PARITA' (Edu, 26/08/2026): se la coppia laterale compare in ENTRAMBI i trigrammi
+        // (najia ripetuta), la conversione e' simmetrica: nessuna sede guadagna, la squadra
+        // che prevale si trova IN ALTRO MODO. TRIGCAPO=singolo esclude questi casi.
+        if (_nHalf > 1 && typeof process !== 'undefined' && process.env && process.env.TRIGCAPO === 'singolo') { _convPos = {}; continue; }
+        _trigCapo = { tri: T, el: WX[T[1]], par: parDi(WX[T[1]]) };
+        break;
+      }
+    })();
+    var _convertita = function (pos){ return !!(_trigCapo && _convPos[pos]); };
+
     var linee = [];
     for (var pos = 1; pos <= 6; pos++){
       var ramo = ramoAl(pos), el = WX[ramo], par = parDi(el);
+      if (_convertita(pos)) { el = _trigCapo.el; par = _trigCapo.par; }
       var yang = pos <= 3 ? yangLine(infNum, pos) : yangLine(supNum, pos - 3);
       var isMobile = (pos === linea);
       var mut = null;
@@ -448,6 +528,7 @@
       3:'return-control: the arrival controls the departure — the departure dies, the arrival acts',
       4:'the departure controls the arrival — the arrival acts',
       5:'same element — departure strengthened',
+      6:'the DAY clashes the arrival and breaks the mobile\'s bond with it — the mobile is freed: it moves untransformed (departure acts)',
       0:'null movement — ' + (motivoNullo || 'arrival void'),
       '-1':'null movement — ' + (motivoNullo || 'suspended by the day'),
       '-2':'null movement — ' + (motivoNullo || 'bound by the hidden line'),
@@ -707,6 +788,68 @@
   // Ogni via: id (usato per l'interruttore), sezione (§ del registro), nome breve, dottrina
   // (dal registro, per la spiegazione al click), test(R, ctx, state) -> 'LONG'|'SHORT'|null.
   var LY_VIE = [];
+
+  // §101 — BLOCCO DELLA MOBILE RICEVENTE UNTIMELY (Edu, 26/08/2026, da EURJPY 27/03/2025).
+  //   Nel caso 6 (il giorno libera la mobile: la mobile parte ma l'arrivo e' clashato dal giorno,
+  //   quindi si muove senza trasformarsi). Se la mobile e' UNTIMELY e la BESTIA seduta sulla sua
+  //   linea la DRENA (泄: l'elemento della bestia e' il figlio della mobile) ed e' RADICATA (>=1
+  //   radice nei rami di calendario) e TIMELY, il movimento non parte: azione tentata e fallita ->
+  //   chi non vince perde -> SEDE OPPOSTA (mobile in basso -> LONG, mobile in alto -> SHORT).
+  //   Solo il DRENAGGIO blocca, non il controllo (剋): gemella EURJPY 08/04/2025 (stesso seme 161,
+  //   pressione di controllo) la mobile parte e vince la sua sede. Perimetro stretto e raro (caso 6
+  //   + bestia radicata che drena): 2 carte, 2/2. GIORNOBLOCCO=off spegne.
+  LY_VIE.push({ id:'R41_101', sezione:'§101', nome:'Blocked receiving mobile: rooted draining beast on the mobile → opposite seat',
+    dottrina:'Edu (26/08/2026, da EURJPY 27/03/2025): nel caso 6 (giorno libera la mobile), se la mobile e\' untimely e la BESTIA sulla sua linea la DRENA (泄), radicata e timely, il movimento non parte -> chi non vince perde -> sede opposta. Solo il drenaggio blocca, non il controllo (gemella EURJPY 08/04/2025, seme 161).',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.GIORNOBLOCCO==='off') return null;
+      if (R.mutante.casoMut !== 6) return null;
+      var mob = R.linee[R.mutante.pos-1];
+      var mEl = WX[R.monthBranch], sEl = SEASON[R.monthBranch];
+      var timely = function(el){ var a=stagione(el,mEl), b=stagione(el,sEl);
+        return a==='旺'||a==='相'||b==='旺'||b==='相'; };
+      if (timely(mob.el)) return null;                       // la mobile dev'essere UNTIMELY
+      if (!mob.bestia) return null;
+      var BEL101 = {'青龍':'Wood','朱雀':'Fire','勾陳':'Earth','螣蛇':'Earth','白虎':'Metal','玄武':'Water'};
+      var bEl = BEL101[mob.bestia.cn];
+      if (!bEl || GEN[mob.el] !== bEl) return null;           // la bestia dev'essere il FIGLIO della mobile (drena)
+      var cal = [R.dayBranch, R.monthBranch, R.yearBranch, ctx && ctx.oraBranch].filter(function(b){return !!b;});
+      var rooted = cal.filter(function(b){return WX[b]===bEl;}).length >= 1;
+      if (!rooted || !timely(bEl)) return null;               // bestia radicata E timely
+      var opp = mob.pos<=3 ? 'LONG' : 'SHORT';                // sede opposta della mobile
+      state.why = 'The receiving mobile <b>'+mob.par+'</b> L'+mob.pos+' is untimely and the beast on it ('+mob.bestia.cn+') drains it (rooted, timely): the movement does not start — who does not win loses → opposite seat → '+opp+'.';
+      return opp;
+    }});
+
+  // §102 — ARRIVO TENUTO DAL TRIGONO, NON CONTRASTATO (Edu, 26/08/2026, da EURJPY 31/08/2020).
+  //   Nel caso 6 (il giorno vorrebbe liberare la mobile clashando l'arrivo), se l'ARRIVO e' membro
+  //   di un 三合 COMPLETO presente nel Bazi (anno/mese/giorno/ora), e' TIMELY, e il GIORNO che
+  //   vorrebbe clasharlo e' UNTIMELY, allora una linea untimely non agisce su una timely: il clash
+  //   FALLISCE, l'arrivo tenuto dal trigono AGISCE. Il focus e' sull'azione, non sulla raccolta
+  //   statica (Shen/You/Xu fermi non contano; e il Metallo che genera l'Acqua rema con l'arrivo,
+  //   non contro). L'arrivo vince -> la mobile non tiene la sua sede -> SEDE OPPOSTA. Perimetro
+  //   strutturale rarissimo (三合 completo sull'arrivo): 1 carta. GIORNOTRIGONO=off spegne.
+  LY_VIE.push({ id:'R42_102', sezione:'§102', nome:'Arrival held by a full trine, uncontested: the arrival acts → opposite seat',
+    dottrina:'Edu (26/08/2026, da EURJPY 31/08/2020): caso 6 con l\'arrivo dentro un 三合 completo del Bazi, timely, e il giorno che vorrebbe clasharlo untimely -> l\'untimely non agisce sulla timely, il clash fallisce, l\'arrivo tenuto dal trigono agisce -> sede opposta. La raccolta stagionale statica non conta (focus sull\'azione).',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.GIORNOTRIGONO==='off') return null;
+      if (R.mutante.casoMut !== 6) return null;
+      var arr = R.mutante.ramoArr, arrEl = WX[arr];
+      var mEl = WX[R.monthBranch], sEl = SEASON[R.monthBranch];
+      var timely = function(el){ var a=stagione(el,mEl), b=stagione(el,sEl);
+        return a==='旺'||a==='相'||b==='旺'||b==='相'; };
+      if (!timely(arrEl)) return null;                        // arrivo timely
+      if (timely(WX[R.dayBranch])) return null;               // il giorno (clasherebbe) untimely
+      var cal = [R.yearBranch, R.monthBranch, R.dayBranch, ctx && ctx.oraBranch].filter(function(b){return !!b;});
+      var TRI = [['申','子','辰'],['亥','卯','未'],['寅','午','戌'],['巳','酉','丑']];
+      var hit = null;
+      for (var i=0;i<TRI.length;i++){ var t=TRI[i];
+        if (t.indexOf(arr)>=0 && t.every(function(x){return cal.indexOf(x)>=0;})) { hit=t; break; } }
+      if (!hit) return null;                                  // arrivo dentro un 三合 completo del Bazi
+      var mob = R.linee[R.mutante.pos-1];
+      var opp = mob.pos<=3 ? 'LONG' : 'SHORT';                // l'arrivo vince: la mobile non tiene la sua sede
+      state.why = 'The arrival <b>'+arr+'</b> is held by the full trine '+hit.join('')+' (timely) and the day that would clash it is untimely: the untimely cannot act on the timely, the clash fails, the arrival acts → opposite seat → '+opp+'.';
+      return opp;
+    }});
 
   LY_VIE.push({ id:'B62', sezione:'§62', nome:'Mobile G delivered to a strong C (FIRST)',
     dottrina:'A mobile G whose ARRIVAL lands in the element of a fixed C that is timely, full and controls it: the G hands itself to its executioner, the trend dies → OPPOSITE of the G\'s seat (G below → LONG, G above → SHORT). Doctrinal pillar (Edu 16/08), fixed by doctrine. C is ambivalent: it generates a W, but attacks a nearby G.',
@@ -1086,6 +1229,12 @@
       return null;
     }});
 
+  // §50i CANCELLATA (Edu, 26/08/2026, da USDJPY 02/08/2022): regola puramente strutturale
+  // ("il pavimento cede") cieca a bestie e flusso degli steli. Falsificata nel suo perimetro:
+  // la mobile B 亥 muta in G 戌 (la B diventa Ufficiale) e fa vincere la propria squadra → LONG,
+  // ma §50i imponeva SHORT (-181). Superata dalla dottrina nuova. Spenta di default.
+  // Audit: VIA50I=1 la ripristina.
+  if (typeof process !== 'undefined' && process.env && process.env.VIA50I === '1')
   LY_VIE.push({ id:'R19_50i', sezione:'§50i', nome:'Lower trigram entirely void',
     dottrina:'All branches of the lower trigram (Houtian palace) are void: the floor gives way → SHORT.',
     test: function (R, ctx, state) {
@@ -1365,6 +1514,49 @@
       return seat;
     }});
 
+
+
+  LY_VIE.push({ id:'R39_99', sezione:'§99', coda:true, cablata:'2026-08-26',
+    nome:'Mobile G/W: real movement wins its seat, null movement is a failed action',
+    dottrina:'Edu (26/08/2026, da USDCAD 08/03/2023 e USDJPY 02/08/2022): lettura BASE della mobile G o W quando nessun perimetro speciale la cattura. Due rami OPPOSTI, distinti dal fatto che la linea AGISCA o no: (a) MOVIMENTO VERO — la G/W e coinvolta nell azione, fa vincere la propria squadra -> la sua sede (alto LONG, basso SHORT); (b) MOVIMENTO NULLO — non e una linea ferma non coinvolta, e un azione TENTATA E FALLITA: chi non vince perde -> la sede cade (opposto). Il ramo (b) esclude i due casi gia coperti da §52 (回頭剋 e autocombinazione) per non duplicarne il perimetro. Valutata ULTIMA: parla solo dove tutto il resto tace. VIAGW=1 per accendere.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIAGW==='off') return null;
+      var mob = R.linee[R.mutante.pos-1];
+      if (mob.par!=='G' && mob.par!=='W') return null;
+      // GUARDIA DEL PESO DELLE BESTIE (Edu, 26/08/2026, da USDCAD 27/01/2026):
+      // "il peso delle bestie cade tutto su L6 che viene penalizzata — la mobile non c'entra
+      // niente". Se la MOBILE ha la bestia SCARICA (0-1 radici nei rami di calendario) e il peso
+      // (>=2 radici) sta sullo SHI o sull'YING, l'attore non e' la mobile: §99 TACE.
+      // Misura: §99 dove decide 52,1%/309; con mobile a peso massimo 56,1%/114 (+1.479);
+      // con mobile scarica e peso su Shi/Ying 42,2%/90 (-1.030).
+      // Audit: G99BESTIE=off disattiva la guardia.
+      if (!(typeof process!=='undefined' && process.env && process.env.G99BESTIE==='off')) {
+        var BEL99 = {'青龍':'Wood','朱雀':'Fire','勾陳':'Earth','螣蛇':'Earth','白虎':'Metal','玄武':'Water'};
+        var cal99 = [R.dayBranch, R.monthBranch, R.yearBranch, ctx && ctx.oraBranch].filter(function(b){return !!b;});
+        var rad99 = function (l) {
+          if (!l || !l.bestia) return 0;
+          var e = BEL99[l.bestia.cn]; if (!e) return 0;
+          var n = 0; for (var i=0;i<cal99.length;i++) if (WX[cal99[i]]===e) n++;
+          return n;
+        };
+        if (rad99(mob) <= 1) {
+          var shi99 = R.linee[R.shi-1], ying99 = R.linee[R.ying-1];
+          if (rad99(shi99) >= 2 || rad99(ying99) >= 2) return null;   // l'attore sta altrove
+        }
+      }
+      var sede = mob.pos<=3 ? 'SHORT' : 'LONG';
+      var opp  = sede==='LONG' ? 'SHORT' : 'LONG';
+      if (!R.mutante.movimentoNullo) {
+        if (typeof process!=='undefined' && process.env && process.env.VIAGW_RAMO==='b') return null;
+        state.why = 'The mobile <b>'+mob.par+'</b> L'+mob.pos+' ('+R.mutante.ramoDep+'→'+R.mutante.ramoArr+') really moves and is involved in the action: a '+mob.par+' makes its own team win → its seat → '+sede+'.';
+        return sede;
+      }
+      // movimento nullo: escludo i casi gia' letti da §52 (回頭剋 caso 3, autocombinazione)
+      if (R.mutante.casoMut===3 || mob.stato==='autocombinata') return null;
+      if (typeof process!=='undefined' && process.env && process.env.VIAGW_RAMO==='a') return null;
+      state.why = 'The mobile <b>'+mob.par+'</b> L'+mob.pos+' tried to act but its movement is null ('+(R.mutante.motivoNullo||'null movement')+'): the action is attempted and failed — who does not win loses → its seat falls → '+opp+'.';
+      return opp;
+    }});
 
 
   // ---- i 2 rafforzativi (agiscono SOLO nel contrasto PB↔LY, non come vie autonome) ----

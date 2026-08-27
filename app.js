@@ -271,6 +271,161 @@ function selectForexCross(cross, branch, btn) {
   renderTrend(cross, chart, d, row);
 }
 
+/* ---------------- REPORT GIORNALIERO — tutti e nove i cross insieme ----------------
+ * Un solo bottone analizza ogni cross del feed e stampa in fondo alla pagina cosa
+ * tradare e come, evidenziando i cross da NON tradare con il motivo.
+ * La catena e' identica a quella del pannello a schermo, cross per cross:
+ *   seme del feed -> carta -> Plum Blossom -> Liu Yao -> verdetto S9 (PB + LY + rafforzativi).
+ * Non tocca la selezione corrente ne' l'inserimento manuale dei trigrammi.
+ */
+function istanteUtcDelGiorno(dArr) {
+  // 00:00 GMT corrette per l'equazione del tempo (stesso istante per tutti i cross)
+  var approx = Date.UTC(dArr[0], dArr[1] - 1, dArr[2], 0, 0, 0), ms = approx;
+  for (var i = 0; i < 3; i++)
+    ms = approx - window.XKDGSolarTime.equationOfTimeMinutes(new Date(ms)) * 60000;
+  return ms;
+}
+
+function analizzaCrossPerReport(r, utcMs, dateStr) {
+  var out = { cross: (r && r.cross) || '—', branch: (r && r.branch) || null,
+              signal: null, segue: null, motivo: '', decisore: '', avviso: '' };
+  if (!r || r.status !== 'ok') { out.signal = 'NO TRADE'; out.motivo = 'nessun dato dal feed (mercato chiuso?)'; return out; }
+  // gli stessi tre filtri del pannello: seme sul bordo, EMA non consolidata, trend assente
+  if (r.seedFragile === true) {
+    out.signal = 'NO TRADE';
+    out.motivo = 'seme a ' + r.seedEdgePips + ' pip dal bordo: un altro dato darebbe un altro ramo, il giorno non e\' definito';
+    return out;
+  }
+  if (r.emaConsolidated === false) {
+    out.signal = 'NO TRADE';
+    out.motivo = 'EMA non consolidata (' + r.emaChanges + ' inversioni negli ultimi 10 giorni)';
+    return out;
+  }
+  if (!(r.emaConsolidated === true)) out.avviso = 'filtro di consolidamento non attivo su questo feed';
+  var dir = r.direction === 'up' ? 'up' : r.direction === 'down' ? 'down' : null;
+  if (!dir) { out.signal = 'NO TRADE'; out.motivo = 'trend EMA assente o piatto'; return out; }
+  out.trend = dir === 'up' ? 'LONG' : 'SHORT';
+
+  try {
+    var chart = window.XKDGDaLiuRen.buildChartFromForexSeed(utcMs, FOREX_LON, r.branch);
+    if (!chart || chart.error) { out.signal = 'NO TRADE'; out.motivo = 'carta non costruibile'; return out; }
+    var yearBranch = (chart.source && chart.source.yearPillar) ? chart.source.yearPillar.charAt(1) : null;
+
+    // --- Plum Blossom: dice se il trend va seguito o no
+    var pb = window.XKDGPlumBlossom.read(r.seed, chart.dayBranch, chart.monthBranch,
+      yearBranch, chart.dayStem || null, (r.emaRun != null) ? r.emaRun : null);
+    if (!pb || pb.error) { out.signal = 'NO TRADE'; out.motivo = 'lettura Plum Blossom non disponibile'; return out; }
+    if (pb.segue === null) {
+      out.signal = 'NO TRADE';
+      out.motivo = pb.noTradeClash ? 'clash giorno/mese: la carta non scioglie' : 'pareggio non sciolto nella carta';
+      return out;
+    }
+    var pbDir = (dir === 'up') ? (pb.segue ? 'LONG' : 'SHORT') : (pb.segue ? 'SHORT' : 'LONG');
+
+    // --- Liu Yao: correttivo sulla stessa carta, poi verdetto S9
+    var finale = pbDir, decisore = 'solo Plum Blossom (Liu Yao non disponibile)';
+    var LYM = window.XKDGLiuYao;
+    if (LYM) {
+      var ly = LYM.read(r.seed, chart.dayBranch, chart.monthBranch, yearBranch, chart.dayStem || null);
+      if (ly && !ly.error) {
+        var enabled = {}, enabledRaff = {};
+        LYM.LY_VIE.forEach(function (v) { if (lyToggles[v.id] === false) enabled[v.id] = false; });
+        LYM.LY_RAFFORZATIVI.forEach(function (v) { if (lyToggles[v.id] === false) enabledRaff[v.id] = false; });
+        var ctxT = { oraBranch: LYM.oraDalSeme(r.seed), emaDir: dir,
+                     corpoEl: pb.trend ? pb.trend.el : null, date: dateStr };
+        var comb = LYM.combinaS9(ly, ctxT, pbDir, enabled, enabledRaff, {});
+        if (comb && comb.finale) { finale = comb.finale; decisore = comb.chi || ''; }
+      }
+    }
+    out.signal = finale;
+    out.segue = (finale === out.trend);
+    out.decisore = decisore;
+    return out;
+  } catch (e) {
+    out.signal = 'NO TRADE'; out.motivo = 'errore di lettura: ' + e.message; return out;
+  }
+}
+
+function renderReportGiornaliero() {
+  var box = $('report'); if (!box) return;
+  if (!forexData || !forexData.rows) {
+    box.style.display = 'block';
+    box.innerHTML = '<div style="padding:12px">Il feed forex non e\' ancora caricato. Premi <b>Forex 00:00 GMT</b> e riprova.</div>';
+    return;
+  }
+  var dArr = forexData.date.split('-').map(Number);
+  var utcMs = istanteUtcDelGiorno(dArr);
+  var esiti = (forexData.rows || []).map(function (r) {
+    return analizzaCrossPerReport(r, utcMs, forexData.date);
+  });
+
+  var tradabili = esiti.filter(function (e) { return e.signal === 'LONG' || e.signal === 'SHORT'; });
+  var esclusi   = esiti.filter(function (e) { return !(e.signal === 'LONG' || e.signal === 'SHORT'); });
+
+  var css = {
+    card: 'margin:18px 0;border:1px solid rgba(255,255,255,.14);border-radius:10px;overflow:hidden',
+    head: 'padding:10px 14px;background:rgba(255,255,255,.05);display:flex;flex-wrap:wrap;gap:10px;align-items:baseline;justify-content:space-between',
+    sect: 'padding:10px 14px',
+    row:  'display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.07)',
+    name: 'min-width:96px;font-weight:700;font-size:15px',
+    note: 'flex:1;min-width:180px;font-size:12px;opacity:.75'
+  };
+  function badge(sig) {
+    var col = sig === 'LONG' ? '#3fb950' : sig === 'SHORT' ? '#f85149' : '#8b949e';
+    return '<span style="display:inline-block;min-width:74px;text-align:center;padding:3px 10px;border-radius:6px;' +
+      'font-weight:800;font-size:13px;letter-spacing:.4px;color:#0e1022;background:' + col + '">' + sig + '</span>';
+  }
+
+  var righeOk = tradabili.map(function (e) {
+    return '<div class="repline" data-cross="' + e.cross + '" style="' + css.row + ';cursor:pointer">' +
+      '<span style="' + css.name + '">' + e.cross + '</span>' + badge(e.signal) +
+      '<span style="font-size:12px;opacity:.9">' + (e.segue ? 'segue il trend' : 'non segue il trend') + '</span>' +
+      '<span style="' + css.note + '">' + (e.decisore ? 'deciso da: ' + e.decisore : '') +
+      (e.avviso ? ' · <b style="color:#e3b341">' + e.avviso + '</b>' : '') + '</span></div>';
+  }).join('') || '<div style="padding:8px 0;opacity:.7">Nessun cross da tradare oggi.</div>';
+
+  var righeNo = esclusi.map(function (e) {
+    return '<div style="' + css.row + '">' +
+      '<span style="' + css.name + ';opacity:.75">' + e.cross + '</span>' + badge('NO TRADE') +
+      '<span style="' + css.note + '">' + e.motivo + '</span></div>';
+  }).join('') || '<div style="padding:8px 0;opacity:.7">Nessun cross escluso: tutti e nove sono tradabili.</div>';
+
+  var nL = tradabili.filter(function (e) { return e.signal === 'LONG'; }).length;
+  var nS = tradabili.filter(function (e) { return e.signal === 'SHORT'; }).length;
+
+  box.style.display = 'block';
+  box.innerHTML =
+    '<div style="' + css.card + '">' +
+      '<div style="' + css.head + '">' +
+        '<b style="font-size:16px">Report giornaliero · ' + forexData.date + ' 00:00 GMT</b>' +
+        '<span style="font-size:12px;opacity:.8">' + tradabili.length + ' da tradare (' + nL + ' long, ' + nS +
+        ' short) · ' + esclusi.length + ' da non tradare · verdetto S9 (Plum Blossom + Liu Yao)</span>' +
+      '</div>' +
+      '<div style="' + css.sect + '">' +
+        '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">DA TRADARE</div>' + righeOk +
+      '</div>' +
+      '<div style="' + css.sect + ';background:rgba(248,81,73,.05);border-top:1px solid rgba(255,255,255,.10)">' +
+        '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">DA NON TRADARE</div>' + righeNo +
+      '</div>' +
+    '</div>';
+
+  // una riga del report apre il cross corrispondente nel pannello sopra
+  box.querySelectorAll('.repline').forEach(function (el) {
+    el.addEventListener('click', function () {
+      var pill = document.querySelector('#forexbar .pill[data-cross="' + el.dataset.cross + '"]');
+      if (pill) { selectForexCross(pill.dataset.cross, pill.dataset.branch, pill); pill.scrollIntoView({ block: 'center' }); }
+    });
+  });
+  box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function reportGiornaliero() {
+  var box = $('report');
+  if (box) { box.style.display = 'block'; box.innerHTML = '<div style="padding:12px">Analisi dei nove cross in corso…</div>'; }
+  if (!forexData || !forexData.rows) await loadForex();   // il report ha bisogno del feed
+  renderReportGiornaliero();
+}
+
 // season ruling element (English) from the last 立 term before the date
 function seasonElementFor(y, mo, dd) {
   if (!window.Lunar) return null;
@@ -757,6 +912,7 @@ window.addEventListener('DOMContentLoaded', function () {
   setNow();                                   // default to the current moment
   $('build').addEventListener('click', build);
   $('forex').addEventListener('click', loadForex);
+  if ($('reportall')) $('reportall').addEventListener('click', reportGiornaliero);
   $('now').addEventListener('click', function () { setNow(); build(); });
   $('gmt').addEventListener('click', function () { // chart for 00:00 GMT of the chosen date
     if (!$('date').value) setNow();
