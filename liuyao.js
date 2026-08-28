@@ -848,6 +848,7 @@
       return dir;
     }});
 
+
   LY_VIE.push({ id:'R47_107', sezione:'§107', cablata:'2026-08-27',
     nome:'Mobile bound at both ends by the day: the void Ying does not act, the Shi wins',
     dottrina:'Edu (27/08/2026, da EURGBP 19/11/2025 seme 88): caso -1 col DOPPIO LEGAME — il giorno combina la partenza E clasha l\'arrivo della mobile (o lo speculare). La linea non puo\' ne\' partire ne\' arrivare: e\' inutile per valutare chi vince ed esce dalla decisione, che passa al duello Shi/Ying. La Ying in VUOTO non agisce -> vince lo Shi -> sede dello Shi. 13/13, +874 pip. Lo SPECULARE (Shi vuoto -> vince la Ying) NON vale (44,4%: resta ristretto a §104); senza vuoti il duello non parla (celle di controllo piatte).',
@@ -863,6 +864,44 @@
       state.why = 'The day <b>'+D+'</b> combines the departure and clashes the arrival of the mobile <b>'+R.linee[R.mutante.pos-1].ramo+'</b>: bound at both ends, it can neither depart nor arrive and leaves the decision. In the Shi/Ying duel the Ying <b>'+Y.ramo+'</b> is void and does not act → the Shi L'+S.pos+' wins → seat of the Shi → '+dir+'.';
       return dir;
     }});
+
+  // §111 — L'ARRIVO CHE DIVENTA TAI SUI LIBERO
+  LY_VIE.push({ id:'R51_111', sezione:'§111', coda:true, cablata:'2026-08-28',
+    nome:'The arrival that becomes a free Tai Sui: G/W speaks, a mute arrival punishes',
+    dottrina:'Edu (28/08/2026, guide EURGBP 03/06/2020 seme 88 — ramo penalita\' — ed EURUSD 18/06/2020 seme 112 — ramo G/W; certificata da Edu). La mobile si muove davvero — oppure e\' sospesa dal giorno ma il GIORNO INTERO cade sulla linea (mobile su L1, casa dello stelo del giorno, stelo radicato): non la sospende, la carica — e il suo ARRIVO e\' il TAI SUI, LIBERO in carta (nessuna linea da combinare 六合 ne\' da clashare 六冲). Gerarchia: G e W parlano per primi — se l\'arrivo e\' G o W la mobile lo diventa e fa VINCERE la propria squadra (la sua sede). Se l\'arrivo e\' muto (P/B/C), agisce penalizzando (刑): la squadra della linea penalizzata PERDE (nota di Edu: la penalita\' 子卯 e\' sensibile a timely/untimely — penalizza molto quando untimely). Misura al cablaggio: cella 22 · 72,7% · z 2,13 · +517 (baseline 54,5%/+163) · ramo G/W 12 a 66,7% · ramo penalita\' 10 a 80,0% · discriminanti 14 a 9/5 · periodi 57/79. REGOLA DI CODA, congelata. TAISUILIBERO=off per disattivarla.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.TAISUILIBERO==='off') return null;
+      var arr = R.mutante.ramoArr;
+      if (!arr || !R.yearBranch || arr!==R.yearBranch) return null;
+      // la mobile si muove, oppure il giorno intero cade sulla linea (sospesa liberata)
+      if (R.mutante.casoMut===-1) {
+        var SE111={'甲':'Wood','乙':'Wood','丙':'Fire','丁':'Fire','戊':'Earth','己':'Earth','庚':'Metal','辛':'Metal','壬':'Water','癸':'Water'};
+        var rami111=[R.yearBranch,R.monthBranch,R.dayBranch,ctx&&ctx.oraBranch].filter(function(b){return !!b;});
+        var dsRad=false; for (var a=0;a<rami111.length;a++) if (WX[rami111[a]]===SE111[R.dayStem]) { dsRad=true; break; }
+        var perGiorno = String(R.mutante.motivoNullo||'').indexOf('day')>=0;
+        if (!(R.mutante.pos===1 && dsRad && perGiorno)) return null;
+      }
+      var HE6={'子':'丑','丑':'子','寅':'亥','亥':'寅','卯':'戌','戌':'卯','辰':'酉','酉':'辰','巳':'申','申':'巳','午':'未','未':'午'};
+      var CL111={'子':'午','午':'子','丑':'未','未':'丑','寅':'申','申':'寅','卯':'酉','酉':'卯','辰':'戌','戌':'辰','巳':'亥','亥':'巳'};
+      var altre=[], i, l;
+      for (i=0;i<R.linee.length;i++){ l=R.linee[i]; if (l.pos!==R.mutante.pos) altre.push(l); }
+      for (i=0;i<altre.length;i++) if (HE6[arr]===altre[i].ramo || CL111[arr]===altre[i].ramo) return null;   // non libero
+      var aEl=WX[arr], pEl=R.palEl;
+      var parArr = aEl===pEl?'B': GEN[aEl]===pEl?'P': GEN[pEl]===aEl?'C': CTRL[aEl]===pEl?'G':'W';
+      if (parArr==='G'||parArr==='W') {
+        var sede=R.mutante.pos<=3?'SHORT':'LONG';
+        state.why='The mobile moves to become a free Tai Sui <b>'+arr+'</b> as a '+parArr+': G and W speak first — it makes its own team win → its seat → '+sede+'.';
+        return sede;
+      }
+      var XING111={'寅':'巳','巳':'申','申':'寅','丑':'戌','戌':'未','未':'丑','子':'卯','卯':'子','辰':'辰','午':'午','酉':'酉','亥':'亥'};
+      var pen=null;
+      for (i=0;i<altre.length;i++) if (XING111[arr]===altre[i].ramo) { pen=altre[i]; break; }
+      if (!pen) return null;
+      var dir = pen.pos<=3 ? 'LONG' : 'SHORT';
+      state.why='The mobile becomes a free Tai Sui <b>'+arr+'</b>, a mute '+parArr+': with nothing to combine or clash, it acts by punishing (刑) <b>'+pen.ramo+'</b> on L'+pen.pos+' ('+pen.par+') — the punished line cannot make its side win → '+dir+'.';
+      return dir;
+    }});
+
 
   LY_VIE.push({ id:'R41_101', sezione:'§101', nome:'Blocked receiving mobile: rooted draining beast on the mobile → opposite seat',
     dottrina:'Edu (26/08/2026, da EURJPY 27/03/2025): nel caso 6 (giorno libera la mobile), se la mobile e\' untimely e la BESTIA sulla sua linea la DRENA (泄), radicata e timely, il movimento non parte -> chi non vince perde -> sede opposta. Solo il drenaggio blocca, non il controllo (gemella EURJPY 08/04/2025, seme 161).',
@@ -1719,7 +1758,7 @@
 
 
 
-  // §109 — ULTIMA ISTANZA (deve restare l'ULTIMA via dell'elenco: parla solo se tutte tacciono)
+  // §109 — ultima istanza della linea incompatibile (dopo di lei parla solo §110, la lettura del residuo)
   LY_VIE.push({ id:'R49_109', sezione:'§109', cablata:'2026-08-27',
     nome:'Incompatible line with its host trigram (last instance): G/P/W wins, B loses',
     dottrina:'Edu (27/08/2026, da USDCAD 16/01/2024 seme 134; direzione B CERTIFICATA da Edu). Cinque coppie incompatibili, corpo unico: 丑∈坤, 卯∈兌, 辰∈乾, 午∈坎, 申∈艮 (le speculari non valgono). A movimento nullo (caso -1), la linea incompatibile NON vuota, UNICA, che SI PRENDE BESTIA E STELI (bestia radicata nella data + stelo di data radicato con casa sulla linea) e\' un fattore finale: se e\' G, P o W la sua squadra VINCE; se e\' B la sua squadra PERDE; se e\' C tace. Parla in ultima istanza, prima di ricorrere al duello Shi/Ying.',
@@ -1759,6 +1798,96 @@
       state.why='Last instance: the line <b>'+l1.ramo+'</b> on L'+l1.pos+' is incompatible with its host trigram, and it takes the beast and the rooted stems of the date. As a '+l1.par+', '+(vinceSquadra?'its side wins':'its side loses (B certified by Edu)')+' → '+dir+'.';
       return dir;
     }});
+
+  // §110 — LETTURA DEL RESIDUO (dopo §109, resta l'ULTIMA via: parla solo se tutte tacciono)
+  // §112 — L'ORA INTERA SULLA LINEA (azione batte forza statica: parla prima delle bestie di §110)
+  LY_VIE.push({ id:'R52_112', sezione:'§112', coda:true, cablata:'2026-08-28',
+    nome:'The whole hour on a line: its branch clashes it while its stem-beast sits on it — the line loses',
+    dottrina:'Edu (28/08/2026, guida USDCHF 15/06/2022 seme 99; gemella USDCHF 13/10/2022 letta il medesimo giorno). Nel RESIDUO — movimento nullo, il giorno non clasha nessuna ferma, nessun trigono completo, nessuna linea incompatibile, nessun vuoto asimmetrico fra Shi e Ying, e il duello per generazione non decide (niente generazione, o nutrito senza forza: nutrire un morto non lo fa vincere) — parla l\'ORA: quando arriva INTERA su una linea, il ramo a clasharla e la bestia del proprio stelo gia\' seduta sopra, la linea non puo\' andare da nessuna parte e fa PERDERE la propria squadra -> sede opposta. Azione batte forza statica: parla prima della lettura delle bestie (§110). Misura al cablaggio: 7/7 nel residuo · +431 pip · entrambi i periodi. REGOLA DI CODA, congelata. ORAINTERA=off per disattivarla.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.ORAINTERA==='off') return null;
+      if (!R.mutante.movimentoNullo) return null;
+      var ora = ctx && ctx.oraBranch; if (!ora || !R.dayStem) return null;
+      var CL112={'子':'午','午':'子','丑':'未','未':'丑','寅':'申','申':'寅','卯':'酉','酉':'卯','辰':'戌','戌':'辰','巳':'亥','亥':'巳'};
+      var i, l;
+      for (i=0;i<R.linee.length;i++){ l=R.linee[i];
+        if (l.pos!==R.mutante.pos && CL112[R.dayBranch]===l.ramo) return null; }
+      var TRINI112=[['申','子','辰'],['寅','午','戌'],['巳','酉','丑'],['亥','卯','未']];
+      var mem={};
+      for (i=0;i<R.linee.length;i++){ l=R.linee[i]; mem[l.ramo]=1;
+        if (l.fushen && l.fushen.ramo && (R.vuoti||[]).indexOf(l.fushen.ramo)<0) mem[l.fushen.ramo]=1; }
+      mem[R.dayBranch]=1;
+      for (i=0;i<TRINI112.length;i++){ var t=TRINI112[i];
+        if (mem[t[0]] && mem[t[1]] && mem[t[2]]) return null; }
+      var TR112={1:['戌','亥'],2:['酉'],3:['午'],4:['卯'],5:['辰','巳'],6:['子'],7:['丑','寅'],8:['未','申']};
+      if (R.sup!=null && R.inf!=null) for (i=0;i<R.linee.length;i++){ l=R.linee[i];
+        var pr=TR112[l.pos<=3?R.inf:R.sup]||[];
+        for (var a=0;a<pr.length;a++) if (CL112[l.ramo]===pr[a]) return null; }
+      var Sh=R.linee[R.shi-1], Yi=R.linee[R.ying-1]; if (!Sh||!Yi) return null;
+      if (!!Sh.vuoto !== !!Yi.vuoto) return null;
+      var ric=null;
+      if (GEN[Yi.el]===Sh.el) ric=Sh; else if (GEN[Sh.el]===Yi.el) ric=Yi;
+      if (ric && ric.forte) return null;    // il duello per generazione col nutrito vivo (in lettura, non cablato)
+      var WUSHU112={'甲':'甲','己':'甲','乙':'丙','庚':'丙','丙':'戊','辛':'戊','丁':'庚','壬':'庚','戊':'壬','癸':'壬'};
+      var ST112=['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+      var B112=['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+      var s0=WUSHU112[R.dayStem], hi=B112.indexOf(ora);
+      if (!s0 || hi<0) return null;
+      var so=ST112[(ST112.indexOf(s0)+hi)%10];
+      var BDI112={'甲':'青龍','乙':'青龍','丙':'朱雀','丁':'朱雀','戊':'勾陳','己':'螣蛇','庚':'白虎','辛':'白虎','壬':'玄武','癸':'玄武'};
+      var bo=BDI112[so]; if (!bo) return null;
+      var L=null;
+      for (i=0;i<R.linee.length;i++){ l=R.linee[i];
+        if (CL112[ora]===l.ramo && l.bestia && l.bestia.cn===bo) { L=l; break; } }
+      if (!L) return null;
+      var dir = L.pos<=3 ? 'LONG' : 'SHORT';
+      state.why='The hour arrives whole on L'+L.pos+' ('+L.par+' '+L.ramo+'): its branch <b>'+ora+'</b> clashes it while the beast of its own stem <b>'+so+'</b> ('+bo+') sits on it — the line cannot go anywhere and makes its own side lose → '+dir+'.';
+      return dir;
+    }});
+
+  LY_VIE.push({ id:'R50_110', sezione:'§110', coda:true, cablata:'2026-08-28',
+    nome:'Residual reading: the line carrying the month-stem beast wins its seat',
+    dottrina:'Edu (28/08/2026, guide EURGBP 05/05/2022 seme 84 e EURGBP 18/11/2021 seme 83). Nel caso -1 la mobile non puo\' muoversi: si legge in contemporanea e si lavora con quello che SI TROVA. Se non si trova NIENT\'ALTRO — il giorno non clasha nessuna ferma, nessun trigono completo (linee + 伏神 non vuoti + ramo del giorno), nessuna linea incompatibile col trigramma ospite, e fra Shi e Ying nessuna azione (vuoto asimmetrico, controllo o generazione: chi viene nutrito vince) — restano le BESTIE: la linea che porta la bestia dello STELO DEL MESE vince la propria sede (alto LONG, basso SHORT). In linea di massima le bestie si leggono prima di ricorrere al duello Shi/Ying. Misura al cablaggio: cella 12 · 58.3% · z 0.58 · +181 (baseline sulle stesse 58.3%/+180) · discriminanti 6 a 3/3 · periodi 43/80. REGOLA DI CODA certificata dottrinalmente, congelata. RESIDUOBESTIA=off per disattivarla.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.RESIDUOBESTIA==='off') return null;
+      if (R.mutante.casoMut !== -1) return null;
+      var ms = ctx && ctx.monthStem; if (!ms) return null;
+      var CL={'子':'午','午':'子','丑':'未','未':'丑','寅':'申','申':'寅','卯':'酉','酉':'卯','辰':'戌','戌':'辰','巳':'亥','亥':'巳'};
+      var i, l;
+      // (a) il giorno clasha una linea ferma: si legge quella, non le bestie
+      for (i=0;i<R.linee.length;i++){ l=R.linee[i];
+        if (l.pos!==R.mutante.pos && CL[R.dayBranch]===l.ramo) return null; }
+      // (b) trigono completo fra linee, 伏神 non vuoti e ramo del giorno
+      var TRINI=[['申','子','辰'],['寅','午','戌'],['巳','酉','丑'],['亥','卯','未']];
+      var membri={};
+      for (i=0;i<R.linee.length;i++){ l=R.linee[i]; membri[l.ramo]=1;
+        if (l.fushen && l.fushen.ramo && (R.vuoti||[]).indexOf(l.fushen.ramo)<0) membri[l.fushen.ramo]=1; }
+      membri[R.dayBranch]=1;
+      for (i=0;i<TRINI.length;i++){ var t=TRINI[i];
+        if (membri[t[0]] && membri[t[1]] && membri[t[2]]) return null; }
+      // (c) linea incompatibile: il suo ramo clasha un ramo proprio del trigramma che la ospita
+      var TRIG_RAMI={1:['戌','亥'],2:['酉'],3:['午'],4:['卯'],5:['辰','巳'],6:['子'],7:['丑','寅'],8:['未','申']};
+      if (R.sup!=null && R.inf!=null) for (i=0;i<R.linee.length;i++){ l=R.linee[i];
+        var propri=TRIG_RAMI[l.pos<=3?R.inf:R.sup]||[];
+        for (var a=0;a<propri.length;a++) if (CL[l.ramo]===propri[a]) return null; }
+      // (d) fra Shi e Ying nessuna azione (vuoto asimmetrico, controllo, generazione)
+      var CTRL={Wood:'Earth',Earth:'Water',Water:'Fire',Fire:'Metal',Metal:'Wood'};
+      var GENh={Wood:'Fire',Fire:'Earth',Earth:'Metal',Metal:'Water',Water:'Wood'};
+      var Sh=R.linee[R.shi-1], Yi=R.linee[R.ying-1]; if(!Sh||!Yi) return null;
+      if (!!Sh.vuoto !== !!Yi.vuoto) return null;
+      if (CTRL[Sh.el]===Yi.el || CTRL[Yi.el]===Sh.el) return null;
+      if (GENh[Sh.el]===Yi.el || GENh[Yi.el]===Sh.el) return null;
+      // il residuo: la bestia dello stelo del mese
+      var BESTIA_DI={'甲':'青龍','乙':'青龍','丙':'朱雀','丁':'朱雀','戊':'勾陳','己':'螣蛇','庚':'白虎','辛':'白虎','壬':'玄武','癸':'玄武'};
+      var bm=BESTIA_DI[ms]; if(!bm) return null;
+      var L=null;
+      for (i=0;i<R.linee.length;i++) if (R.linee[i].bestia && R.linee[i].bestia.cn===bm){ L=R.linee[i]; break; }
+      if (!L) return null;
+      var dir = L.pos<=3 ? 'SHORT' : 'LONG';
+      state.why='Residual reading: nothing else is found in the chart — the beast of the month stem <b>'+ms+'</b> ('+bm+') sits on L'+L.pos+' ('+L.par+'): that line wins its seat → '+dir+'.';
+      return dir;
+    }});
+
   // ---- i 2 rafforzativi (agiscono SOLO nel contrasto PB↔LY, non come vie autonome) ----
   var LY_RAFFORZATIVI = [
     { id:'ORA', nome:'Hour from the seed backs the follower',
