@@ -902,6 +902,41 @@
       return dir;
     }});
 
+  // §113 — IL MESE CHE SCORRE INTERO SULLA BESTIA
+  LY_VIE.push({ id:'R53_113', sezione:'§113', coda:true, cablata:'2026-08-28',
+    nome:'The month pillar flows whole into a line: absorbed and passed to the hidden spirit → that seat wins',
+    dottrina:'Edu (28/08/2026, guida USDJPY 23/03/2023 seme 131; certificata da Edu). Quando il pilastro del MESE e\' di un solo elemento (stelo e ramo dello stesso elemento, es. 乙卯 Legno) e in carta c\'e\' una linea la cui BESTIA e\' di quell\'elemento, il mese arriva su quella linea COMPLETO di stelo e ramo: ASSORBE l\'elemento della linea (la linea genera il mese) e lo DISTRIBUISCE al 伏神 nascosto sotto di essa (il mese genera il nascosto, che non dev\'essere vuoto). Il flusso non e\' ostacolato ed e\' in piena stagione: quella sede VINCE. Sulla guida: mese 乙卯 sul Drago Verde di L3, assorbe l\'Acqua di 亥 e nutre la W 午 nascosta -> vince la sede bassa; il movimento della mobile L4 era solo apparente (G untimely col Legno in stagione, l\'ora 丙戌 dirotta l\'arrivo). Misura al cablaggio: 3/3 · +143 pip (2 gia\' vinte da §52 e §50g con lo stesso verdetto: sposta 1 carta, +34). REGOLA DI CODA, congelata alla nascita. MESEPIENO=off per disattivarla.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.MESEPIENO==='off') return null;
+      if (!R.monthBranch || !R.yearBranch || !ctx || !ctx.date) return null;
+      var ST113=['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+      var SE113={'甲':'Wood','乙':'Wood','丙':'Fire','丁':'Fire','戊':'Earth','己':'Earth','庚':'Metal','辛':'Metal','壬':'Water','癸':'Water'};
+      var BR113=['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+      var BRm113=['寅','卯','辰','巳','午','未','申','酉','戌','亥','子','丑'];
+      var PRIMO113={'甲':'丙','己':'丙','乙':'戊','庚':'戊','丙':'庚','辛':'庚','丁':'壬','壬':'壬','戊':'甲','癸':'甲'};
+      // steli SEMPRE derivati dai rami del motore: anno dal ramo d'anno, mese con i Cinque Tigri (五虎遁)
+      var y=parseInt(String(ctx.date).split('-')[0],10); if (!y) return null;
+      var annoS=null, Y2=[y,y-1];
+      for (var yi=0; yi<2; yi++) if (BR113[((Y2[yi]-4)%12+12)%12]===R.yearBranch) { annoS=ST113[((Y2[yi]-4)%10+10)%10]; break; }
+      if (!annoS) return null;
+      var mi=BRm113.indexOf(R.monthBranch); if (mi<0) return null;
+      var meseS=ST113[(ST113.indexOf(PRIMO113[annoS])+mi)%10];
+      var mEl=WX[R.monthBranch];
+      if (SE113[meseS]!==mEl) return null;                     // pilastro intero: un solo elemento
+      var BEL113={'青龍':'Wood','朱雀':'Fire','勾陳':'Earth','螣蛇':'Earth','白虎':'Metal','玄武':'Water'};
+      for (var i=0;i<R.linee.length;i++){ var L=R.linee[i];
+        if (!L.fushen || !L.bestia) continue;
+        if (BEL113[L.bestia.cn]!==mEl) continue;               // la bestia della linea e' dell'elemento del mese
+        if (GEN[L.el]!==mEl) continue;                         // la linea genera il mese: il mese la assorbe
+        if (GEN[mEl]!==L.fushen.el) continue;                  // e distribuisce al nascosto sotto
+        if (R.vuoti && R.vuoti.indexOf(L.fushen.b)>=0) continue; // il nascosto non dev'essere vuoto
+        var sede = L.pos<=3?'SHORT':'LONG';
+        state.why='The month pillar <b>'+meseS+R.monthBranch+'</b> is one element and flows WHOLE into L'+L.pos+' on its beast '+L.bestia.cn+': it absorbs '+L.ramo+' and feeds the hidden '+L.fushen.par+' '+L.fushen.b+' beneath — unobstructed, in season: that seat wins → '+sede+'.';
+        return sede;
+      }
+      return null;
+    }});
+
 
   LY_VIE.push({ id:'R41_101', sezione:'§101', nome:'Blocked receiving mobile: rooted draining beast on the mobile → opposite seat',
     dottrina:'Edu (26/08/2026, da EURJPY 27/03/2025): nel caso 6 (giorno libera la mobile), se la mobile e\' untimely e la BESTIA sulla sua linea la DRENA (泄), radicata e timely, il movimento non parte -> chi non vince perde -> sede opposta. Solo il drenaggio blocca, non il controllo (gemella EURJPY 08/04/2025, seme 161).',
@@ -1714,6 +1749,34 @@
 
 
 
+  // §113 — IL PILASTRO DEL MESE CHE SCORRE INTERO SULLA LINEA
+  LY_VIE.push({ id:'R53_113', sezione:'§113', coda:true, cablata:'2026-08-29',
+    nome:'The whole month pillar flows onto a line and feeds the hidden spirit beneath it',
+    dottrina:'Edu (29/08/2026, guida USDJPY 23/03/2023 seme 131). Il PILASTRO DEL MESE arriva INTERO su una linea — stelo e ramo dello STESSO elemento, e la BESTIA della linea e\' di quell\'elemento: il mese vi si siede in tutta la sua forza. La linea lo GENERA (viene assorbita) e il mese passa oltre, generando il 伏神 non vuoto nascosto sotto di essa. Il flusso non e\' ostacolato ed e\' per definizione in stagione: quella sede VINCE (alto LONG, basso SHORT). Sulla carta guida la mobile L4 sembra muoversi ma il suo G Terra e\' schiacciato dal Legno all\'apice, e l\'ora 丙戌 atterra sulla mobile (stelo dell\'ora = bestia della linea) portandosi il proprio ramo, amico dell\'arrivo: l\'arrivo 午 nutre 戌 invece della partenza. Il Fuoco vive allora sotto L3, dove il Drago Verde riceve il mese: la sede di L3 vince. Misura al cablaggio: 3/3 · +143 pip (delle 3, due gia\' vinte dal termometro per altre vie: sposta la sola carta guida, +34 pip). REGOLA DI CODA certificata dottrinalmente, congelata. MESEPIENO=off per disattivarla.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.MESEPIENO==='off') return null;
+      var ms = ctx && ctx.monthStem, mb = (ctx && ctx.monthBranch) || R.monthBranch; if (!ms || !mb) return null;
+      var SE={'甲':'Wood','乙':'Wood','丙':'Fire','丁':'Fire','戊':'Earth','己':'Earth','庚':'Metal','辛':'Metal','壬':'Water','癸':'Water'};
+      var WX={'寅':'Wood','卯':'Wood','巳':'Fire','午':'Fire','辰':'Earth','丑':'Earth','戌':'Earth','未':'Earth','申':'Metal','酉':'Metal','亥':'Water','子':'Water'};
+      var GENh={Wood:'Fire',Fire:'Earth',Earth:'Metal',Metal:'Water',Water:'Wood'};
+      var BEL={'青龍':'Wood','朱雀':'Fire','勾陳':'Earth','螣蛇':'Earth','白虎':'Metal','玄武':'Water'};
+      var mEl = WX[mb]; if (!mEl) return null;
+      if (SE[ms] !== mEl) return null;                       // il pilastro deve essere INTERO: stelo e ramo stesso elemento
+      for (var i=0;i<R.linee.length;i++){
+        var L=R.linee[i];
+        var f = L.fushen; if (!f) continue;
+        var fb = f.ramo || f.b; if (!fb) continue;
+        if (!L.bestia || BEL[L.bestia.cn] !== mEl) continue;  // la bestia della linea e' dell'elemento del mese
+        if (GENh[L.el] !== mEl) continue;                     // la linea genera il mese: viene assorbita
+        if (GENh[mEl] !== (f.el || WX[fb])) continue;         // il mese passa al nascosto sotto
+        if ((R.vuoti||[]).indexOf(fb) >= 0) continue;         // il nascosto non deve essere vuoto
+        var dir = L.pos<=3 ? 'SHORT' : 'LONG';
+        state.why='The whole month pillar <b>'+ms+mb+'</b> settles on L'+L.pos+' (beast '+L.bestia.cn+', same element): the line generates it and is absorbed, and the month flows on to the hidden spirit <b>'+fb+'</b> beneath. Unobstructed and in season: that seat wins → '+dir+'.';
+        return dir;
+      }
+      return null;
+    }});
+
   LY_VIE.push({ id:'R39_99', sezione:'§99', coda:true, cablata:'2026-08-26',
     nome:'Mobile G/W: real movement wins its seat, null movement is a failed action',
     dottrina:'Edu (26/08/2026, da USDCAD 08/03/2023 e USDJPY 02/08/2022): lettura BASE della mobile G o W quando nessun perimetro speciale la cattura. Due rami OPPOSTI, distinti dal fatto che la linea AGISCA o no: (a) MOVIMENTO VERO — la G/W e coinvolta nell azione, fa vincere la propria squadra -> la sua sede (alto LONG, basso SHORT); (b) MOVIMENTO NULLO — non e una linea ferma non coinvolta, e un azione TENTATA E FALLITA: chi non vince perde -> la sede cade (opposto). Il ramo (b) esclude i due casi gia coperti da §52 (回頭剋 e autocombinazione) per non duplicarne il perimetro. Valutata ULTIMA: parla solo dove tutto il resto tace. VIAGW=1 per accendere.',
@@ -1885,6 +1948,74 @@
       if (!L) return null;
       var dir = L.pos<=3 ? 'SHORT' : 'LONG';
       state.why='Residual reading: nothing else is found in the chart — the beast of the month stem <b>'+ms+'</b> ('+bm+') sits on L'+L.pos+' ('+L.par+'): that line wins its seat → '+dir+'.';
+      return dir;
+    }});
+
+  // §114 — L'ARRIVO NEL VUOTO: CHI NON VINCE PERDE (ULTIMA VIA: parla solo dove tutto tace)
+  LY_VIE.push({ id:'R54_114', sezione:'§114', coda:true, cablata:'2026-08-29',
+    nome:'Arrival in the void: whoever does not win, loses (the departing character remains)',
+    dottrina:'Edu (certificata 29/08/2026; meccanica di lettura del 24/08/2026 promossa a via). L\'ARRIVO cade nel VUOTO: il movimento non produce effetto, la mobile NON muta e RESTA il carattere di partenza. G/W reggono e fanno VINCERE la propria sede; B/P fanno PERDERE la propria sede (verso opposto); C tace. Se la mobile e\' Shi o Ying si legge il confronto Shi<->Ying, che fa da override: chi controlla l\'altro vince; senza controllo decide il carattere. Vale anche quando il giorno sospende E l\'arrivo e\' vuoto (arrivo mascherato). PRECEDENZA: se c\'e\' un trigono completo (linee + 伏神 non vuoti + ramo del giorno) comanda quello e la via TACE. Collocata ULTIMA nel termometro, dopo §110: parla solo sul residuo muto, che e\' il perimetro misurato. Misura al cablaggio: 79 carte mute · 64.6% · z 2.59 · +1434 pip · vecchio 76% (34) · recente 59% (41). Certificata dottrinalmente. ARRIVOVUOTO=off per disattivarla.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.ARRIVOVUOTO==='off') return null;
+      var M=R.mutante; if (!M || !M.movimentoNullo) return null;
+      var arrVoid = /arrival void/.test(M.motivoNullo||'') || (R.vuoti||[]).indexOf(M.ramoArr)>=0;
+      if (!arrVoid) return null;
+      var mob=R.linee[M.pos-1]; if(!mob) return null;
+      var i,l;
+      // PRECEDENZA: trigono completo -> comanda lui, la via TACE. Regola dei membri
+      // identica al checklist (certificata sulle falsificanti del 29/08/2026):
+      //  - linee visibili (i vuoti fermi sono esclusi; la mobile conta anche se vuota)
+      //  - tutti i 伏神
+      //  - rami di data NON vuoti (anno, mese, giorno, ora) come terzo membro, se
+      //    almeno due membri stanno su linee o nascosti (Edu 19/08 + EURUSD 01/06/2023)
+      //  - l'ARRIVO RIANIMATO: se la mobile e' L1 il pilastro del giorno (casa su L1)
+      //    le arriva addosso e rianima l'arrivo vuoto (Edu 29/08/2026, USDJPY 23/01/2026)
+      var TRINI=[['申','子','辰'],['寅','午','戌'],['巳','酉','丑'],['亥','卯','未']];
+      var visfus={}, estesi={};
+      for (i=0;i<R.linee.length;i++){ l=R.linee[i];
+        if (!((R.vuoti||[]).indexOf(l.ramo)>=0 && !l.isMobile)) visfus[l.ramo]=1;
+        var fb=l.fushen && (l.fushen.ramo||l.fushen.b);
+        if (fb) visfus[fb]=1; }
+      if (M.pos===1 && M.ramoArr) visfus[M.ramoArr]=1;
+      var _rd114=[R.dayBranch, R.monthBranch, (ctx&&ctx.yearBranch)||R.yearBranch, R.oraBranch||(ctx&&ctx.oraBranch)];
+      for (i=0;i<_rd114.length;i++){ var rb=_rd114[i];
+        if (rb && (R.vuoti||[]).indexOf(rb)<0) estesi[rb]=1; }
+      for (i=0;i<TRINI.length;i++){ var t=TRINI[i];
+        var nVF=(visfus[t[0]]?1:0)+(visfus[t[1]]?1:0)+(visfus[t[2]]?1:0);
+        var full=t.every(function(b){ return visfus[b]||estesi[b]; });
+        if (nVF===3 || (full && nVF>=2)) return null; }
+      var CTRL114={Wood:'Earth',Earth:'Water',Water:'Fire',Fire:'Metal',Metal:'Wood'};
+      var seat = function(p){ return p<=3?'SHORT':'LONG'; };
+      // Shi o Ying VUOTO: il vuoto non agisce e non puo' vincere (Edu 29/08/2026, da
+      // EURUSD 04/05/2022). MA il duello di CONTROLLO Shi<->Ying parla PRIMA del vuoto
+      // (Edu 29/08/2026, da NZDUSD 10/07/2024: lo Shi vuoto che controlla vince comunque).
+      // La mobile non e' mai vuota (動不為空).
+      var _sh114=R.linee[R.shi-1], _yi114=R.linee[R.ying-1];
+      var _shV114=_sh114 && _sh114.vuoto && !_sh114.isMobile;
+      var _yiV114=_yi114 && _yi114.vuoto && !_yi114.isMobile;
+      var car=mob.par, tiene=(car==='G'||car==='W'), cade=(car==='B'||car==='P');
+      var dir=null, why=null;
+      if (mob.isShi || mob.isYing) {
+        var altro = mob.isShi ? _yi114 : _sh114; if(!altro) return null;
+        if (CTRL114[altro.el]===mob.el)      { dir=seat(altro.pos); why='the other controls the mobile → the mobile loses'; }
+        else if (CTRL114[mob.el]===altro.el) { dir=seat(mob.pos);   why='the mobile controls the other → the mobile wins'; }
+        else if (_shV114 && _yiV114) return null;
+        else if (_shV114) { dir=seat(_yi114.pos); why='no control and the Shi is VOID: the void cannot win → the Ying seat wins'; }
+        else if (_yiV114) { dir=seat(_sh114.pos); why='no control and the Ying is VOID: the void cannot win → the Shi seat wins'; }
+        else if (tiene) { dir=seat(mob.pos);   why=car+' holds → the mobile wins'; }
+        else if (cade)  { dir=seat(altro.pos); why=car+' makes the mobile lose → the other wins'; }
+        else return null;  // C: verso non definito
+        state.why='Arrival <b>'+M.ramoArr+'</b> falls in the VOID: no effect, the mobile ('+(mob.isShi?'Shi':'Ying')+', '+car+') keeps its departing character. Shi↔Ying: '+why+' → '+dir+'.';
+        return dir;
+      }
+      // mobile terza linea: qui il vuoto di Shi/Ying ha la precedenza sulla mappatura
+      if (_shV114 && _yiV114) return null;
+      if (_shV114) { state.why='Arrival <b>'+M.ramoArr+'</b> falls in the VOID and the Shi itself is VOID: the void cannot win → the Ying seat wins → '+seat(_yi114.pos)+'.'; return seat(_yi114.pos); }
+      if (_yiV114) { state.why='Arrival <b>'+M.ramoArr+'</b> falls in the VOID and the Ying itself is VOID: the void cannot win → the Shi seat wins → '+seat(_sh114.pos)+'.'; return seat(_sh114.pos); }
+      if (tiene) { dir=seat(mob.pos); why=car+' holds → its seat wins'; }
+      else if (cade) { dir=(seat(mob.pos)==='SHORT'?'LONG':'SHORT'); why=car+' makes its seat lose → opposite'; }
+      else return null;  // C tace
+      state.why='Arrival <b>'+M.ramoArr+'</b> falls in the VOID: no effect, the third-line mobile keeps its departing character '+car+': '+why+' → '+dir+'.';
       return dir;
     }});
 
