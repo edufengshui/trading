@@ -233,6 +233,22 @@
         CLASH[dayBranch] === ramoDep || CLASH[dayBranch] === ramoArr)) {
       effEl = null; casoMut = -1;
       motivoNullo = 'suspended by the day (day combines/clashes departure or arrival)'; }
+    // TOMBA NEL MESE + PENALITA' DAL GIORNO (Edu, 28/08/2026, guida USDJPY 23/07/2024 seme 156):
+    // l'arrivo entra nella TOMBA (庫) del proprio elemento = il ramo del mese, E il GIORNO lo
+    // penalizza (刑): la linea non si muove. Forma decisa dalla statistica al cablaggio:
+    // MUTTOMBA=and (default) richiede entrambe; MUTTOMBA=or basta una; MUTTOMBA=off spegne.
+    (function(){
+      if (casoMut === 0 || casoMut === -1) return;
+      var modo = (typeof process!=='undefined' && process.env && process.env.MUTTOMBA) || 'and';
+      if (modo === 'off') return;
+      var TOMB = {Fire:'戌', Water:'辰', Metal:'丑', Wood:'未'};
+      var XING = {'寅':'巳','巳':'申','申':'寅','丑':'戌','戌':'未','未':'丑','子':'卯','卯':'子','辰':'辰','午':'午','酉':'酉','亥':'亥'};
+      var inTomba = !!monthBranch && TOMB[WX[ramoArr]] === monthBranch;
+      var penal = !!dayBranch && XING[dayBranch] === ramoArr;
+      var scatta = (modo === 'or') ? (inTomba || penal) : (inTomba && penal);
+      if (scatta) { effEl = null; casoMut = -4;
+        motivoNullo = 'arrival in the month tomb' + (penal ? ' and punished by the day' : '') + ': the line does not move'; }
+    })();
     // trigramma totalmente legato Qian<->Xun: tutte e tre le coppie ramo-controparte combinano
     var trigBloccato = null;
     (function (){
@@ -1163,6 +1179,33 @@
       return l.pos<=3 ? 'SHORT' : 'LONG';
     }});
 
+  LY_VIE.push({ id:'R57_118', sezione:'§118', coda:true, cablata:'2026-08-28',
+    nome:'The year pillar lands on the beast and breaks the binding combination: the hidden spirit feeds the freed line (tail)',
+    dottrina:'Edu (28/08/2026, guide card NZDUSD 07/11/2024, seme 59, year 甲辰): a FIXED line locked in a 六合 with another line cannot move nor transform — it is tied down. When the WHOLE YEAR PILLAR arrives on that line, because the year BRANCH is of the same element as the BEAST sitting on it, the year BREAKS the combination and frees the line. Freed, the line can finally receive what lies beneath it: its 伏神 generates it and feeds it. A fed W wins its seat (below → LONG, above → SHORT). The 伏神 acts even if its own branch is void — the certified channel of the Tai Sui that generates the hidden spirit under it. TAIL RULE: cabled at doctrinal certification, FROZEN at birth, judged by the tail class row. Removed only by a card that falsifies it in its perimeter with no other explanation. VIA118=off to disable.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIA118==='off') return null;
+      if (!R.yearBranch) return null;
+      var BEL = {'青龍':'Wood','朱雀':'Fire','勾陳':'Earth','螣蛇':'Earth','白虎':'Metal','玄武':'Water'};
+      var yEl = WX[R.yearBranch];
+      for (var i=0;i<R.linee.length;i++){
+        var l = R.linee[i];
+        if (l.isMobile || l.vuoto || l.par !== 'W') continue;
+        if (!l.fushen) continue;
+        if (GEN[l.fushen.el] !== l.el) continue;                      // the hidden spirit beneath generates the line
+        if (!l.bestia || BEL[l.bestia.cn] !== yEl) continue;          // the year branch is of the beast's element → the whole year pillar lands here
+        var legata = false;
+        for (var j=0;j<R.linee.length;j++){ var q = R.linee[j];
+          if (q.pos === l.pos) continue;
+          if (COMBINA[l.ramo] === q.ramo) { legata = q; break; }
+        }
+        if (!legata) continue;                                        // the line must be tied down by a 六合 with another line
+        var dir = l.pos<=3 ? 'LONG' : 'SHORT';
+        state.why = 'L'+l.pos+' <b>W '+l.ramo+'</b> is tied down by the combination (六合) with L'+legata.pos+' ('+legata.ramo+'): it can neither move nor transform. The whole year pillar arrives on it — the year branch <b>'+R.yearBranch+'</b> is of the same element as the beast '+l.bestia.cn+' on the line — and BREAKS the combination. Freed, the line receives its 伏神 <b>'+l.fushen.b+'</b> beneath, which generates it: the W is fed and wins its seat → '+dir+'.';
+        return dir;
+      }
+      return null;
+    }});
+
   LY_VIE.push({ id:'R4', sezione:'—', nome:'Terminal G (no drain)',
     dottrina:'The terminal of the qi flow is a single G (even without a draining hidden line): direction of its seat.',
     test: function (R, ctx, state) {
@@ -1183,6 +1226,52 @@
       return capG.pos<=3 ? 'SHORT' : 'LONG';
     }});
 
+  LY_VIE.push({ id:'R59_120', sezione:'§120', coda:true, cablata:'2026-08-28',
+    nome:'The retreating malus: a B/P that retreats withdraws its harm and its own team wins (tail)',
+    dottrina:'Edu (28/08/2026, guide card USDJPY 15/08/2024, seme 147): B and P make their own team lose — they are the malus characters. So when the MOBILE is a P (or B) and it RETREATS (退神, same element, counter-clockwise branch), the malus WITHDRAWS: the harm leaves the trigram and its own team WINS its seat (above → LONG, below → SHORT). The mirror of the generic retreat via, which reads the opposite of the seat: for the malus characters, retreat is liberation, not weakness. On the guide, the beasts CONFIRM: the whole month pillar 壬申 visits the G on L2 through the Metal beast (白虎 of the month branch element) and DRAINS the G (Earth → Metal), pushing the SHORT victory away — confirmation, not the actor, so it is NOT a condition (broad-form method, Edu 28/08/2026: cable broad by default, restrict only if statistics prove the extra condition separates winners from losers). Cabled for both B and P per Edu\'s standing generalization ("mobile B e P fanno perdere la propria squadra"). TAIL RULE: frozen at birth, judged by the tail class row, removed only by a falsifying card in its perimeter with no other explanation. VIA120=off to disable.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIA120==='off') return null;
+      if (R.mutante.progressione !== 'retrocedente') return null;
+      if (R.mutante.movimentoNullo) return null;                       // se il movimento non si conclude, il malus NON e' riuscito a ritirarsi
+      var mob = R.linee[R.mutante.pos-1];
+      if (mob.par !== 'P' && mob.par !== 'B') return null;
+      var dir = mob.pos>3 ? 'LONG' : 'SHORT';
+      state.why = 'The mobile L'+mob.pos+' is a <b>'+mob.par+'</b> — a malus character that makes its own team lose — and it RETREATS ('+R.mutante.ramoDep+' → '+R.mutante.ramoArr+', 退神): the harm withdraws from the trigram, and its own team wins its seat → '+dir+'.';
+      return dir;
+    }});
+
+  LY_VIE.push({ id:'R60_121', sezione:'§121', coda:true, cablata:'2026-08-28',
+    nome:'The advancing malus: a B/P that advances makes its own team lose (tail)',
+    dottrina:'Edu (28/08/2026, DOCTRINE, stated with §120): "Se P o B avanzano la propria squadra perde. Se retrocedono vince. E\' dottrina." B and P are the malus characters: when the mobile is a B or P and it ADVANCES (進神, same element, clockwise branch), the malus gains ground inside its own trigram and makes its own team LOSE its seat (above → SHORT, below → LONG). Symmetric half of §120 (the retreating malus withdraws and its team wins). GUARD: the movement must conclude — a suspended advance (departure or arrival trapped) has not happened and the via stays silent. §66 (B advancing in the lower trigram → LONG) is the already-cabled particular case, same verdict. TAIL RULE: frozen at birth, judged by the tail class row. VIA121=off to disable.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIA121==='off') return null;
+      if (R.mutante.progressione !== 'avanzante') return null;
+      if (R.mutante.movimentoNullo) return null;
+      var mob = R.linee[R.mutante.pos-1];
+      if (mob.par !== 'P' && mob.par !== 'B') return null;
+      var dir = mob.pos>3 ? 'SHORT' : 'LONG';
+      state.why = 'The mobile L'+mob.pos+' is a <b>'+mob.par+'</b> — a malus character — and it ADVANCES ('+R.mutante.ramoDep+' → '+R.mutante.ramoArr+', 進神): the harm gains ground in its own trigram and makes its own team lose its seat → '+dir+'.';
+      return dir;
+    }});
+
+  LY_VIE.push({ id:'R61_122', sezione:'§122', coda:true, cablata:'2026-08-28',
+    nome:'Tomb and punishment still the mobile: the Shi/Ying duel decides, the stronger wins (tail)',
+    dottrina:'Edu (28/08/2026, guide card USDJPY 23/07/2024, seme 156): the mobile\'s ARRIVAL enters the TOMB (庫) of its own element — the month branch — and the DAY punishes it (刑, here 子卯): the line does not move. With no other rule intervening (the beasts calm), the decision falls to the Shi/Ying duel: the STRONGER of the two wins its seat (force model). On the guide the Ying (寅, strong) beats the dormant Shi (未) → seat of the Ying below → SHORT. Tie of force → silence. TAIL RULE, frozen at birth. VIA122=off to disable.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIA122==='off') return null;
+      if (R.mutante.casoMut !== -4) return null;
+      var S = R.linee[R.shi-1], Y = R.linee[R.ying-1];
+      // Il duello si decide col vuoto: la linea nei vuoti del giorno e' DORMIENTE e non agisce
+      // (dottrina: una linea vuota non agisce, anche se timely). Vince l'altra. Se nessuna delle
+      // due e' vuota (o entrambe), il duello non parla: si aspetta una carta guida.
+      var sv = R.vuoti.indexOf(S.ramo) >= 0, yv = R.vuoti.indexOf(Y.ramo) >= 0;
+      if (sv === yv) return null;
+      var v = sv ? Y : S;
+      var dir = v.pos>3 ? 'LONG' : 'SHORT';
+      state.why = 'Tomb and punishment still the mobile ('+R.mutante.ramoDep+' → '+R.mutante.ramoArr+' in the '+R.monthBranch+' tomb, punished by the day '+R.dayBranch+'): the decision passes to the Shi/Ying duel. The '+(sv?'Shi '+S.ramo:'Ying '+Y.ramo)+' is VOID and dormant — it does not act — so the '+(v===S?'Shi':'Ying')+' <b>'+v.ramo+'</b> wins its seat → '+dir+'.';
+      return dir;
+    }});
+
   LY_VIE.push({ id:'R5', sezione:'—', nome:'Retreating mobile',
     dottrina:'The mobile retreats (same element, counter-clockwise branch): its direction holds if the year clash hits it, otherwise read the opposite.',
     test: function (R, ctx, state) {
@@ -1193,6 +1282,33 @@
       var hitY = CLASH[c.Y]===dep;
       state.why = 'The mobile L'+mob.pos+' <b>'+mob.par+'</b> retreats '+dep+' → '+R.mutante.ramoArr+'. '+(hitY?'The <b>Tai Sui '+c.Y+'</b> clashes it: its direction holds.':'No year clash: read the opposite of its seat.');
       return hitY ? suo : (suo==='LONG' ? 'SHORT' : 'LONG');
+    }});
+
+  LY_VIE.push({ id:'R58_119', sezione:'§119', coda:true, cablata:'2026-08-28',
+    nome:'The self-rooted day pillar imposes itself on the L1 Shi: the charged Shi generates the Ying (tail)',
+    dottrina:'Edu (28/08/2026, guide card EURJPY 27/12/2022, seme 141, day 甲寅): a day pillar whose STEM and BRANCH share the SAME element (甲寅: Wood over Wood, the stem standing on its own root) is so strong that it IMPOSES ITSELF on L1. PRECISION (Edu, same day): L1 is BOTH the day and the TERMINAL of the whole date — the capolinea of the stem flow is of the day\'s element, so the entire date pours onto the very line the pillar lands on — the casa of the day stem by construction of the ladder — regardless of the state of the line sitting there (here a void, dormant P). The Shi on L1, charged with the day\'s element, GENERATES the Ying: the Qi flows Shi → Ying and the Ying wins its seat (above → LONG, below → SHORT). GUARD (Edu): the mobile must be too WEAK (untimely) to superimpose itself over L1 — a timely mobile would take the reading first. TAIL RULE: cabled at doctrinal certification, FROZEN at birth, judged by the tail class row. Removed only by a card that falsifies it in its perimeter with no other explanation. VIA119=off to disable.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIA119==='off') return null;
+      if (!R.dayStem || !R.dayBranch) return null;
+      if (R.shi !== 1) return null;                                     // lo Shi deve sedere su L1
+      var SEs = {'甲':'Wood','乙':'Wood','丙':'Fire','丁':'Fire','戊':'Earth','己':'Earth','庚':'Metal','辛':'Metal','壬':'Water','癸':'Water'};
+      var dEl = SEs[R.dayStem];
+      if (!dEl || dEl !== WX[R.dayBranch]) return null;                 // pilastro del giorno tutto d'un elemento (stelo sulla propria radice)
+      // PRECISAZIONE (Edu, 28/08/2026): sulla guida L1 e' anche il TERMINALE dell'intera data
+      // (capolinea del flusso = elemento del giorno). MISURA del confronto largo/stretto:
+      // larga 8 carte 75,0% +291 · stretta 3 carte 66,7% +110 · fascia esclusa 5 carte 4/5 +181.
+      // Decisione (Edu delega alla statistica, 28/08/2026): si cabla la FORMA LARGA — il capolinea
+      // resta annotazione descrittiva della guida, non condizione.
+      var yg = R.linee[R.ying-1];
+      if (GEN[dEl] !== yg.el) return null;                              // lo Shi caricato del giorno genera lo Ying
+      var mEl = WX[R.monthBranch], sEl = SEASON[R.monthBranch];
+      var timely = function(el){ var a=stagione(el,mEl), b=stagione(el,sEl);
+        return a==='旺'||a==='相'||b==='旺'||b==='相'; };
+      var mob = R.linee[R.mutante.pos-1];
+      if (timely(mob.el)) return null;                                  // la mobile debole non si sovrappone a L1; se e' timely, tace
+      var dir = yg.pos>3 ? 'LONG' : 'SHORT';
+      state.why = 'The day pillar <b>'+R.dayStem+R.dayBranch+'</b> is all of one element ('+dEl+' over its own root): it imposes itself on L1, the casa of the day stem, where the <b>Shi</b> sits. Charged with the day\'s '+dEl+', the Shi GENERATES the Ying <b>'+yg.ramo+'</b> on L'+yg.pos+' — the Qi flows Shi → Ying and the Ying wins its seat → '+dir+'. The mobile ('+mob.ramo+', untimely) is too weak to superimpose itself.';
+      return dir;
     }});
 
   LY_VIE.push({ id:'R6', sezione:'—', nome:'Seasonal gathering with the month',
@@ -1302,6 +1418,43 @@
       var why = huitou ? 'return-control: the arrival <b>'+R.mutante.ramoArr+'</b> controls the departure '+R.mutante.ramoDep : 'self-combination '+R.mutante.ramoDep+'+'+R.mutante.ramoArr;
       state.why = 'The action of the mobile L'+mob.pos+' <b>'+mob.par+'</b> fails ('+why+'): it does not carry its direction → opposite of its seat.';
       return suo==='LONG' ? 'SHORT' : 'LONG';
+    }});
+
+  LY_VIE.push({ id:'R56_117', sezione:'§117', coda:true, cablata:'2026-08-28',
+    nome:'Trine held line clashed by the whole month pillar: the released Qi feeds the W (tail)',
+    dottrina:'Edu (28/08/2026, guide card GBPUSD 02/07/2025, seme 137, month 壬午, day 壬申, hour 甲辰): a FIXED line sits at the centre of a COMPLETE 三合 whose other two members come from the date branches (here L1 子 C with 申 of the day and 辰 of the hour: the water trine 申子辰). The WHOLE MONTH PILLAR arrives on that line to clash it — the clash is effective because the month STEM is of the same element as the BEAST on the line (壬 Water, 玄武 Water), the certified "steli filone 2" channel. The clash does not destroy the accumulated Qi: it releases it, and all that element flows to the line it GENERATES. If the fed line is a W, the W is nourished and wins its seat (below → SHORT, above → LONG). The Qi is not stopped (no capannello) because the clash sends it on: the runner crosses the street, one looks where he goes. TAIL RULE: cabled at doctrinal certification, FROZEN at birth, judged by the tail class row. Removed only by a card that falsifies it in its perimeter with no other explanation. VIA117=off to disable.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIA117==='off') return null;
+      if (!R.monthBranch || !R.monthStem && !(ctx && ctx.monthStem)) return null;
+      var mStem = R.monthStem || (ctx && ctx.monthStem);
+      if (!mStem) return null;
+      var SEs = {'甲':'Wood','乙':'Wood','丙':'Fire','丁':'Fire','戊':'Earth','己':'Earth','庚':'Metal','辛':'Metal','壬':'Water','癸':'Water'};
+      var BEL = {'青龍':'Wood','朱雀':'Fire','勾陳':'Earth','螣蛇':'Earth','白虎':'Metal','玄武':'Water'};
+      var TRI = [['申','子','辰'],['亥','卯','未'],['寅','午','戌'],['巳','酉','丑']];
+      var cal = [R.yearBranch, R.monthBranch, R.dayBranch, ctx && ctx.oraBranch].filter(function(b){return !!b;});
+      for (var i=0;i<R.linee.length;i++){
+        var l = R.linee[i];
+        if (l.isMobile || l.vuoto) continue;
+        if (CLASH[R.monthBranch] !== l.ramo) continue;                  // the month branch clashes this line
+        if (!l.bestia || BEL[l.bestia.cn] !== SEs[mStem]) continue;     // month stem = element of the line's beast → the clash operates
+        var hit = null;
+        for (var k=0;k<TRI.length;k++){ var t = TRI[k];
+          if (t.indexOf(l.ramo) < 0) continue;
+          var altri = t.filter(function(x){ return x !== l.ramo; });
+          if (altri.every(function(x){ return cal.indexOf(x) >= 0; })) { hit = t; break; }
+        }
+        if (!hit) continue;                                             // line at the centre of a full trine from the date
+        var nutrita = null;
+        for (var j=0;j<R.linee.length;j++){ var q = R.linee[j];
+          if (q.pos === l.pos || q.vuoto) continue;
+          if (q.par === 'W' && GEN[l.el] === q.el) { nutrita = q; break; }
+        }
+        if (!nutrita) continue;                                         // the released Qi must find a W to feed
+        var dir = nutrita.pos<=3 ? 'SHORT' : 'LONG';
+        state.why = 'L'+l.pos+' <b>'+l.par+' '+l.ramo+'</b> sits at the centre of the complete trine <b>'+hit.join('')+'</b> (the other two members come from the date). The whole month pillar <b>'+mStem+R.monthBranch+'</b> arrives to clash it and the clash operates (the month stem '+mStem+' is of the same element as the beast '+l.bestia.cn+' on the line). The clash releases the accumulated Qi, which flows onto the <b>W '+nutrita.ramo+'</b> on L'+nutrita.pos+': the W is fed and wins its seat → '+dir+'.';
+        return dir;
+      }
+      return null;
     }});
 
   LY_VIE.push({ id:'R14_50de', sezione:'§50d/e', nome:'Combination of the target: generative/destructive',
@@ -1615,6 +1768,39 @@
       var seat = mob.pos<=3 ? 'SHORT' : 'LONG';
       state.why = 'The mobile <b>B</b> L'+mob.pos+' ('+R.mutante.ramoDep+'→'+R.mutante.ramoArr+') is trapped: the day <b>'+R.dayBranch+'</b> combines (六合) its arrival — the B cannot advance, so it cannot make its own team lose → its seat holds → '+seat+'.';
       return seat;
+    }});
+
+  LY_VIE.push({ id:'R54_115', sezione:'§115', coda:true, cablata:'2026-08-28',
+    nome:'B/P with trapped DEPARTURE stays seated and makes its own team lose (tail)',
+    dottrina:'Edu (28/08/2026, guide card USDCAD 17/06/2025, seme 135): a mobile B or P whose DEPARTURE is combined (六合) by the DAY branch cannot leave its seat — the movement does not conclude and the line remains FULLY SEATED as its departing character. A still B or P is the negative indicator in its own trigram: it makes its own team lose (seat below → LONG, seat above → SHORT). MIRROR of §94: there the ARRIVAL is trapped, the action never completes and the malus cannot strike (seat wins); here the DEPARTURE is trapped, the B/P never even leaves, and the malus strikes in full (seat loses). Extended to P by Edu at cabling ("mobile B e P fanno perdere la propria squadra, non solo B"). TAIL RULE: cabled at doctrinal certification, FROZEN at birth, judged in aggregate by the tail class row. Removed only by a card that falsifies it in its perimeter with no other explanation. VIA115=off to disable.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIA115==='off') return null;
+      var mob = R.linee[R.mutante.pos-1];
+      if (mob.par !== 'B' && mob.par !== 'P') return null;
+      if (COMBINA[R.dayBranch] !== R.mutante.ramoDep) return null;   // trapped departure: the day combines it
+      if (R.mutante.casoMut !== -1) return null;                     // must be the CENTRAL day-suspension (caso -1), which already embeds the guard: a day bound (六合) by the month cannot combine/clash any line (Edu 21/08/2026) and cannot trap the departure
+      var seat = mob.pos<=3 ? 'LONG' : 'SHORT';
+      state.why = 'The mobile <b>'+mob.par+'</b> L'+mob.pos+' ('+R.mutante.ramoDep+'→'+R.mutante.ramoArr+') has its DEPARTURE trapped: the day <b>'+R.dayBranch+'</b> combines (六合) '+R.mutante.ramoDep+' — the '+mob.par+' stays fully seated and makes its own team lose → '+(mob.pos<=3?'below loses → LONG':'above loses → SHORT')+'.';
+      return seat;
+    }});
+
+  LY_VIE.push({ id:'R55_116', sezione:'§116', coda:true, cablata:'2026-08-28',
+    nome:'The whole day pillar arrives on L1 and blocks the fixed B in place: its team loses (tail)',
+    dottrina:'Edu (28/08/2026, guide card EURUSD 10/12/2025, seme 116, day 癸丑): the DAY STEM has its casa on L1 by construction of the stem ladder; when it is ROOTED in the date branches AND the DAY BRANCH combines (六合) the branch of a FIXED, non-void B on L1, the WHOLE day pillar arrives on L1 and BLOCKS the B in place. A B held still makes its own team lose → the lower side loses → LONG. This is the pillar channel already certified for the mobile (guide EURGBP 03/06/2020: "il giorno intero cade sulla linea: non la sospende, la carica"): the whole pillar arriving by casa+root OVERRIDES the guard of the day bound by the month — the pillar lands on the line even when the day branch alone could not touch any line. TAIL RULE: cabled at doctrinal certification, FROZEN at birth, judged by the tail class row. Removed only by a card that falsifies it in its perimeter with no other explanation. VIA116=off to disable.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIA116==='off') return null;
+      var l1 = R.linee[0];
+      if (l1.isMobile || l1.par!=='B' || l1.vuoto) return null;
+      if (!R.dayStem || !R.dayBranch) return null;
+      if (COMBINA[R.dayBranch] !== l1.ramo) return null;             // the day branch combines L1's branch
+      var SEs = {'甲':'Wood','乙':'Wood','丙':'Fire','丁':'Fire','戊':'Earth','己':'Earth','庚':'Metal','辛':'Metal','壬':'Water','癸':'Water'};
+      var WXb = {'寅':'Wood','卯':'Wood','巳':'Fire','午':'Fire','辰':'Earth','丑':'Earth','戌':'Earth','未':'Earth','申':'Metal','酉':'Metal','亥':'Water','子':'Water'};
+      var rami = [R.yearBranch, R.monthBranch, R.dayBranch, ctx && ctx.oraBranch].filter(function(x){return !!x;});
+      var rooted = false;
+      for (var a=0; a<rami.length; a++) if (WXb[rami[a]] === SEs[R.dayStem]) { rooted = true; break; }
+      if (!rooted) return null;                                      // day stem rooted → whole pillar lands in its casa L1
+      state.why = 'The whole day pillar <b>'+R.dayStem+R.dayBranch+'</b> arrives on L1: the stem '+R.dayStem+' has its casa on L1 and is ROOTED in the date branches, and the day branch '+R.dayBranch+' combines (六合) the fixed <b>B '+l1.ramo+'</b> — the B is blocked in place, and a still B makes its own team lose → below loses → LONG.';
+      return 'LONG';
     }});
 
   LY_VIE.push({ id:'R29_65', sezione:'§65', nome:'Nothing moves: Ying on the day branch decides',

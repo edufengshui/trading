@@ -322,8 +322,12 @@ function analizzaCrossPerReport(r, utcMs, dateStr) {
     }
     var pbDir = (dir === 'up') ? (pb.segue ? 'LONG' : 'SHORT') : (pb.segue ? 'SHORT' : 'LONG');
 
-    // --- Liu Yao: correttivo sulla stessa carta, poi verdetto S9
+    // --- Liu Yao: verdetto AUTONOMO del termometro sulla stessa carta.
+    // POLITICA C→S2 (Edu, 28/08/2026): si opera la CONVALIDA (PB e LY concordano).
+    // Il CONTRASTO (PB e LY opposti) non si opera mai. Dove il LY TACE, il PB e' la
+    // RISERVA S2: diventa operativo solo nei giorni senza nessuna convalida.
     var finale = pbDir, decisore = 'solo Plum Blossom (Liu Yao non disponibile)';
+    out.classe = 'tace';
     var LYM = window.XKDGLiuYao;
     if (LYM) {
       var ly = LYM.read(r.seed, chart.dayBranch, chart.monthBranch, yearBranch, chart.dayStem || null);
@@ -332,15 +336,31 @@ function analizzaCrossPerReport(r, utcMs, dateStr) {
         // niente altro. Gli interruttori del termometro a schermo (localStorage) servono per
         // le prove e NON devono entrare qui: se ne resta uno spento per distrazione, il report
         // del giorno dopo darebbe un verdetto diverso da quello del sistema senza avvisare.
-        // Percio' enabled/enabledRaff sono VUOTI = tutte le vie cablate attive, stato canonico.
-        var enabled = {}, enabledRaff = {};
         var oraB0 = LYM.oraDalSeme(r.seed);
         var stD = steliDiData(dateStr, yearBranch, chart.monthBranch, chart.dayStem || null, oraB0);
         var ctxT = { oraBranch: oraB0, emaDir: dir, capolineaEl: capolineaDelFlusso(chart),
                      corpoEl: pb.trend ? pb.trend.el : null, date: dateStr,
                      yearStem: stD.yearStem, monthStem: stD.monthStem, hourStem: stD.hourStem };
-        var comb = LYM.combinaS9(ly, ctxT, pbDir, enabled, enabledRaff, {});
-        if (comb && comb.finale) { finale = comb.finale; decisore = comb.chi || ''; }
+        var t = LYM.termometro(ly, ctxT, {}, {});
+        var lyDir = (t && t.dir) || null;
+        out.lyDir = lyDir;
+        if (lyDir === null) {
+          out.classe = 'tace';
+          finale = pbDir; decisore = 'PB — il LY tace (riserva S2)';
+        } else if (lyDir === pbDir) {
+          out.classe = 'convalida';
+          finale = pbDir; decisore = 'CONVALIDA: PB e LY concordano' + (t.sezione ? ' · LY via ' + t.sezione : '');
+        } else {
+          out.classe = 'contrasto';
+          out.signal = 'NO TRADE';
+          out.segue = null;
+          out.motivo = 'contrasto PB↔LY (PB ' + pbDir + ' · LY ' + lyDir + (t.sezione ? ' via ' + t.sezione : '') + '): non si opera';
+          out.seed = r.seed; out.sup = (ly && ly.sup) || null; out.inf = (ly && ly.inf) || null;
+          out.linea = (ly && ly.linea) || null;
+          out.bazi = (chart.source && chart.source.yearPillar ? chart.source.yearPillar : '') + ' ' +
+                     (chart.monthBranch || '') + ' ' + (chart.dayStem || '') + (chart.dayBranch || '');
+          return out;
+        }
       }
     }
     out.signal = finale;
@@ -372,8 +392,18 @@ function renderReportGiornaliero() {
     return analizzaCrossPerReport(r, utcMs, forexData.date);
   });
 
-  var tradabili = esiti.filter(function (e) { return e.signal === 'LONG' || e.signal === 'SHORT'; });
-  var esclusi   = esiti.filter(function (e) { return !(e.signal === 'LONG' || e.signal === 'SHORT'); });
+  // POLITICA C→S2 (Edu, 28/08/2026): le CONVALIDE hanno la priorita'. Se oggi non
+  // ce n'e' nessuna, entra la RISERVA S2 (PB dove il LY tace). I contrasti mai.
+  var conValide = esiti.filter(function (e) { return e.classe === 'convalida' && (e.signal === 'LONG' || e.signal === 'SHORT'); });
+  var riserva   = esiti.filter(function (e) { return e.classe === 'tace' && (e.signal === 'LONG' || e.signal === 'SHORT'); });
+  var riservaAttiva = conValide.length === 0 && riserva.length > 0;
+  var tradabili = conValide.length ? conValide : (riservaAttiva ? riserva : []);
+  var esclusi = esiti.filter(function (e) { return tradabili.indexOf(e) < 0; });
+  esclusi.forEach(function (e) {
+    if (e.classe === 'tace' && (e.signal === 'LONG' || e.signal === 'SHORT') && !riservaAttiva) {
+      e.motivo = 'il LY tace — riserva S2 non attiva (oggi ci sono convalide)';
+    }
+  });
 
   var css = {
     card: 'margin:18px 0;border:1px solid rgba(255,255,255,.14);border-radius:10px;overflow:hidden',
@@ -411,7 +441,7 @@ function renderReportGiornaliero() {
   // il report gira sempre col termometro canonico: se a schermo qualche via e' spenta lo dice
   var spente = Object.keys(lyToggles).filter(function (k) { return lyToggles[k] === false; }).length;
   var notaCanonica = '<div style="padding:6px 14px;font-size:12px;background:rgba(63,185,80,.08);' +
-    'border-bottom:1px solid rgba(255,255,255,.08)">Termometro <b>canonico</b>: tutte le vie cablate attive.' +
+    'border-bottom:1px solid rgba(255,255,255,.08)">Politica <b>C→S2</b> · termometro <b>canonico</b>: si operano le <b>convalide</b> (PB e LY concordano); i contrasti mai; il PB dove il LY tace entra solo nei giorni senza convalide (riserva S2).' +
     (spente ? ' <b style="color:#e3b341">Nota: a schermo hai ' + spente + ' via' + (spente > 1 ? ' spente' : ' spenta') +
       ' — il report le ignora e le usa comunque accese.</b>' : '') + '</div>';
 
@@ -421,10 +451,12 @@ function renderReportGiornaliero() {
       '<div style="' + css.head + '">' +
         '<b style="font-size:16px">Report giornaliero · ' + forexData.date + ' 00:00 GMT</b>' +
         '<span style="font-size:12px;opacity:.8">' + tradabili.length + ' da tradare (' + nL + ' long, ' + nS +
-        ' short) · ' + esclusi.length + ' da non tradare · verdetto S9 (Plum Blossom + Liu Yao)</span>' +
+        ' short) · ' + esclusi.length + ' da non tradare · politica C→S2' +
+        (riservaAttiva ? ' · <b style="color:#e3b341">RISERVA S2 attiva (nessuna convalida oggi)</b>' : ' · convalide') + '</span>' +
       '</div>' + notaCanonica +
       '<div style="' + css.sect + '">' +
-        '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">DA TRADARE</div>' + righeOk +
+        '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">DA TRADARE' +
+        (riservaAttiva ? ' · RISERVA S2 (PB dove il LY tace)' : ' · CONVALIDE') + '</div>' + righeOk +
       '</div>' +
       '<div style="' + css.sect + ';background:rgba(248,81,73,.05);border-top:1px solid rgba(255,255,255,.10)">' +
         '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">DA NON TRADARE</div>' + righeNo +
