@@ -772,6 +772,53 @@
   var STAGE_SCORE = { '旺':2, '相':1, '休':0, '囚':-1, '死':-2 };
   var STAGE_EN = { '旺':'prosperous', '相':'growing', '休':'resting', '囚':'imprisoned', '死':'dead' };
   var EARTH_MONTHS = ['辰','戌','丑','未'];
+
+  // ==========================================================================================
+  // I DODICI STADI (十二長生) COME PESO DELLA FORZA — Edu, 31/08/2026.
+  // Sostituisce il peso piatto (旺+2/相+1/休0/囚−1/死−2) nel modello di forza. Il massimo della
+  // forza sta agli stadi 4 (臨官 ufficio) e 5 (帝旺 apice). Lo stadio 6 (衰 declino) resta ALTO
+  // (+2): "il Qi e' ancora forte il pomeriggio" — il declino non e' debolezza.
+  // Stadi 1-6 tempestivi, 7-12 intempestivi.
+  // TERRA (dettata a parte, non segue i dodici stadi): mese 未 +3 (apice), altri mesi di Terra
+  // 辰戌丑 +2, estate 巳午 +2.5, altrove −1.5.
+  // METALLO: i dodici stadi si applicano come sono — nasce in 巳 (+1.5), bagno in 午 (+0.5),
+  // tomba in 丑 (−2) — anche dove contraddicono il ciclo stagionale a cinque fasi.
+  // FORZA12=off riporta al peso piatto (audit).
+  // ==========================================================================================
+  var STAGE12_CN = ['長生','沐浴','冠帶','臨官','帝旺','衰','病','死','墓','絕','胎','養'];
+  var STAGE12_IT = ['nascita','bagno','veste','ufficio','apice','declino','malattia','morte','tomba','recisione','feto','nutrimento'];
+  var PESO12     = [   1.5,    0.5,    1.5,    2.5,     3,     2,     -1,    -2,    -2,   -2.5,   -1,   -0.5];
+  var NASC12 = { 'Wood':'亥', 'Fire':'寅', 'Metal':'巳', 'Water':'申' };
+  var B12 = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+  function stadio12(el, monthBranch){
+    if (el === 'Earth') return null;
+    var a = B12.indexOf(monthBranch), b = B12.indexOf(NASC12[el]);
+    if (a < 0 || b < 0) return null;
+    return ((a - b) % 12 + 12) % 12 + 1;                       // 1..12
+  }
+  function peso12(el, monthBranch){
+    if (el === 'Earth') {
+      if (monthBranch === '未') return 3;                       // 未: apice della Terra
+      if (EARTH_MONTHS.indexOf(monthBranch) >= 0) return 2;     // 辰戌丑
+      if (monthBranch === '巳' || monthBranch === '午') return 2.5;
+      return -1.5;
+    }
+    var st = stadio12(el, monthBranch);
+    return st ? PESO12[st - 1] : 0;
+  }
+  function stadio12Nome(el, monthBranch){
+    if (el === 'Earth') {
+      if (monthBranch === '未') return 'Earth at its peak (未)';
+      if (EARTH_MONTHS.indexOf(monthBranch) >= 0) return 'Earth month';
+      if (monthBranch === '巳' || monthBranch === '午') return 'Earth vibrant in summer';
+      return 'Earth out of season';
+    }
+    var st = stadio12(el, monthBranch);
+    return st ? (STAGE12_CN[st-1] + ' ' + STAGE12_IT[st-1] + ' (' + st + ')') : '';
+  }
+  function forza12On(){
+    return !(typeof process!=='undefined' && process.env && process.env.FORZA12==='off');
+  }
   function stadioMese(el, monthBranch){
     var s1 = stagione(el, WX[monthBranch]), s2 = stagione(el, SEASON[monthBranch]);
     if (el === 'Earth' && EARTH_MONTHS.indexOf(monthBranch) >= 0) return '旺';
@@ -791,8 +838,14 @@
     var radEl = {}; raduni.forEach(function(h){ radEl[h.el] = h; });
 
     function baseEl(el, isFocus, ramo){
-      var st = stadioMese(el, Mo), s = STAGE_SCORE[st] || 0, det = [];
-      det.push('month ' + STAGE_EN[st] + ' ' + (s>=0?'+':'') + s);
+      var st = stadioMese(el, Mo), s, det = [];
+      if (forza12On()) {
+        s = peso12(el, Mo);
+        det.push('month ' + stadio12Nome(el, Mo) + ' ' + (s>=0?'+':'') + s);
+      } else {
+        s = STAGE_SCORE[st] || 0;
+        det.push('month ' + STAGE_EN[st] + ' ' + (s>=0?'+':'') + s);
+      }
       if (isFocus) {
         var dEl = WX[D];
         if (dEl === el) { s += 1.5; det.push('day same +1.5'); }
@@ -810,7 +863,10 @@
       if (radEl[el]) { s += 2; det.push('gathering ' + radEl[el].r.join('') + ' +2'); }
       return { s: s, det: det, stadio: st };
     }
-    var timelyEl = function(el){ var st = stadioMese(el, Mo); return st==='旺' || st==='相'; };
+    var timelyEl = function(el){
+      if (forza12On()) return peso12(el, Mo) > 0;              // stadi 1-6 tempestivi, 7-12 no
+      var st = stadioMese(el, Mo); return st==='旺' || st==='相';
+    };
 
     var out = R.linee.map(function(l){
       var isFocus = (focusPos == null) ? true : (l.pos === focusPos);
@@ -1059,40 +1115,6 @@
       return dir;
     }});
 
-  // §113 — IL MESE CHE SCORRE INTERO SULLA BESTIA
-  LY_VIE.push({ id:'R53_113', sezione:'§113', coda:true, cablata:'2026-08-28',
-    nome:'The month pillar flows whole into a line: absorbed and passed to the hidden spirit → that seat wins',
-    dottrina:'Edu (28/08/2026, guida USDJPY 23/03/2023 seme 131; certificata da Edu). Quando il pilastro del MESE e\' di un solo elemento (stelo e ramo dello stesso elemento, es. 乙卯 Legno) e in carta c\'e\' una linea la cui BESTIA e\' di quell\'elemento, il mese arriva su quella linea COMPLETO di stelo e ramo: ASSORBE l\'elemento della linea (la linea genera il mese) e lo DISTRIBUISCE al 伏神 nascosto sotto di essa (il mese genera il nascosto, che non dev\'essere vuoto). Il flusso non e\' ostacolato ed e\' in piena stagione: quella sede VINCE. Sulla guida: mese 乙卯 sul Drago Verde di L3, assorbe l\'Acqua di 亥 e nutre la W 午 nascosta -> vince la sede bassa; il movimento della mobile L4 era solo apparente (G untimely col Legno in stagione, l\'ora 丙戌 dirotta l\'arrivo). Misura al cablaggio: 3/3 · +143 pip (2 gia\' vinte da §52 e §50g con lo stesso verdetto: sposta 1 carta, +34). REGOLA DI CODA, congelata alla nascita. MESEPIENO=off per disattivarla.',
-    test: function (R, ctx, state) {
-      if (typeof process!=='undefined' && process.env && process.env.MESEPIENO==='off') return null;
-      if (!R.monthBranch || !R.yearBranch || !ctx || !ctx.date) return null;
-      var ST113=['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
-      var SE113={'甲':'Wood','乙':'Wood','丙':'Fire','丁':'Fire','戊':'Earth','己':'Earth','庚':'Metal','辛':'Metal','壬':'Water','癸':'Water'};
-      var BR113=['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
-      var BRm113=['寅','卯','辰','巳','午','未','申','酉','戌','亥','子','丑'];
-      var PRIMO113={'甲':'丙','己':'丙','乙':'戊','庚':'戊','丙':'庚','辛':'庚','丁':'壬','壬':'壬','戊':'甲','癸':'甲'};
-      // steli SEMPRE derivati dai rami del motore: anno dal ramo d'anno, mese con i Cinque Tigri (五虎遁)
-      var y=parseInt(String(ctx.date).split('-')[0],10); if (!y) return null;
-      var annoS=null, Y2=[y,y-1];
-      for (var yi=0; yi<2; yi++) if (BR113[((Y2[yi]-4)%12+12)%12]===R.yearBranch) { annoS=ST113[((Y2[yi]-4)%10+10)%10]; break; }
-      if (!annoS) return null;
-      var mi=BRm113.indexOf(R.monthBranch); if (mi<0) return null;
-      var meseS=ST113[(ST113.indexOf(PRIMO113[annoS])+mi)%10];
-      var mEl=WX[R.monthBranch];
-      if (SE113[meseS]!==mEl) return null;                     // pilastro intero: un solo elemento
-      var BEL113={'青龍':'Wood','朱雀':'Fire','勾陳':'Earth','螣蛇':'Earth','白虎':'Metal','玄武':'Water'};
-      for (var i=0;i<R.linee.length;i++){ var L=R.linee[i];
-        if (!L.fushen || !L.bestia) continue;
-        if (BEL113[L.bestia.cn]!==mEl) continue;               // la bestia della linea e' dell'elemento del mese
-        if (GEN[L.el]!==mEl) continue;                         // la linea genera il mese: il mese la assorbe
-        if (GEN[mEl]!==L.fushen.el) continue;                  // e distribuisce al nascosto sotto
-        if (R.vuoti && R.vuoti.indexOf(L.fushen.b)>=0) continue; // il nascosto non dev'essere vuoto
-        var sede = L.pos<=3?'SHORT':'LONG';
-        state.why='The month pillar <b>'+meseS+R.monthBranch+'</b> is one element and flows WHOLE into L'+L.pos+' on its beast '+L.bestia.cn+': it absorbs '+L.ramo+' and feeds the hidden '+L.fushen.par+' '+L.fushen.b+' beneath — unobstructed, in season: that seat wins → '+sede+'.';
-        return sede;
-      }
-      return null;
-    }});
 
 
   LY_VIE.push({ id:'R41_101', sezione:'§101', nome:'Blocked receiving mobile: rooted draining beast on the mobile → opposite seat',
@@ -2760,5 +2782,5 @@
            generaleDelMese: generaleDelMese, dingSpirit: dingSpirit,
            tiande: tiande, zhide: zhide, STELO_SPIRITI: STELO_SPIRITI,
            EL_EN: EL_EN, STATO_EN: STATO_EN, contestoGiorno: contestoGiorno, wBless: wBless,
-           forzaModello: forzaModello, stadioMese: stadioMese, STAGE_EN: STAGE_EN };
+           forzaModello: forzaModello, stadioMese: stadioMese, STAGE_EN: STAGE_EN, peso12: peso12, stadio12: stadio12, stadio12Nome: stadio12Nome };
 }));
