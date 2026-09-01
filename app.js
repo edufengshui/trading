@@ -123,9 +123,114 @@ function render(pillars, c) {
     ', arrives at earth ' + c.generals.earthPalace + ', generals run ' + c.generals.direction +
     '. 驛馬 Post-Horse ' + c.postHorse + '.';
 
+  renderDuello(c);
+
   ['pillars', 'three', 'methodWrap', 'lessons', 'grid'].forEach(function (id) {
     var n = $(id); n.classList.remove('fade'); void n.offsetWidth; n.classList.add('fade');
   });
+}
+
+/* ============================================================================
+ * DUELLO HOST/GUEST — lettura del DLR dettata da Edu il 01/09/2026 (S33).
+ * Host = stelo del giorno nel suo palazzo (癸→丑, 庚→申, 辛→戌): per EURUSD è EUR.
+ * Guest = ramo del giorno: per EURUSD è USD.
+ * Ogni lato si legge sulla terna SEDE · CAVALIERE · ARRIVO (1ª-2ª lezione per lo
+ * host, 3ª-4ª per il guest). Il pannello MOSTRA la lettura, non decide il trade:
+ * nessuna di queste regole è nel segnale, sono tutte in osservazione.
+ * ========================================================================== */
+function renderDuello(c) {
+  var box = $('duello'); if (!box) return;
+  var WXB = { '子':'Water','丑':'Earth','寅':'Wood','卯':'Wood','辰':'Earth','巳':'Fire',
+              '午':'Fire','未':'Earth','申':'Metal','酉':'Metal','戌':'Earth','亥':'Water' };
+  var GENN = { Wood:'Fire', Fire:'Earth', Earth:'Metal', Metal:'Water', Water:'Wood' };
+  var CTRLL = { Wood:'Earth', Earth:'Water', Water:'Fire', Fire:'Metal', Metal:'Wood' };
+  var STEMEL = { '甲':'Wood','乙':'Wood','丙':'Fire','丁':'Fire','戊':'Earth','己':'Earth',
+                 '庚':'Metal','辛':'Metal','壬':'Water','癸':'Water' };
+  var TOMBA = { Wood:'未', Fire:'戌', Metal:'丑', Water:'辰' };
+  var LU = { '甲':'寅','乙':'卯','丙':'巳','戊':'巳','丁':'午','己':'午','庚':'申','辛':'酉','壬':'亥','癸':'子' };
+  var TRI = { '申子辰':'Water', '亥卯未':'Wood', '寅午戌':'Fire', '巳酉丑':'Metal' };
+  var DIR = { '寅卯辰':'Wood', '巳午未':'Fire', '申酉戌':'Metal', '亥子丑':'Water' };
+  var IT = { Wood:'Legno', Fire:'Fuoco', Earth:'Terra', Metal:'Metallo', Water:'Acqua' };
+  var BR = '子丑寅卯辰巳午未申酉戌亥';
+  var L = c.fourLessons; if (!L || L.length < 4) { box.innerHTML = ''; return; }
+  var vuoti = c.hourVoid || [];
+  var vuota = function (b) { return vuoti.indexOf(b) >= 0; };
+
+  function figura(rami) {
+    var out = [];
+    [[TRI, '三合 trigono'], [DIR, '方合 direzionale']].forEach(function (par) {
+      for (var t in par[0]) {
+        var dentro = 0, pieni = 0;
+        for (var i = 0; i < 3; i++) {
+          if (rami.indexOf(t.charAt(i)) >= 0) { dentro++; if (!vuota(t.charAt(i))) pieni++; }
+        }
+        if (dentro >= 2) out.push({ fig: t, el: par[0][t], grado: (dentro === 3 && pieni === 3) ? 3 : 2, tipo: par[1] });
+      }
+    });
+    out.sort(function (a, b) { return b.grado - a.grado; });
+    return out[0] || null;
+  }
+  function moto(cav, arr) {
+    if (WXB[cav] !== WXB[arr]) return null;
+    var d = (BR.indexOf(arr) - BR.indexOf(cav) + 12) % 12, p = (WXB[cav] === 'Earth') ? 3 : 1;
+    return d === p ? 'avanza' : (d === 12 - p ? 'retrocede' : null);
+  }
+  function lato(nome, sede, cav, arr) {
+    var note = [];
+    if (vuota(sede)) note.push('sede vuota');
+    if (cav.isVoid) note.push('cavaliere vuoto');
+    else {
+      if (GENN[WXB[cav.branch]] === WXB[arr.branch] && arr.relation.cn === '妻財') note.push('genera Ricchezza');
+      if (cav.branch === LU[c.dayStem]) note.push('祿 Lu del giorno in sella');
+    }
+    var f = figura([sede, cav.branch, arr.branch]);
+    if (f) note.push(f.tipo + ' ' + f.fig + ' ' + IT[f.el] + (f.grado === 3 ? ' COMPLETO' : ' incompleto'));
+    var m = moto(cav.branch, arr.branch);
+    if (m) {
+      var dove = [];
+      if (arr.branch === c.monthGeneral.branch) dove.push('sul 月將');
+      if (arr.branch === c.postHorse) dove.push('sul 驛馬 Cavallo');
+      note.push('il ' + cav.relation.cn + ' ' + m + (dove.length ? ' ' + dove.join(' e ') : ''));
+    }
+    return { nome: nome, sede: sede, cav: cav, arr: arr, fig: f, note: note };
+  }
+  var H = lato('HOST · stelo del giorno ' + c.dayStem, L[0].bottom, L[0].top, L[1].top);
+  var G = lato('GUEST · ramo del giorno ' + c.dayBranch, L[2].bottom, L[2].top, L[3].top);
+
+  var verdetto = '—', perche = 'nessuna figura decide';
+  if (H.fig && G.fig && H.fig.grado === 3 && G.fig.grado === 3) {
+    if (CTRLL[H.fig.el] === G.fig.el) { verdetto = 'HOST'; perche = IT[H.fig.el] + ' controlla ' + IT[G.fig.el]; }
+    else if (CTRLL[G.fig.el] === H.fig.el) { verdetto = 'GUEST'; perche = IT[G.fig.el] + ' controlla ' + IT[H.fig.el]; }
+  } else if (H.fig && H.fig.grado === 3 && (!G.fig || G.fig.grado < 3)) { verdetto = 'HOST'; perche = 'figura completa contro incompleta'; }
+  else if (G.fig && G.fig.grado === 3 && (!H.fig || H.fig.grado < 3)) { verdetto = 'GUEST'; perche = 'figura completa contro incompleta'; }
+
+  // ora e giorno: il carattere dello stelo dell'ora e la sua tomba nel ramo del giorno
+  var oraRiga = '';
+  if (c.hourStem) {
+    var eO = STEMEL[c.hourStem], eD = STEMEL[c.dayStem], ch;
+    if (eD === eO) ch = 'B Fratelli';
+    else if (GENN[eD] === eO) ch = 'C Figli';
+    else if (GENN[eO] === eD) ch = 'P Genitori';
+    else if (CTRLL[eD] === eO) ch = 'W Ricchezza';
+    else ch = 'G Ufficiale';
+    oraRiga = 'ora ' + c.hourStem + ' = ' + ch + ' per lo host' +
+      (TOMBA[eO] === c.dayBranch ? ' · va in TOMBA 墓 nel ramo del guest' : '');
+  }
+  var cel = 'padding:6px 8px;vertical-align:top;font-size:13px;line-height:1.45';
+  box.innerHTML =
+    '<div style="margin-top:14px;border:1px solid rgba(128,128,128,.35);border-radius:8px;overflow:hidden">' +
+    '<div style="padding:6px 8px;font-weight:600;background:rgba(128,128,128,.12);font-size:13px">' +
+      'Duello host/guest · lettura in osservazione (non entra nel segnale)</div>' +
+    '<table style="width:100%;border-collapse:collapse">' +
+    [H, G].map(function (S) {
+      return '<tr><td style="' + cel + ';width:38%"><b>' + S.nome + '</b><br>' +
+        S.sede + ' → ' + S.cav.branch + ' → ' + S.arr.branch + '</td>' +
+        '<td style="' + cel + '">' + (S.note.length ? S.note.join('<br>') : '—') + '</td></tr>';
+    }).join('') +
+    '<tr><td style="' + cel + '"><b>Verdetto delle figure</b></td><td style="' + cel + '">' +
+      (verdetto === '—' ? '—' : 'vince ' + verdetto + ' (' + perche + ')') +
+      (oraRiga ? '<br>' + oraRiga : '') + '</td></tr>' +
+    '</table></div>';
 }
 
 function centerCell(c) {
