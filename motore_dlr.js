@@ -508,11 +508,70 @@ function via11_gVuotoSulPrimoMessaggio(c) {
             ' ma e\' vuoto (旬空): il pericolo che apre il movimento non c\'e\', lo host sopravvive' };
 }
 
+// ============================================================================
+//  VIA 12 · O SOPRA LO STELO, HOST SEDUTO SUL VUOTO  —  S36, 03/09/2026
+// ============================================================================
+// Carta guida USDJPY 01/12/2022 s137 (giorno 戊子, ora 辰, generale 寅, vuoti 午未):
+// R1 卯 e' O per 戊; il palazzo dello host 巳, portato sul piatto del cielo, siede sopra 未
+// di terra, che e' vuoto. L'O sopra lo stelo preme e sotto non c'e' terra per reggere:
+// lo host perde -> SHORT. Dettata da Edu (S36).
+// Da soli non reggono: O su R1 53,0% su 279 · host sul vuoto 52,7% su 427. Insieme:
+//   n 29   75,9% SHORT  z 2,79  +1.036 pip   vec 63,6 / rec 83,3   (tutte le lette, soglia 20)
+//   sulle mute: 13 carte 76,9% (vec 50,0 su 4 / rec 88,9). Cablata in CODA: parla solo dove tutto il resto tace.
+// L'O vuoto su R1 non agisce (va LONG al 63%): qui si chiede l'O NON vuoto.
+const RAMI12 = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+function via12_oSoproLoSteloHostSulVuoto(c) {
+  if (!c.R1 || !c.palazzoHost || !c.generaleMese || !c.oraRamo) return null;
+  if (parentela(c.steloGiorno, c.R1) !== 'O') return null;
+  const V = c.vuoti || [];
+  if (V.indexOf(c.R1) >= 0) return null;                               // O vuoto: non preme
+  const delta = ((RAMI12.indexOf(c.generaleMese) - RAMI12.indexOf(c.oraRamo)) % 12 + 12) % 12;
+  const sede = RAMI12[((RAMI12.indexOf(c.palazzoHost) - delta) % 12 + 12) % 12];   // terra sotto il palazzo (in cielo)
+  if (V.indexOf(sede) < 0) return null;                                // la terra sotto lo host non e' vuota
+  return { dir: 'SHORT', via: 'O sopra lo stelo, host seduto sul vuoto',
+    perche: 'R1 ' + c.R1 + ' e\' O per lo stelo del giorno ' + c.steloGiorno + ' e preme sullo host; il palazzo ' +
+            c.palazzoHost + ' in cielo siede sopra ' + sede + ' di terra, che e\' vuoto (旬空): sotto non c\'e\' terra, lo host perde' };
+}
+
+// ============================================================================
+//  VIA 13 · O SOPRA LO STELO CON 勾陳 (Gancio)  —  S36, 03/09/2026
+// ============================================================================
+// Prova degli spiriti chiesta da Edu sulla carta USDJPY 28/03/2022 s122 (R1 巳 O con 朱雀).
+// Il 朱雀 sull'O non decide (41 carte 58,5% LONG, vec 68 / rec 47: si ribalta).
+// Il 勾陳 sull'O e' netto: l'O sopra lo stelo con il Gancio addosso fa perdere lo host -> SHORT.
+//   n 63   69,8% SHORT  z 3,15  +1.168 pip   vec 70,4 / rec 68,6   (tutte le lette, soglia 20)
+//   sulle mute: 37 carte 64,9% (vec 66,7 / rec 61,1). O vuoto col Gancio: 9 carte, 7 SHORT (vale anche vuoto).
+// Integrata su regola di Edu (S35): un fenomeno netto si mette nel motore e si dice. In CODA.
+function via13_oConGancio(c) {
+  if (!c.R1 || !c.spiritoR1) return null;
+  if (parentela(c.steloGiorno, c.R1) !== 'O') return null;
+  if (c.spiritoR1 !== '勾陳') return null;
+  return { dir: 'SHORT', via: 'O sopra lo stelo con 勾陳',
+    perche: 'R1 ' + c.R1 + ' e\' O per lo stelo del giorno ' + c.steloGiorno + ' e porta il 勾陳 (Gancio): l\'O con il Gancio addosso fa perdere lo host' };
+}
+
+// ============================================================================
+//  VIA 14 · B SOPRA LO STELO CON 青龍 (Drago Azzurro)  —  S36, 03/09/2026
+// ============================================================================
+// Prova degli spiriti su tutte le parentele di R1 e di M1 (SPIRITI=R1 / SPIRITI=M1). Unica altra
+// casella che regge nei due periodi: il B sopra lo stelo con il Drago Azzurro addosso -> LONG.
+//   n 32   75,0% LONG  z 2,83  +899 pip   vec 81,8 / rec 68,4   (tutte le lette, soglia 20)
+//   sulle mute: 13 carte 76,9% (vec 80,0 / rec 75,0). In CODA.
+// Scartate: W con 玄武 -> LONG 48 carte 64,6% ma tutte gia' lette (in coda non aggiunge nulla);
+// W con 青龍 -> SHORT 38 carte 68,4% ma vec 50,0 / rec 79,2 (non regge); P con 白虎 -> LONG 65 · 61,5% z 1,86 (sotto soglia).
+function via14_bConDragoAzzurro(c) {
+  if (!c.R1 || !c.spiritoR1) return null;
+  if (parentela(c.steloGiorno, c.R1) !== 'B') return null;
+  if (c.spiritoR1 !== '青龍') return null;
+  return { dir: 'LONG', via: 'B sopra lo stelo con 青龍',
+    perche: 'R1 ' + c.R1 + ' e\' B per lo stelo del giorno ' + c.steloGiorno + ' e porta il 青龍 (Drago Azzurro): il B col Drago addosso non contende, lo host vince' };
+}
+
 // La via del gruppo completo sta in TESTA: legge il movimento intero, non una singola casella,
 // e quando parla comanda su tutte le letture di casella.
 // La via 6 sta in FONDO: condizione ultima, parla solo quando tutto il resto ha taciuto.
 // La via 7 legge ancora una casella (R1/R2): sta dopo la 5 e prima della condizione ultima.
-const CATENA = [ via0_gruppoCompletoFantasma ].concat(VIE, [ via5_R2prendeIlPostoDiR1, via7_fratelloLegato, via6_ricchezzaSulPrimoMessaggio, via8_figlioVuotoRicchezzaInFondo, via9_pDalLatoDelloStelo, via10_oDalLatoDelloSteloNonNutrito, via11_gVuotoSulPrimoMessaggio ]);
+const CATENA = [ via0_gruppoCompletoFantasma ].concat(VIE, [ via5_R2prendeIlPostoDiR1, via7_fratelloLegato, via6_ricchezzaSulPrimoMessaggio, via8_figlioVuotoRicchezzaInFondo, via9_pDalLatoDelloStelo, via10_oDalLatoDelloSteloNonNutrito, via11_gVuotoSulPrimoMessaggio, via12_oSoproLoSteloHostSulVuoto, via13_oConGancio, via14_bConDragoAzzurro ]);
 
 // ============================================================================
 //  LETTURA

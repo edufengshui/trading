@@ -1,3 +1,30 @@
+/* =====================================================================================
+ *  REGOLA SOPRA LE REGOLE — GERARCHIA DI LETTURA DEL LIU YAO (Edu, 03/09/2026, S36)
+ *  "Prima l'azione della mobile, poi il carattere, in fondo il duello." MAI PIU' DIMENTICARE.
+ *
+ *   1. AZIONE DELLA MOBILE   movimento vero o nullo, arrivo nel vuoto, 回頭剋, ritiro/avanzata,
+ *                            penalita' del Tai Sui, clash/combinazione del giorno sulla mobile.
+ *                            E' la mobile che agisce: si legge PRIMA di tutto.
+ *   2. CARATTERE DI CHI AGISCE   G e W reggono e fanno VINCERE la propria sede.
+ *                                B e P fanno PERDERE la propria squadra. C tace.
+ *                                (Lo Yong Shen cambia la lettura della stessa azione.)
+ *   3. DUELLO SHI/YING           SOLO IN FONDO (§132), solo se tutto il resto tace.
+ *                                Mai dentro una via, mai prima del carattere della mobile.
+ *
+ *  Dentro OGNI via l'ordine dei controlli segue questa gerarchia. Vietato:
+ *   - uscire sul carattere (G/W) prima di aver guardato l'azione (es. la penalita' del Tai Sui);
+ *   - guardare il vuoto o il controllo fra Shi e Ying prima del carattere della mobile;
+ *   - zittire una via con un "tappo statistico" perche' perde in una casella: la lettura
+ *     giusta la da' Edu; una carta che perde resta perdente finche' lui non la legge.
+ *  Dopo OGNI modifica: rileggere tutte le carte guida (carte_lette.json) — nessuna deve cambiare verdetto.
+ *  Errori del S36 nati dal non averla scritta qui: §111 (G/W prima della penalita'), §52 (tappo sulla B
+ *  senza lettura), §114 (duello prima del carattere; via in coda invece che prima del raduno).
+ *  Il Liu Yao vive QUI e solo qui: il backtest (pb_stress.js) chiama questo termometro (LYUNICO); lyDir e' audit.
+ *  L'ordine delle vie l'ha costruito Edu carta per carta: NON si riordina per categorie (provato S36: -6.700 pip).
+ *  Una via nuova entra nell'ordine dove la sua carta guida la mette, e dentro di se' segue la gerarchia 1-2-3.
+ *  Controllo automatico al caricamento: GERARCHIA_CHECK (in fondo al modulo) verifica che la §132 sia
+ *  l'ULTIMA via della catena e che nessuna via del duello stia prima dell'ultima via d'azione.
+ * ===================================================================================== */
 /* liuyao.js — 六爻 (Liu Yao) sulla stessa carta del Plum Blossom, per la PWA di trading.
  *
  * Il Liu Yao NON produce un verdetto autonomo (le versioni autonome LIUYAO=v1..v4 sono
@@ -969,6 +996,46 @@
   var LY_VIE = [];
 
   // §130 — I DUE PILASTRI INTERI SUL NASCOSTO: EMERGE E NIENTE COMPETE (Edu, 31/08/2026)
+  // §137 — IL POSSESSO DI SHI O YING (Edu, 04/09/2026) — PRIMA VIA DELLA CATENA, PRECEDENZA SU TUTTO, MOBILE INCLUSA
+  LY_VIE.push({ id:'R75_137', sezione:'§137', cablata:'2026-09-04',
+    nome:'Possession of the Shi or the Ying by the date beasts: the seats duel with their new elements, the nourished one wins',
+    dottrina:'Edu (04/09/2026), testo suo: "1. Se due bestie arrivano su una linea qualsiasi prendono possesso. 2. Se la bestia del mese arriva su una linea qualsiasi prende possesso. 3. Se un\'altra bestia arriva su una linea lavora con la linea. 4. Se quanto sopra capita con S e Y questo ha la precedenza su ogni altra cosa inclusa linea mobile." Possesso = la linea diventa i rami dei pilastri caduti (la loro bestia siede sulla linea). Precisazione di Edu (USDJPY 06/05/2026): il mese si impone solo se ha la stessa polarita\' della maggioranza degli altri steli; se e\' l\'unico yin o yang non prende possesso ma lavora soltanto. Dopo il possesso Shi e Ying si confrontano coi nuovi elementi: CHI VIENE GENERATO VINCE (EURJPY 13/06/2023: Shi posseduto dal Legno 寅卯, Ying posseduta dal mese 午 Fuoco, lo Shi genera la Ying -> LONG +120). Esclusioni date da Edu: Shi o Ying vuoti; linea nascosta sotto Shi o Ying; rami dei pilastri che clashano fra loro; penalita\' (刑) su Shi o Ying. Senza generazione: tace (il controllo, provato, peggiora: non si usa). La bestia singola che lavora con la linea NON da\' verso da sola (196 carte 46,9%) e non entra qui. Misura (possesso.js POLARITA=maggioranza, 138 carte): la Ying genera lo Shi -> vince lo Shi 55 carte 65,5% (vec 66,7 / rec 64,7); lo Shi genera la Ying -> vince la Ying 83 carte 54,2%; totale 58,7% (vec 58,5 / rec 58,8). Sostituisce le §135/§136 che contenevano aggiunte mie. VIA137=off per disattivarla.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIA137==='off') return null;
+      var ys=ctx&&ctx.yearStem, ms=ctx&&ctx.monthStem, hs=ctx&&ctx.hourStem, ds=R.dayStem; if (!ys||!ms||!ds) return null;
+      var yb=(ctx&&ctx.yearBranch)||R.yearBranch, mb=R.monthBranch, db=R.dayBranch, hb=R.oraBranch||(ctx&&ctx.oraBranch);
+      var pil=[[ys,yb,'year'],[ms,mb,'month'],[ds,db,'day']]; if (hs&&hb) pil.push([hs,hb,'hour']);
+      var BDI={'甲':'青龍','乙':'青龍','丙':'朱雀','丁':'朱雀','戊':'勾陳','己':'螣蛇','庚':'白虎','辛':'白虎','壬':'玄武','癸':'玄武'};
+      var CL7={'子':'午','午':'子','丑':'未','未':'丑','寅':'申','申':'寅','卯':'酉','酉':'卯','辰':'戌','戌':'辰','巳':'亥','亥':'巳'};
+      var XG7={'寅':'巳','巳':'申','申':'寅','丑':'戌','戌':'未','未':'丑','子':'卯','卯':'子','辰':'辰','午':'午','酉':'酉','亥':'亥'};
+      var YANG=['甲','丙','戊','庚','壬']; var pol=function(st){ return YANG.indexOf(st)>=0?'yang':'yin'; };
+      var S=R.linee[R.shi-1], Y=R.linee[R.ying-1]; if (!S||!Y) return null;
+      if ((S.vuoto&&!S.isMobile)||(Y.vuoto&&!Y.isMobile)) return null;      // Shi o Ying vuoti
+      if (S.fushen||Y.fushen) return null;                                   // nascosto sotto Shi o Ying
+      var i, j;
+      var altriPol=[]; for (i=0;i<pil.length;i++) if (pil[i][2]!=='month') altriPol.push(pol(pil[i][0]));
+      var meseOk = altriPol.filter(function(x){ return x===pol(ms); }).length>=2;      // polarita' del mese
+      function stato(line){ var land=[]; for (i=0;i<pil.length;i++) if (line.bestia && line.bestia.cn===BDI[pil[i][0]] && (R.vuoti||[]).indexOf(pil[i][1])<0) land.push(pil[i]);
+        if (land.length>=2) return {poss:true, els:land.map(function(p){return WX[p[1]];}), rami:land.map(function(p){return p[1];}), det:'possessed by '+land.map(function(p){return p[2]+' '+p[0]+p[1];}).join('+')};
+        var mese=null; for (i=0;i<land.length;i++) if (land[i][2]==='month') mese=land[i];
+        if (mese && meseOk) return {poss:true, els:[WX[mese[1]]], rami:[mese[1]], det:'possessed by the month '+mese[0]+mese[1]};
+        return {poss:false, els:[line.el], rami:[], det:'keeps '+line.ramo}; }
+      var sS=stato(S), sY=stato(Y); if (!sS.poss && !sY.poss) return null;
+      var tutti=sS.rami.concat(sY.rami);
+      for (i=0;i<tutti.length;i++) for (j=i+1;j<tutti.length;j++) if (CL7[tutti[i]]===tutti[j]) return null;   // rami che clashano fra loro
+      for (i=0;i<tutti.length;i++) if (XG7[tutti[i]]===S.ramo||XG7[tutti[i]]===Y.ramo||XG7[S.ramo]===tutti[i]||XG7[Y.ramo]===tutti[i]) return null;  // penalita'
+      if (XG7[S.ramo]===Y.ramo||XG7[Y.ramo]===S.ramo) return null;
+      var sGenY=0, yGenS=0, a, b;
+      for (a=0;a<sS.els.length;a++) for (b=0;b<sY.els.length;b++){ if (GEN[sS.els[a]]===sY.els[b]) sGenY++; if (GEN[sY.els[b]]===sS.els[a]) yGenS++; }
+      var vinc=null, come=null;
+      if (sGenY && !yGenS) { vinc=Y; come='the Shi generates the Ying: the nourished Ying wins'; }
+      else if (yGenS && !sGenY) { vinc=S; come='the Ying generates the Shi: the nourished Shi wins'; }
+      if (!vinc) return null;
+      var dir = vinc.pos>3 ? 'LONG' : 'SHORT';
+      state.why='Possession: Shi L'+S.pos+' '+S.ramo+' ('+sS.det+'), Ying L'+Y.pos+' '+Y.ramo+' ('+sY.det+') → '+come+' → '+dir+'.';
+      return dir;
+    }});
+
   LY_VIE.push({ id:'R69_130', sezione:'§130', cablata:'2026-08-31',
     nome:'Two whole pillars (month and day) fall on the hidden line: it emerges dominant',
     dottrina:'Edu (31/08/2026, guida EURJPY 11/03/2025, seme 159). Quando il ramo di un 伏神 (nascosto) e\' INSIEME il ramo del MESE e il ramo del GIORNO, e le bestie degli steli di quei due pilastri siedono entrambe sulla sua linea (possibile solo se i due steli condividono la bestia, come 己己 -> 螣蛇), DUE PILASTRI INTERI cadono sul nascosto: emerge e niente nell\'esagramma puo\' competere. Pesato coi 12 stadi (十二長生, massimo agli stadi 4-5): sulla guida il 卯 nascosto e\' all\'apice 帝旺 nel mese 卯 mentre le B di Fuoco sono al bagno 沐浴 — il vecchio peso piatto le faceva sembrare vicine. Il carattere decide per la sede della linea che lo copre: G/W la fanno VINCERE (alto LONG, basso SHORT), P/B la fanno CADERE (sede opposta); C tace in attesa di guida. ECCEZIONE (da §127/§129): ramo autopenalizzante (辰午酉亥) non domina. Sulla guida il P 卯 sotto la Shi L1: sede bassa cade, LONG, esito LONG +177. Perimetro alla nascita: 1 carta su 2788 (unico np2 del mazzo); il gemello a un solo pilastro (USDCAD 26/02/2025) resta muto ed e\' il controesempio che fissa il confine. PRIORITA\' ALTA: la dominanza parla prima delle vie d\'azione (sulla guida batteva la §68). VIA130=off per disattivarla.',
@@ -1101,12 +1168,34 @@
       for (i=0;i<altre.length;i++) if (HE6[arr]===altre[i].ramo || CL111[arr]===altre[i].ramo) return null;   // non libero
       var aEl=WX[arr], pEl=R.palEl;
       var parArr = aEl===pEl?'B': GEN[aEl]===pEl?'P': GEN[pEl]===aEl?'C': CTRL[aEl]===pEl?'G':'W';
+      var XING111={'寅':'巳','巳':'申','申':'寅','丑':'戌','戌':'未','未':'丑','子':'卯','卯':'子','辰':'辰','午':'午','酉':'酉','亥':'亥'};
+      // §111-bis (Edu, 03/09/2026, guida USDJPY 28/03/2022 s122; gemella negativa GBPUSD 05/12/2022 s122):
+      // il Tai Sui arriva CON LE BESTIE su L1 — casa dello stelo del giorno, dove cade l'intera data — e la
+      // PENALIZZA (刑). Se la linea penalizzata su L1 e' TIMELY nel mese, la penalita' MORDE e comanda sul ramo
+      // G/W: la linea penalizzata non fa vincere la sua squadra (L1 e' in basso -> LONG). Se la penalizzata su L1
+      // NON e' timely la penalita' non morde e resta la lettura del ramo G/W: e' il caso della gemella
+      // (GBPUSD: P 巳 su L1 nel mese 亥, l'Acqua uccide il Fuoco -> §111 normale, SHORT, giusta).
+      // Conferma sulla guida: la Ying controlla lo Shi (寅 Legno su 丑 Terra) — conferma, non l'attore.
+      // Perimetro: 3 carte, 3/3 (USDJPY 28/03/2022 +163 · GBPUSD 15/03/2022 +28 · USDCAD 02/01/2024 +78),
+      // periodi 100/100. Penalizzata su L1 non timely: 9 carte 44%. Su altra linea: 10 carte 30%.
+      // Dottrina certificata da Edu. VIA111BIS=off per disattivarla.
+      if (!(typeof process!=='undefined' && process.env && process.env.VIA111BIS==='off')) {
+        var pen1=null;
+        for (i=0;i<altre.length;i++) if (altre[i].pos===1 && XING111[arr]===altre[i].ramo) { pen1=altre[i]; break; }
+        if (pen1) {
+          var mE=WX[R.monthBranch], lE=WX[pen1.ramo];
+          var tim = (lE===mE) || (GEN[mE]===lE);
+          if (tim) {
+            state.why='The free Tai Sui <b>'+arr+'</b> comes down on L1 — the house of the day stem, where the whole date lands — and PUNISHES (刑) <b>'+pen1.ramo+'</b> ('+pen1.par+', '+(pen1.bestia&&pen1.bestia.cn||'')+'), which is TIMELY in the month '+R.monthBranch+': the punishment bites and takes precedence over the G/W arrival. The punished line cannot make its side win → seat opposite to L1 → LONG.';
+            return 'LONG';
+          }
+        }
+      }
       if (parArr==='G'||parArr==='W') {
         var sede=R.mutante.pos<=3?'SHORT':'LONG';
         state.why='The mobile moves to become a free Tai Sui <b>'+arr+'</b> as a '+parArr+': G and W speak first — it makes its own team win → its seat → '+sede+'.';
         return sede;
       }
-      var XING111={'寅':'巳','巳':'申','申':'寅','丑':'戌','戌':'未','未':'丑','子':'卯','卯':'子','辰':'辰','午':'午','酉':'酉','亥':'亥'};
       var pen=null;
       for (i=0;i<altre.length;i++) if (XING111[arr]===altre[i].ramo) { pen=altre[i]; break; }
       if (!pen) return null;
@@ -1440,6 +1529,9 @@
     test: function (R, ctx, state) {
       var c = _ctx(R);
       if (R.mutante.progressione !== 'retrocedente') return null;
+      // Edu (S36, 03/09/2026, AUDUSD 05/12/2023 s66): la mobile non puo' indietreggiare se NON PARTE.
+      // Movimento nullo (il giorno clasha/combina partenza o arrivo) -> la via del ritiro tace. RETRONULLO=off ripristina.
+      if (R.mutante.movimentoNullo && !(typeof process!=='undefined' && process.env && process.env.RETRONULLO==='off')) return null;
       var mob = R.linee[R.mutante.pos-1], dep = R.mutante.ramoDep;
       var suo = mob.pos<=3 ? 'SHORT' : 'LONG';
       var hitY = CLASH[c.Y]===dep;
@@ -1487,6 +1579,140 @@
       var dir = mob.pos>3 ? 'SHORT' : 'LONG';
       state.why='The mobile <b>'+mob.par+' '+mob.ramo+'</b> at L'+M.pos+' departs but does not arrive (caso -5) and is in the VOID (旬空): the void does not act — who does not win, loses. Its seat FALLS → '+dir+'.';
       return dir;
+    }});
+
+  // POSIZIONE (Edu, S36 03/09/2026, USDCAD 16/03/2020 s137): la §114 e' l'AZIONE della mobile (arrivo nel vuoto:
+  // la mobile resta il carattere di partenza) e parla PRIMA del raduno stagionale R6 e di tutto cio' che segue.
+  // Era in coda: la P con arrivo vuoto veniva letta dal raduno 寅卯辰 invece che come P che fa perdere la sua squadra.
+  // §134 — LA B FERMA NEL RADUNO, DRENATA DAL C CARICO DELL'ANNO (Edu, 03/09/2026 S36, guida EURUSD 04/05/2022 s105)
+  LY_VIE.push({ id:'R72_134', sezione:'§134', cablata:'2026-09-03',
+    nome:'B stopped by a void arrival, in its own gathering, drained by a C charged by the year: its team wins',
+    dottrina:'Edu (03/09/2026, guida EURUSD 04/05/2022 s105, +100 LONG): L6 B 卯 non si muove perche\' l\'arrivo 子 e\' vuoto; con l\'anno 寅 e il mese 辰 forma il raduno di Legno 寅卯辰, che e\' B. La bestia del mese (甲 -> 青龍) arriva su L6 e la bestia dell\'anno (壬 -> 玄武) arriva su L5, il C 巳 Fuoco: il raduno e\' costretto a GENERARE il Fuoco del C. Quando la B e\' DRENATA dal C, la sua squadra passa dal perdere al vincere -> sede della B (alta -> LONG, bassa -> SHORT). Condizioni: mobile B con movimento nullo per arrivo vuoto; la B in un raduno completo (三會 o 三合) dell\'elemento del palazzo, coi membri fra linee, nascosti e rami di data; la bestia dello stelo del MESE sulla mobile; una linea C con la bestia dello stelo dell\'ANNO. Sta PRIMA della §114 (la B drenata non fa piu\' perdere). VIA134=off per disattivarla.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIA134==='off') return null;
+      var M=R.mutante; if (!M || !M.movimentoNullo) return null;
+      var arrVoid = /arrival void/.test(M.motivoNullo||'') || (R.vuoti||[]).indexOf(M.ramoArr)>=0; if (!arrVoid) return null;
+      var mob=R.linee[M.pos-1]; if (!mob || mob.par!=='B') return null;
+      var ys=ctx&&ctx.yearStem, ms=ctx&&ctx.monthStem; if (!ys||!ms) return null;
+      var BDI={'甲':'青龍','乙':'青龍','丙':'朱雀','丁':'朱雀','戊':'勾陳','己':'螣蛇','庚':'白虎','辛':'白虎','壬':'玄武','癸':'玄武'};
+      if (!mob.bestia || mob.bestia.cn!==BDI[ms]) return null;                      // la bestia del mese sulla B
+      var cLine=null, i, l;
+      for (i=0;i<R.linee.length;i++){ l=R.linee[i]; if (l.par==='C' && l.bestia && l.bestia.cn===BDI[ys] && !(l.vuoto&&!l.isMobile)) { cLine=l; break; } }
+      if (!cLine) return null;                                                          // il C con la bestia dell'anno
+      var pool={}; for (i=0;i<R.linee.length;i++){ l=R.linee[i]; if (!(l.vuoto&&!l.isMobile)) pool[l.ramo]=1; var fb=l.fushen&&(l.fushen.ramo||l.fushen.b); if (fb&&(R.vuoti||[]).indexOf(fb)<0) pool[fb]=1; }
+      var rd=[R.dayBranch,R.monthBranch,(ctx&&ctx.yearBranch)||R.yearBranch,R.oraBranch||(ctx&&ctx.oraBranch)];
+      for (i=0;i<rd.length;i++) if (rd[i] && (R.vuoti||[]).indexOf(rd[i])<0) pool[rd[i]]=1;
+      var SETS=[['寅','卯','辰','Wood'],['巳','午','未','Fire'],['申','酉','戌','Metal'],['亥','子','丑','Water'],
+                ['申','子','辰','Water'],['寅','午','戌','Fire'],['巳','酉','丑','Metal'],['亥','卯','未','Wood']];
+      var hit=null;
+      for (i=0;i<SETS.length;i++){ var t=SETS[i]; if (t.indexOf(mob.ramo)>=0 && pool[t[0]]&&pool[t[1]]&&pool[t[2]] && t[3]===R.palEl) { hit=t; break; } }
+      if (!hit) return null;                                                            // la B dentro un raduno del suo elemento
+      if (GEN[hit[3]]!==cLine.el) return null;                                         // il raduno genera il C
+      var dir = mob.pos>3 ? 'LONG' : 'SHORT';
+      state.why='The mobile L'+mob.pos+' <b>B '+mob.ramo+'</b> does not move (void arrival '+M.ramoArr+') and sits in its own gathering <b>'+hit[0]+hit[1]+hit[2]+'</b> ('+hit[3]+'); the month beast '+mob.bestia.cn+' lands on it and the year beast '+cLine.bestia.cn+' lands on the C L'+cLine.pos+' '+cLine.ramo+': the gathering is forced to generate the C, the B is DRAINED and its team wins → '+dir+'.';
+      return dir;
+    }});
+
+  // §114 — L'ARRIVO NEL VUOTO: CHI NON VINCE PERDE (ULTIMA VIA: parla solo dove tutto tace)
+  LY_VIE.push({ id:'R54_114', sezione:'§114', coda:true, cablata:'2026-08-29',
+    nome:'Arrival in the void: whoever does not win, loses (the departing character remains)',
+    dottrina:'Edu (certificata 29/08/2026; meccanica di lettura del 24/08/2026 promossa a via). L\'ARRIVO cade nel VUOTO: il movimento non produce effetto, la mobile NON muta e RESTA il carattere di partenza. G/W reggono e fanno VINCERE la propria sede; B/P fanno PERDERE la propria sede (verso opposto); C tace. Se la mobile e\' Shi o Ying si legge il confronto Shi<->Ying, che fa da override: chi controlla l\'altro vince; senza controllo decide il carattere. Vale anche quando il giorno sospende E l\'arrivo e\' vuoto (arrivo mascherato). PRECEDENZA: se c\'e\' un trigono completo (linee + 伏神 non vuoti + ramo del giorno) comanda quello e la via TACE. Collocata ULTIMA nel termometro, dopo §110: parla solo sul residuo muto, che e\' il perimetro misurato. Misura al cablaggio: 79 carte mute · 64.6% · z 2.59 · +1434 pip · vecchio 76% (34) · recente 59% (41). Certificata dottrinalmente. ARRIVOVUOTO=off per disattivarla.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.ARRIVOVUOTO==='off') return null;
+      var M=R.mutante; if (!M || !M.movimentoNullo) return null;
+      var arrVoid = /arrival void/.test(M.motivoNullo||'') || (R.vuoti||[]).indexOf(M.ramoArr)>=0;
+      if (!arrVoid) return null;
+      var mob=R.linee[M.pos-1]; if(!mob) return null;
+      var i,l;
+      // PRECEDENZA: trigono completo -> comanda lui, la via TACE. Regola dei membri
+      // identica al checklist (certificata sulle falsificanti del 29/08/2026):
+      //  - linee visibili (i vuoti fermi sono esclusi; la mobile conta anche se vuota)
+      //  - tutti i 伏神
+      //  - rami di data NON vuoti (anno, mese, giorno, ora) come terzo membro, se
+      //    almeno due membri stanno su linee o nascosti (Edu 19/08 + EURUSD 01/06/2023)
+      //  - l'ARRIVO RIANIMATO: se la mobile e' L1 il pilastro del giorno (casa su L1)
+      //    le arriva addosso e rianima l'arrivo vuoto (Edu 29/08/2026, USDJPY 23/01/2026)
+      var TRINI=[['申','子','辰'],['寅','午','戌'],['巳','酉','丑'],['亥','卯','未']];
+      var visfus={}, estesi={};
+      for (i=0;i<R.linee.length;i++){ l=R.linee[i];
+        if (!((R.vuoti||[]).indexOf(l.ramo)>=0 && !l.isMobile)) visfus[l.ramo]=1;
+        var fb=l.fushen && (l.fushen.ramo||l.fushen.b);
+        if (fb) visfus[fb]=1; }
+      if (M.pos===1 && M.ramoArr) visfus[M.ramoArr]=1;
+      var _rd114=[R.dayBranch, R.monthBranch, (ctx&&ctx.yearBranch)||R.yearBranch, R.oraBranch||(ctx&&ctx.oraBranch)];
+      for (i=0;i<_rd114.length;i++){ var rb=_rd114[i];
+        if (rb && (R.vuoti||[]).indexOf(rb)<0) estesi[rb]=1; }
+      for (i=0;i<TRINI.length;i++){ var t=TRINI[i];
+        var nVF=(visfus[t[0]]?1:0)+(visfus[t[1]]?1:0)+(visfus[t[2]]?1:0);
+        var full=t.every(function(b){ return visfus[b]||estesi[b]; });
+        // PRECISAZIONE (Edu, S36 03/09/2026, USDCAD 16/03/2020 s137 contro EURJPY 29/04/2024 s169): il trigono
+        // comanda sulla mobile SOLO se la mobile ne fa parte. Se la mobile "sta da sola" (fuori dal trigono),
+        // e' lei l'azione: la §114 parla. GUARDIA114=tutti ripristina la guardia larga.
+        // ...oppure se ne fa parte l'ARRIVO RIANIMATO dal giorno (mobile su L1: USDJPY 23/01/2026, 巳酉丑 col giorno e il mese).
+        var mobDentro = (t.indexOf(mob.ramo)>=0) || (M.pos===1 && M.ramoArr && t.indexOf(M.ramoArr)>=0);
+        if ((nVF===3 || (full && nVF>=2)) && (mobDentro || (typeof process!=='undefined' && process.env && process.env.GUARDIA114==='tutti'))) return null; }
+      var CTRL114={Wood:'Earth',Earth:'Water',Water:'Fire',Fire:'Metal',Metal:'Wood'};
+      var seat = function(p){ return p<=3?'SHORT':'LONG'; };
+      // Shi o Ying VUOTO: il vuoto non agisce e non puo' vincere (Edu 29/08/2026, da
+      // EURUSD 04/05/2022). MA il duello di CONTROLLO Shi<->Ying parla PRIMA del vuoto
+      // (Edu 29/08/2026, da NZDUSD 10/07/2024: lo Shi vuoto che controlla vince comunque).
+      // La mobile non e' mai vuota (動不為空).
+      var _sh114=R.linee[R.shi-1], _yi114=R.linee[R.ying-1];
+      var _shV114=_sh114 && _sh114.vuoto && !_sh114.isMobile;
+      var _yiV114=_yi114 && _yi114.vuoto && !_yi114.isMobile;
+      var car=mob.par, tiene=(car==='G'||car==='W'), cade=(car==='B'||car==='P');
+      var dir=null, why=null;
+      if (mob.isShi || mob.isYing) {
+        // ORDINE (Edu, S36 03/09/2026): il duello Shi/Ying si guarda ALLA FINE (§132), mai qui.
+        // La mobile e' l'azione: il suo carattere decide. G/W regge -> vince la sua sede; B/P fa perdere
+        // la sua squadra -> vince l'altra. C tace e lascia la carta alle vie successive e al duello finale.
+        // (Il controllo/vuoto fra Shi e Ying che stava qui — NZDUSD 10/07/2024, EURUSD 04/05/2022 — vive ora nella §132.)
+        var altro = mob.isShi ? _yi114 : _sh114; if(!altro) return null;
+        if (tiene) { dir=seat(mob.pos);   why=car+' holds → the mobile wins its seat'; }
+        else if (cade)  { dir=seat(altro.pos); why=car+' makes its own team lose → the other side wins'; }
+        else return null;  // C: tace, si va avanti
+        state.why='Arrival <b>'+M.ramoArr+'</b> falls in the VOID: no effect, the mobile ('+(mob.isShi?'Shi':'Ying')+', '+car+') keeps its departing character. Shi↔Ying: '+why+' → '+dir+'.';
+        return dir;
+      }
+      // mobile terza linea — ORDINE (Edu, S36 03/09/2026, EURJPY 07/08/2024 s158): PRIMA il carattere della
+      // mobile (e' lei l'azione: G/W regge, B/P fa perdere la sua squadra), POI il vuoto di Shi/Ying, solo se
+      // la mobile e' C e tace. Prima il vuoto di Shi/Ying scavalcava la P: tre carte lette storte oggi.
+      if (tiene) { dir=seat(mob.pos); why=car+' holds → its seat wins'; }
+      else if (cade) { dir=(seat(mob.pos)==='SHORT'?'LONG':'SHORT'); why=car+' makes its seat lose → opposite'; }
+      else {
+        if (_shV114 && _yiV114) return null;
+        if (_shV114) { state.why='Arrival <b>'+M.ramoArr+'</b> falls in the VOID, the mobile is a C (mute) and the Shi itself is VOID: the void cannot win → the Ying seat wins → '+seat(_yi114.pos)+'.'; return seat(_yi114.pos); }
+        if (_yiV114) { state.why='Arrival <b>'+M.ramoArr+'</b> falls in the VOID, the mobile is a C (mute) and the Ying itself is VOID: the void cannot win → the Shi seat wins → '+seat(_sh114.pos)+'.'; return seat(_sh114.pos); }
+        return null;  // C tace
+      }
+      state.why='Arrival <b>'+M.ramoArr+'</b> falls in the VOID: no effect, the third-line mobile keeps its departing character '+car+': '+why+' → '+dir+'.';
+      return dir;
+    }});
+
+  // POSIZIONE (GERARCHIA_CHECK, S36): la §52 e' l'AZIONE della mobile (回頭剋/autocombinazione): sta PRIMA del raduno R6.
+  LY_VIE.push({ id:'R13_52', sezione:'§52', nome:'Who does not win, loses (failed action)',
+    dottrina:'The mobile\'s action fails — return-control or self-combination: it does not carry its direction, read the opposite. (Arrival clashed by the day removed, §76.)',
+    test: function (R, ctx, state) {
+      var c = _ctx(R);
+      var mob = R.linee[R.mutante.pos-1];
+      var huitou = R.mutante.casoMut===3;
+      var autoc = mob.stato==='autocombinata';
+      // §76 (19/08/2026): il sotto-caso "arrival clashed by the day" e' stato TOLTO (211 carte, 49,8%): il clash del giorno attiva la mobile (§74), non fa fallire l'azione.
+      if (!(huitou || autoc)) return null;
+      // Guardia mobile (Edu, 25/08/2026, audit): §52 sbaglia con mobile B (兄弟). G52B=off ripristina.
+      // §52-bis (Edu, 03/09/2026 S36, guida EURJPY 22/09/2022 s141): la B mobile che si muove per essere
+      // CONTROLLATA INDIETRO (回頭剋) e' il malus ucciso: il danno se ne va, la sua squadra VINCE la propria sede.
+      // Ramo che la guardia G52B aveva zittito senza sostituirlo. VIA52BIS=off per disattivarla.
+      if (huitou && mob.par==='B' && !(typeof process!=='undefined' && process.env && process.env.VIA52BIS==='off')) {
+        var sede52 = mob.pos<=3 ? 'SHORT' : 'LONG';
+        state.why = 'The mobile L'+mob.pos+' <b>B</b> moves to be CONTROLLED BACK (回頭剋: the arrival '+R.mutante.ramoArr+' controls the departure '+R.mutante.ramoDep+'): the malus is killed, the harm leaves and its own team wins its seat → '+sede52+'.';
+        return sede52;
+      }
+      if ((typeof process==='undefined' || !process.env || process.env.G52B!=='off') && mob.par==='B') return null;
+      var suo = mob.pos<=3 ? 'SHORT' : 'LONG';
+      var why = huitou ? 'return-control: the arrival <b>'+R.mutante.ramoArr+'</b> controls the departure '+R.mutante.ramoDep : 'self-combination '+R.mutante.ramoDep+'+'+R.mutante.ramoArr;
+      state.why = 'The action of the mobile L'+mob.pos+' <b>'+mob.par+'</b> fails ('+why+'): it does not carry its direction → opposite of its seat.';
+      return suo==='LONG' ? 'SHORT' : 'LONG';
     }});
 
   LY_VIE.push({ id:'R6', sezione:'—', nome:'Seasonal gathering with the month',
@@ -1579,23 +1805,6 @@
       var vL = tiLinee.filter(function(l){return l.vuoto;}).map(function(l){return 'L'+l.pos+' '+l.ramo;}).join(', ');
       state.why = 'In the Ti (L'+tiRange.join('/')+'): timely full <b>G '+gTiPieno[0].ramo+'</b> but also a <b>void</b> line ('+vL+', void branches '+R.vuoti.join(' ')+') → breach → does NOT follow the trend.';
       return ctx.emaDir==='up' ? 'SHORT' : 'LONG';
-    }});
-
-  LY_VIE.push({ id:'R13_52', sezione:'§52', nome:'Who does not win, loses (failed action)',
-    dottrina:'The mobile\'s action fails — return-control or self-combination: it does not carry its direction, read the opposite. (Arrival clashed by the day removed, §76.)',
-    test: function (R, ctx, state) {
-      var c = _ctx(R);
-      var mob = R.linee[R.mutante.pos-1];
-      var huitou = R.mutante.casoMut===3;
-      var autoc = mob.stato==='autocombinata';
-      // §76 (19/08/2026): il sotto-caso "arrival clashed by the day" e' stato TOLTO (211 carte, 49,8%): il clash del giorno attiva la mobile (§74), non fa fallire l'azione.
-      if (!(huitou || autoc)) return null;
-      // Guardia mobile (Edu, 25/08/2026, audit): §52 sbaglia con mobile B (兄弟). G52B=off ripristina.
-      if ((typeof process==='undefined' || !process.env || process.env.G52B!=='off') && mob.par==='B') return null;
-      var suo = mob.pos<=3 ? 'SHORT' : 'LONG';
-      var why = huitou ? 'return-control: the arrival <b>'+R.mutante.ramoArr+'</b> controls the departure '+R.mutante.ramoDep : 'self-combination '+R.mutante.ramoDep+'+'+R.mutante.ramoArr;
-      state.why = 'The action of the mobile L'+mob.pos+' <b>'+mob.par+'</b> fails ('+why+'): it does not carry its direction → opposite of its seat.';
-      return suo==='LONG' ? 'SHORT' : 'LONG';
     }});
 
   LY_VIE.push({ id:'R56_117', sezione:'§117', coda:true, cablata:'2026-08-28',
@@ -2315,74 +2524,6 @@
       return dir;
     }});
 
-  // §114 — L'ARRIVO NEL VUOTO: CHI NON VINCE PERDE (ULTIMA VIA: parla solo dove tutto tace)
-  LY_VIE.push({ id:'R54_114', sezione:'§114', coda:true, cablata:'2026-08-29',
-    nome:'Arrival in the void: whoever does not win, loses (the departing character remains)',
-    dottrina:'Edu (certificata 29/08/2026; meccanica di lettura del 24/08/2026 promossa a via). L\'ARRIVO cade nel VUOTO: il movimento non produce effetto, la mobile NON muta e RESTA il carattere di partenza. G/W reggono e fanno VINCERE la propria sede; B/P fanno PERDERE la propria sede (verso opposto); C tace. Se la mobile e\' Shi o Ying si legge il confronto Shi<->Ying, che fa da override: chi controlla l\'altro vince; senza controllo decide il carattere. Vale anche quando il giorno sospende E l\'arrivo e\' vuoto (arrivo mascherato). PRECEDENZA: se c\'e\' un trigono completo (linee + 伏神 non vuoti + ramo del giorno) comanda quello e la via TACE. Collocata ULTIMA nel termometro, dopo §110: parla solo sul residuo muto, che e\' il perimetro misurato. Misura al cablaggio: 79 carte mute · 64.6% · z 2.59 · +1434 pip · vecchio 76% (34) · recente 59% (41). Certificata dottrinalmente. ARRIVOVUOTO=off per disattivarla.',
-    test: function (R, ctx, state) {
-      if (typeof process!=='undefined' && process.env && process.env.ARRIVOVUOTO==='off') return null;
-      var M=R.mutante; if (!M || !M.movimentoNullo) return null;
-      var arrVoid = /arrival void/.test(M.motivoNullo||'') || (R.vuoti||[]).indexOf(M.ramoArr)>=0;
-      if (!arrVoid) return null;
-      var mob=R.linee[M.pos-1]; if(!mob) return null;
-      var i,l;
-      // PRECEDENZA: trigono completo -> comanda lui, la via TACE. Regola dei membri
-      // identica al checklist (certificata sulle falsificanti del 29/08/2026):
-      //  - linee visibili (i vuoti fermi sono esclusi; la mobile conta anche se vuota)
-      //  - tutti i 伏神
-      //  - rami di data NON vuoti (anno, mese, giorno, ora) come terzo membro, se
-      //    almeno due membri stanno su linee o nascosti (Edu 19/08 + EURUSD 01/06/2023)
-      //  - l'ARRIVO RIANIMATO: se la mobile e' L1 il pilastro del giorno (casa su L1)
-      //    le arriva addosso e rianima l'arrivo vuoto (Edu 29/08/2026, USDJPY 23/01/2026)
-      var TRINI=[['申','子','辰'],['寅','午','戌'],['巳','酉','丑'],['亥','卯','未']];
-      var visfus={}, estesi={};
-      for (i=0;i<R.linee.length;i++){ l=R.linee[i];
-        if (!((R.vuoti||[]).indexOf(l.ramo)>=0 && !l.isMobile)) visfus[l.ramo]=1;
-        var fb=l.fushen && (l.fushen.ramo||l.fushen.b);
-        if (fb) visfus[fb]=1; }
-      if (M.pos===1 && M.ramoArr) visfus[M.ramoArr]=1;
-      var _rd114=[R.dayBranch, R.monthBranch, (ctx&&ctx.yearBranch)||R.yearBranch, R.oraBranch||(ctx&&ctx.oraBranch)];
-      for (i=0;i<_rd114.length;i++){ var rb=_rd114[i];
-        if (rb && (R.vuoti||[]).indexOf(rb)<0) estesi[rb]=1; }
-      for (i=0;i<TRINI.length;i++){ var t=TRINI[i];
-        var nVF=(visfus[t[0]]?1:0)+(visfus[t[1]]?1:0)+(visfus[t[2]]?1:0);
-        var full=t.every(function(b){ return visfus[b]||estesi[b]; });
-        if (nVF===3 || (full && nVF>=2)) return null; }
-      var CTRL114={Wood:'Earth',Earth:'Water',Water:'Fire',Fire:'Metal',Metal:'Wood'};
-      var seat = function(p){ return p<=3?'SHORT':'LONG'; };
-      // Shi o Ying VUOTO: il vuoto non agisce e non puo' vincere (Edu 29/08/2026, da
-      // EURUSD 04/05/2022). MA il duello di CONTROLLO Shi<->Ying parla PRIMA del vuoto
-      // (Edu 29/08/2026, da NZDUSD 10/07/2024: lo Shi vuoto che controlla vince comunque).
-      // La mobile non e' mai vuota (動不為空).
-      var _sh114=R.linee[R.shi-1], _yi114=R.linee[R.ying-1];
-      var _shV114=_sh114 && _sh114.vuoto && !_sh114.isMobile;
-      var _yiV114=_yi114 && _yi114.vuoto && !_yi114.isMobile;
-      var car=mob.par, tiene=(car==='G'||car==='W'), cade=(car==='B'||car==='P');
-      var dir=null, why=null;
-      if (mob.isShi || mob.isYing) {
-        var altro = mob.isShi ? _yi114 : _sh114; if(!altro) return null;
-        if (CTRL114[altro.el]===mob.el)      { dir=seat(altro.pos); why='the other controls the mobile → the mobile loses'; }
-        else if (CTRL114[mob.el]===altro.el) { dir=seat(mob.pos);   why='the mobile controls the other → the mobile wins'; }
-        else if (_shV114 && _yiV114) return null;
-        else if (_shV114) { dir=seat(_yi114.pos); why='no control and the Shi is VOID: the void cannot win → the Ying seat wins'; }
-        else if (_yiV114) { dir=seat(_sh114.pos); why='no control and the Ying is VOID: the void cannot win → the Shi seat wins'; }
-        else if (tiene) { dir=seat(mob.pos);   why=car+' holds → the mobile wins'; }
-        else if (cade)  { dir=seat(altro.pos); why=car+' makes the mobile lose → the other wins'; }
-        else return null;  // C: verso non definito
-        state.why='Arrival <b>'+M.ramoArr+'</b> falls in the VOID: no effect, the mobile ('+(mob.isShi?'Shi':'Ying')+', '+car+') keeps its departing character. Shi↔Ying: '+why+' → '+dir+'.';
-        return dir;
-      }
-      // mobile terza linea: qui il vuoto di Shi/Ying ha la precedenza sulla mappatura
-      if (_shV114 && _yiV114) return null;
-      if (_shV114) { state.why='Arrival <b>'+M.ramoArr+'</b> falls in the VOID and the Shi itself is VOID: the void cannot win → the Ying seat wins → '+seat(_yi114.pos)+'.'; return seat(_yi114.pos); }
-      if (_yiV114) { state.why='Arrival <b>'+M.ramoArr+'</b> falls in the VOID and the Ying itself is VOID: the void cannot win → the Shi seat wins → '+seat(_sh114.pos)+'.'; return seat(_sh114.pos); }
-      if (tiene) { dir=seat(mob.pos); why=car+' holds → its seat wins'; }
-      else if (cade) { dir=(seat(mob.pos)==='SHORT'?'LONG':'SHORT'); why=car+' makes its seat lose → opposite'; }
-      else return null;  // C tace
-      state.why='Arrival <b>'+M.ramoArr+'</b> falls in the VOID: no effect, the third-line mobile keeps its departing character '+car+': '+why+' → '+dir+'.';
-      return dir;
-    }});
-
   // §129 — IL PILASTRO COMPLETO RENDE LA LINEA DOMINANTE (Edu, 30/08/2026)
   LY_VIE.push({ id:'R68_129', sezione:'§129', coda:true, cablata:'2026-08-30',
     nome:'A complete pillar lands on a line: that line becomes dominant and its side wins',
@@ -2655,6 +2796,73 @@
   });
 
 
+  // POSIZIONE §133 (S36, regressione carte guida): DOPO §129..§125 — rubava la guida di §129 (AUDUSD 18/04/2022).
+  // §133 — IL TRIGONO COMPLETO SERVE AL SUO ELEMENTO (Edu, 03/09/2026, S36; guida EURJPY 29/04/2024 s169)
+  LY_VIE.push({ id:'R71_133', sezione:'§133', coda:true, cablata:'2026-09-03',
+    nome:'A complete trigon serves its element: read it by character (tail)',
+    dottrina:'Edu (03/09/2026, guida EURJPY 29/04/2024 s169): "Se c\'e\' un trigono devi chiederti a cosa serve. Il trigono serve al suo elemento." Un trigono 三合 COMPLETO (stessa regola dei membri della guardia §114: linee visibili con i vuoti fermi esclusi e la mobile che conta anche se vuota, tutti i 伏神, l\'arrivo rianimato se la mobile e\' L1, rami di data non vuoti come terzo membro quando almeno due membri stanno su linee o nascosti) si legge per CARATTERE: l\'elemento del trigono rispetto al palazzo. G/W -> la sede del trigono VINCE. B/P -> la sede del trigono PERDE (verso opposto). C -> tace. La sede del trigono e\' la maggioranza dei suoi membri visibili (linee e nascosti): sopra o sotto; pari -> tace. Sulla guida: 亥卯未 (卯 mobile L6, 未 Ying L4, 亥 giorno) = Legno = B nel palazzo Xun -> la sede alta perde -> SHORT (esito -188 SHORT). Sta PRIMA della §114: la guardia della §114 resta, ma ora il trigono che la zittiva parla. VIA133=off per disattivarla.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIA133==='off') return null;
+      var M=R.mutante; var i,l;
+      var TRINI=[['申','子','辰','Water'],['寅','午','戌','Fire'],['巳','酉','丑','Metal'],['亥','卯','未','Wood']];
+      var visfus={}, estesi={}, posOf={};
+      for (i=0;i<R.linee.length;i++){ l=R.linee[i];
+        if (!((R.vuoti||[]).indexOf(l.ramo)>=0 && !l.isMobile)) { visfus[l.ramo]=1; posOf[l.ramo]=l.pos; }
+        var fb=l.fushen && (l.fushen.ramo||l.fushen.b);
+        if (fb && (R.vuoti||[]).indexOf(fb)<0) { visfus[fb]=1; if (posOf[fb]==null) posOf[fb]=l.pos; } }
+      if (M && M.pos===1 && M.ramoArr) { visfus[M.ramoArr]=1; if (posOf[M.ramoArr]==null) posOf[M.ramoArr]=1; }
+      var rd=[R.dayBranch, R.monthBranch, (ctx&&ctx.yearBranch)||R.yearBranch, R.oraBranch||(ctx&&ctx.oraBranch)];
+      for (i=0;i<rd.length;i++){ var rb=rd[i]; if (rb && (R.vuoti||[]).indexOf(rb)<0) estesi[rb]=1; }
+      var trig=null;
+      for (i=0;i<TRINI.length;i++){ var t=TRINI[i];
+        var nVF=(visfus[t[0]]?1:0)+(visfus[t[1]]?1:0)+(visfus[t[2]]?1:0);
+        var full=[t[0],t[1],t[2]].every(function(b){ return visfus[b]||estesi[b]; });
+        if (nVF===3 || (full && nVF>=2)) { trig=t; break; } }
+      if (!trig) return null;
+      var el=trig[3], pEl=R.palEl;
+      var car = el===pEl?'B': GEN[el]===pEl?'P': GEN[pEl]===el?'C': CTRL[el]===pEl?'G':'W';
+      if (car==='C') return null;
+      var alto=0, basso=0, sede=null;
+      // L'ARRIVO RIANIMATO dal giorno su L1 chiude il trigono: la sede e' dove l'azione atterra, L1 (Edu 29/08/2026, USDJPY 23/01/2026).
+      if (M && M.pos===1 && M.ramoArr && trig.indexOf(M.ramoArr)>=0 && !(visfus[M.ramoArr] && posOf[M.ramoArr]!==1)) sede='SHORT';
+      else {
+        for (i=0;i<3;i++){ var b=trig[i]; if (posOf[b]!=null) { if (posOf[b]>3) alto++; else basso++; } }
+        if (alto===basso) return null;
+        sede = alto>basso ? 'LONG' : 'SHORT';
+      }
+      var dir = (car==='G'||car==='W') ? sede : (sede==='LONG'?'SHORT':'LONG');
+      state.why='The trigon <b>'+trig[0]+trig[1]+trig[2]+'</b> ('+el+') is complete and serves its element: as a <b>'+car+'</b> for the palace ('+pEl+') it '+((car==='G'||car==='W')?'makes its seat WIN':'makes its seat LOSE')+'. Its members sit '+(alto>basso?'above':'below')+' → '+dir+'.';
+      return dir;
+    }});
+
+  // §132 — IL DUELLO FINALE SHI/YING (Edu, 03/09/2026, S36): ULTIMA verifica prima di dire che una carta e' muta.
+  LY_VIE.push({ id:'R70_132', sezione:'§132', coda:true, cablata:'2026-09-03',
+    nome:'Final Shi/Ying duel: the last check before a card is declared mute (tail)',
+    dottrina:'Edu (03/09/2026, S36): "Y vs S nel LY e\' l\'ultima verifica che deve essere fatta prima di dire che una carta e\' muta." Quando NESSUNA via ha parlato, si guarda il duello fra Shi e Ying, nel solo ordine della forza (il carattere non conta nel duello): (1) CONTROLLO — chi controlla l\'altro vince la propria sede; il controllo parla anche se il controllore e\' vuoto (dottrina 29/08/2026, NZDUSD 10/07/2024). (2) VUOTO asimmetrico — la linea vuota non agisce e non puo\' vincere: vince l\'altra (se entrambe vuote, tace). (3) GENERAZIONE — chi viene nutrito vince (chi genera cede il Qi). (4) TEMPESTIVITA\' — se una e\' timely nel mese e l\'altra no, vince la timely. Pari su tutto: tace. La mobile non e\' mai vuota (動不為空). Sede: alto -> LONG, basso -> SHORT. REGOLA DI CODA, ULTIMA della catena. VIA132=off per disattivarla.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIA132==='off') return null;
+      var S = R.linee[R.shi-1], Y = R.linee[R.ying-1]; if (!S || !Y) return null;
+      var CT={Wood:'Earth',Earth:'Water',Water:'Fire',Fire:'Metal',Metal:'Wood'};
+      var GN={Wood:'Fire',Fire:'Earth',Earth:'Metal',Metal:'Water',Water:'Wood'};
+      var seat=function(l){ return l.pos>3?'LONG':'SHORT'; };
+      var sV = S.vuoto && !S.isMobile, yV = Y.vuoto && !Y.isMobile;
+      var mE = WX[R.monthBranch];
+      var tim=function(l){ return l.el===mE || GN[mE]===l.el; };
+      var vinc=null, come=null;
+      if (CT[Y.el]===S.el)      { vinc=Y; come='the Ying '+Y.ramo+' ('+Y.el+') CONTROLS the Shi '+S.ramo+' ('+S.el+')'; }
+      else if (CT[S.el]===Y.el) { vinc=S; come='the Shi '+S.ramo+' ('+S.el+') CONTROLS the Ying '+Y.ramo+' ('+Y.el+')'; }
+      else if (sV && yV) return null;
+      else if (sV) { vinc=Y; come='the Shi '+S.ramo+' is VOID and cannot win'; }
+      else if (yV) { vinc=S; come='the Ying '+Y.ramo+' is VOID and cannot win'; }
+      else if (GN[Y.el]===S.el) { vinc=S; come='the Ying '+Y.ramo+' GENERATES the Shi '+S.ramo+': the nourished side wins'; }
+      else if (GN[S.el]===Y.el) { vinc=Y; come='the Shi '+S.ramo+' GENERATES the Ying '+Y.ramo+': the nourished side wins'; }
+      else if (tim(S)!==tim(Y)) { vinc = tim(S)?S:Y; come='the '+(vinc===S?'Shi '+S.ramo:'Ying '+Y.ramo)+' is TIMELY in the month '+R.monthBranch+' and the other is not'; }
+      else return null;
+      state.duello132 = (vinc===S)?'shi':'ying';
+      state.why='Final Shi/Ying duel (no other rule spoke): '+come+' → the '+(vinc===S?'Shi':'Ying')+' L'+vinc.pos+' wins its seat → '+seat(vinc)+'.';
+      return seat(vinc);
+    }});
+
   // ---- i 2 rafforzativi (agiscono SOLO nel contrasto PB↔LY, non come vie autonome) ----
   var LY_RAFFORZATIVI = [
     { id:'ORA', nome:'Hour from the seed backs the follower',
@@ -2714,8 +2922,35 @@
 
   // ---- motore: valuta le vie in ordine, con toggle per-via (default: tutte accese) ----
   // enabled: { viaId: bool, ... } — se assente o true, la via è attiva. opts: { ggiornovia, genvia }
+  // ORDINE DOTTRINALE (S36, 03/09/2026 — proposta da certificare da Edu). Fasi:
+  //  0 la data intera / un pilastro intero cade su una linea (dominanza)
+  //  1 azione della mobile con G o W (G e W parlano per primi)
+  //  2 azione della mobile con B, P o C (arrivo nel vuoto, 回頭剋, ritiro/avanzata, penalita', tomba...)
+  //  3 raduni completi (三合, 三會) e trigrammi tutti vuoti
+  //  4 linee ferme e struttura (giorno che clasha una ferma, G/B nel Ti, incompatibili, Tai Sui/mese)
+  //  5 residui per forza e per bestia
+  //  6 duello finale Shi/Ying
+  // Attiva con ORDINE=dottrina (o opts.ordine='dottrina'); a parita' di fase resta l'ordine storico.
+  var FASE = {
+    R69_130:0, R68_129:0, R55_116:0, R52_112:0, R53_113:0, R57_118:0, R58_119:0, R40_98:0, R48_108:0, R47_107:0,
+    B62:1, R51_111:1, R70_131:1, R39_99:1, R39_97:1, R27_63:1, R16_50f:1, R24_56:1,
+    R54_114:2, R13_52:2, R59_120:2, R60_121:2, R54_115:2, R37_94:2, R66_127:2, R38_96:2, R26_59:2, R23_55:2,
+    R61_122:2, R41_101:2, R42_102:2, R43_103:2, R44_104:2, R45_105:2, R46_106:2, R8_49:2, R9_51:2, R5:2, R1:2,
+    R14_50de:2, R17_50g:2, R18_50h:2, R21_50k:2, R32_68:2, R63_124:2,
+    R71_133:3, R6:3, R64_125:3, R31_67:3, R19_50i:3, R20_50j:3, R56_117:3,
+    R25_58:4, R29_65:4, R33_69:4, R11_53c:4, R12_53d:4, R7_54b:4, R30_66:4, R49_109:4, R67_128:4, R65_126:4,
+    R2:4, R3:4, R4:4, R22_50kbis:4, M18:4,
+    R28_64:5, R50_110:5,
+    R70_132:6 };
+  function vieOrdinate(opts) {
+    var dott = (opts && opts.ordine==='dottrina') || (typeof process!=='undefined' && process.env && process.env.ORDINE==='dottrina');
+    if (!dott) return LY_VIE;
+    return LY_VIE.map(function(v,i){ return {v:v,i:i,f:(FASE[v.id]!=null?FASE[v.id]:4)}; })
+      .sort(function(a,b){ return a.f-b.f || a.i-b.i; }).map(function(x){ return x.v; });
+  }
   function termometro(R, ctx, enabled, opts) {
     ctx = ctx || {}; enabled = enabled || {}; opts = opts || {};
+    var VIE = vieOrdinate(opts);
     var state = { opts: opts };
     // FILTRO ORA (§57, spento di default): P/B la cui partenza è l'ora, non rafforzata dalla
     // mutazione, viene neutralizzata sulle vie 19/20/23/24.
@@ -2725,8 +2960,8 @@
       state.oraNeutra = !!(ctx.oraBranch && (mob0.par==='P'||mob0.par==='B') &&
         R.mutante.ramoDep===ctx.oraBranch && !mobRaff);
     } else state.oraNeutra = false;
-    for (var i = 0; i < LY_VIE.length; i++) {
-      var v = LY_VIE[i];
+    for (var i = 0; i < VIE.length; i++) {
+      var v = VIE[i];
       if (enabled[v.id] === false) continue;
       // spegnimento di una via da ambiente per misura/audit: VIAOFF=R27_63 (o piu', separate da virgola)
       if (typeof process !== 'undefined' && process.env && process.env.VIAOFF &&
@@ -2774,11 +3009,25 @@
     return { finale: t.dir, chi: 'conflict → LY wins (rule ' + t.sezione + ' ' + t.nome + ')', via: t, ly: t.dir, why: t.why };
   }
 
+  // GERARCHIA_CHECK — la regola sopra le regole, verificata al caricamento (Edu, S36).
+  // (1) La §132 (duello finale Shi/Ying) deve essere l'ULTIMA via della catena.
+  // (2) Le vie d'AZIONE della mobile elencate qui devono stare tutte PRIMA delle vie di raduno/struttura elencate.
+  // Se il controllo fallisce il modulo si rifiuta di caricarsi: meglio un errore subito che una lettura storta.
+  (function GERARCHIA_CHECK(){
+    var ids = LY_VIE.map(function(v){ return v.id; });
+    if (ids[ids.length-1] !== 'R70_132') throw new Error('GERARCHIA LY VIOLATA: la §132 (duello finale) deve essere l\'ultima via, trovata ' + ids[ids.length-1]);
+    var azione = ['R54_114','R13_52','R51_111','R70_131'];          // arrivo nel vuoto, 回頭剋, Tai Sui libero, G/W vuota che parte
+    var dopo   = ['R6','R64_125','R71_133','R28_64','R50_110'];      // raduno stagionale, direzionale, trigono per carattere, residui
+    var maxA = Math.max.apply(null, azione.map(function(i){ return ids.indexOf(i); }));
+    var minD = Math.min.apply(null, dopo.map(function(i){ var k=ids.indexOf(i); return k<0?1e9:k; }));
+    if (maxA > minD) throw new Error('GERARCHIA LY VIOLATA: una via d\'azione della mobile sta DOPO un raduno/residuo');
+  })();
+
   return { read: read, readManual: readManual, setSblocco: setSblocco, setCasaAttore: setCasaAttore, TRIGRAM: TRIGRAM,
            PAR: PAR, SEI_BESTIE: SEI_BESTIE, EL_IT: EL_IT, BR_IT: BR_IT,
            oraDalSeme: oraDalSeme,
            LY_VIE: LY_VIE, LY_RAFFORZATIVI: LY_RAFFORZATIVI,
-           termometro: termometro, combinaS9: combinaS9,
+           termometro: termometro, combinaS9: combinaS9, FASE: FASE, vieOrdinate: vieOrdinate,
            generaleDelMese: generaleDelMese, dingSpirit: dingSpirit,
            tiande: tiande, zhide: zhide, STELO_SPIRITI: STELO_SPIRITI,
            EL_EN: EL_EN, STATO_EN: STATO_EN, contestoGiorno: contestoGiorno, wBless: wBless,

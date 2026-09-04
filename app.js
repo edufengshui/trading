@@ -445,10 +445,32 @@ function analizzaCrossPerReport(r, utcMs, dateStr) {
         var stD = steliDiData(dateStr, yearBranch, chart.monthBranch, chart.dayStem || null, oraB0);
         var ctxT = { oraBranch: oraB0, emaDir: dir, capolineaEl: capolineaDelFlusso(chart),
                      corpoEl: pb.trend ? pb.trend.el : null, date: dateStr,
-                     yearStem: stD.yearStem, monthStem: stD.monthStem, hourStem: stD.hourStem };
+                     yearStem: stD.yearStem, monthStem: stD.monthStem, hourStem: stD.hourStem,
+                     yearBranch: yearBranch };   // (S36-bis) serve alla §137 e alle vie del Tai Sui
         var t = LYM.termometro(ly, ctxT, {}, {});
         var lyDir = (t && t.dir) || null;
         out.lyDir = lyDir;
+        out.lySez = (t && t.sezione) || null;
+        // --- TRE SISTEMI (Edu, 03/09/2026 S36): oltre a PB e LY si annotano il verdetto del
+        // SISTEMA ATTUALE (PB + LY + rafforzativi, canonico = combinaS9 con tutte le vie accese)
+        // e il verdetto del motore DA LIU REN (motore_dlr.js, stessa carta del pannello).
+        out.pbDir = pbDir;
+        try { var cmb = LYM.combinaS9(ly, ctxT, pbDir, {}, {}, {}); out.attuale = (cmb && cmb.finale) || pbDir; }
+        catch (e2) { out.attuale = pbDir; }
+        out.dlrDir = null; out.dlrVia = null;
+        try {
+          var MD = window.XKDGMotoreDLR, L4 = chart.fourLessons, t3 = chart.transmission && chart.transmission.three;
+          if (MD && L4 && L4.length >= 4 && t3) {
+            var cartaD = { steloGiorno: chart.dayStem, ramoGiorno: chart.dayBranch,
+              palazzoHost: (L4[0].bottom && L4[0].bottom.branch) || L4[0].bottom,
+              R1: L4[0].top.branch, R2: L4[1].top.branch, R3: L4[2].top.branch, R4: L4[3].top.branch,
+              metodo: chart.transmission.method, vuoti: chart.hourVoid || [],
+              generaleMese: chart.monthGeneral && chart.monthGeneral.branch, oraRamo: chart.hourBranch, treMessaggi: t3,
+              spiritoR1: (L4[0].top.general && L4[0].top.general.cn) || null };
+            var ld = MD.leggi(cartaD);
+            out.dlrDir = (ld && ld.dir) || null; out.dlrVia = (ld && ld.via) || null;
+          }
+        } catch (e3) { out.dlrDir = null; }
         if (lyDir === null) {
           out.classe = 'tace';
           finale = pbDir; decisore = 'PB — il LY tace (riserva S2)';
@@ -622,7 +644,8 @@ function salvaNelRegistro(data, tradabili) {
   reg[data] = tradabili.map(function (e) {
     return { cross: e.cross, signal: e.signal, trend: e.trend, segue: e.segue,
              decisore: e.decisore, seed: e.seed, sup: e.sup, inf: e.inf, linea: e.linea,
-             bazi: e.bazi, esito: (e.cross in vecchi) ? vecchi[e.cross] : null };
+             bazi: e.bazi, livello: e.livello || null, voci: e.voci || null, dlrVia: e.dlrVia || null,
+             esito: (e.cross in vecchi) ? vecchi[e.cross] : null };
   });
   var giorni = Object.keys(reg).sort();
   while (giorni.length > 60) delete reg[giorni.shift()];                    // tieni due mesi
@@ -702,6 +725,7 @@ function wireRegistro(box) {
             '\nEsito: ' + t.esito + ' pip' +
             '\nSeme ' + t.seed + ' · superiore ' + t.sup + ' · inferiore ' + t.inf + ' · mutante L' + t.linea +
             '\nBazi: ' + (t.bazi || '') +
+            (t.livello ? '\nLivello: ' + t.livello + ' · ' + (t.voci || '') + (t.dlrVia ? ' · via DLR: ' + t.dlrVia : '') : '') +
             '\nDeciso da: ' + (t.decisore || ''));
         }
       });
@@ -779,6 +803,135 @@ function capolineaDelFlusso(chart) {
     });
     return cap;
   } catch (e) { return null; }
+}
+
+/* ---------------- TRE SISTEMI A SCALARE (Edu, 03/09/2026, sessione S36) ----------------
+ * Livello A: Plum Blossom, Liu Yao e Da Liu Ren concordano            (382 carte · 68,3%)
+ * Livello B: sistema attuale (PB+LY+rafforzativi) e Da Liu Ren concordano (410 · 66,3%)
+ * Livello C: Plum Blossom e Liu Yao concordano e il Da Liu Ren TACE   (646 · 62,4%)
+ * Altrimenti fermo. Scala misurata: 1.438 carte · 65,1% · +30.351 pip (pb_stress.js TRESIST=1).
+ * Se il Da Liu Ren contrasta due sistemi concordi e' una moneta (315 · 53%): fermo.
+ */
+function livelloTreSistemi(e) {
+  var pb = e.pbDir || null, ly = e.lyDir || null, at = e.attuale || null, dlr = e.dlrDir || null;
+  var voci = 'PB ' + (pb || '—') + ' · LY ' + (ly || 'tace') + ' · attuale ' + (at || '—') + ' · DLR ' + (dlr || 'tace');
+  if (!pb) return { liv: null, dir: null, perche: 'Plum Blossom non disponibile', voci: voci };
+  if (ly && dlr && pb === ly && ly === dlr)
+    return { liv: 'A', dir: pb, perche: 'Plum Blossom, Liu Yao e Da Liu Ren concordano', voci: voci };
+  if (dlr && at === dlr)
+    return { liv: 'B', dir: at, perche: 'sistema attuale e Da Liu Ren concordano' +
+             (ly ? (ly === pb ? '' : ' (PB e LY in contrasto, il sistema attuale ha scelto ' + at + ')') : ' (il Liu Yao tace)'), voci: voci };
+  if (ly && pb === ly && !dlr)
+    return { liv: 'C', dir: pb, perche: 'Plum Blossom e Liu Yao concordano, il Da Liu Ren tace', voci: voci };
+  var perche;
+  if (dlr && ly && pb === ly) perche = 'il Da Liu Ren (' + dlr + ') contrasta Plum Blossom e Liu Yao concordi (' + pb + '): moneta, fermo';
+  else if (dlr) perche = 'sistema attuale (' + at + ') contro Da Liu Ren (' + dlr + '): fermo';
+  else if (ly) perche = 'Plum Blossom (' + pb + ') contro Liu Yao (' + ly + ') e il Da Liu Ren tace: fermo';
+  else perche = 'parla solo il Plum Blossom: fermo';
+  return { liv: null, dir: null, perche: perche, voci: voci };
+}
+
+function renderReportTreSistemi() {
+  var box = $('report'); if (!box) return;
+  if (!forexData || !forexData.rows) {
+    box.style.display = 'block';
+    box.innerHTML = '<div style="padding:12px">Il feed forex non e\' ancora caricato. Premi <b>Forex 00:00 GMT</b> e riprova.</div>';
+    return;
+  }
+  var dArr = forexData.date.split('-').map(Number);
+  var utcMs = istanteUtcDelGiorno(dArr);
+  var esiti = (forexData.rows || []).map(function (r) {
+    var e = analizzaCrossPerReport(r, utcMs, forexData.date);
+    if (e.pbDir) {                                   // la carta e' leggibile: si applica la scala
+      var L = livelloTreSistemi(e);
+      e.livello = L.liv; e.voci = L.voci;
+      if (L.liv) { e.signal = L.dir; e.segue = (L.dir === e.trend); e.decisore = 'Livello ' + L.liv + ' · ' + L.perche + ' · ' + L.voci; e.motivo = ''; }
+      else { e.signal = 'NO TRADE'; e.segue = null; e.motivo = L.perche + ' · ' + L.voci; }
+    } else if (e.signal !== 'NO TRADE') { e.signal = 'NO TRADE'; e.motivo = e.motivo || 'carta non leggibile'; }
+    return e;
+  });
+  var tradabili = esiti.filter(function (e) { return e.livello && (e.signal === 'LONG' || e.signal === 'SHORT'); });
+  var ordine = { A: 0, B: 1, C: 2 };
+  tradabili.sort(function (a, b) { return ordine[a.livello] - ordine[b.livello]; });
+  var esclusi = esiti.filter(function (e) { return tradabili.indexOf(e) < 0; });
+
+  var css = {
+    card: 'margin:18px 0;border:1px solid rgba(255,255,255,.14);border-radius:10px;overflow:hidden',
+    head: 'padding:10px 14px;background:rgba(255,255,255,.05);display:flex;flex-wrap:wrap;gap:10px;align-items:baseline;justify-content:space-between',
+    sect: 'padding:10px 14px',
+    row:  'display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.07)',
+    name: 'min-width:96px;font-weight:700;font-size:15px',
+    note: 'flex:1;min-width:180px;font-size:12px;opacity:.75'
+  };
+  function badge(sig) {
+    var col = sig === 'LONG' ? '#3fb950' : sig === 'SHORT' ? '#f85149' : '#8b949e';
+    return '<span style="display:inline-block;min-width:74px;text-align:center;padding:3px 10px;border-radius:6px;' +
+      'font-weight:800;font-size:13px;letter-spacing:.4px;color:#0e1022;background:' + col + '">' + sig + '</span>';
+  }
+  function livBadge(l) {
+    var col = l === 'A' ? '#e3b341' : l === 'B' ? '#58a6ff' : '#b18cff';
+    return '<span style="display:inline-block;min-width:26px;text-align:center;padding:3px 8px;border-radius:6px;' +
+      'font-weight:900;font-size:13px;color:#0e1022;background:' + col + '" title="livello ' + l + '">' + l + '</span>';
+  }
+  var righeOk = tradabili.map(function (e) {
+    return '<div class="repline" data-cross="' + e.cross + '" style="' + css.row + ';cursor:pointer">' +
+      livBadge(e.livello) + '<span style="' + css.name + '">' + e.cross + '</span>' + badge(e.signal) +
+      '<span style="font-size:12px;opacity:.9">' + (e.segue ? 'segue il trend' : 'non segue il trend') + '</span>' +
+      '<span style="' + css.note + '">' + e.voci + (e.dlrVia ? ' · via DLR: ' + e.dlrVia : '') +
+      (e.avviso ? ' · <b style="color:#e3b341">' + e.avviso + '</b>' : '') + '</span></div>';
+  }).join('') || '<div style="padding:8px 0;opacity:.7">Nessun cross da tradare oggi: nessun livello A, B o C.</div>';
+  var righeNo = esclusi.map(function (e) {
+    return '<div style="' + css.row + '">' +
+      '<span style="' + css.name + ';opacity:.75">' + e.cross + '</span>' + badge('NO TRADE') +
+      '<span style="' + css.note + '">' + e.motivo + '</span></div>';
+  }).join('') || '<div style="padding:8px 0;opacity:.7">Nessun cross fermo.</div>';
+  var nA = tradabili.filter(function (e) { return e.livello === 'A'; }).length;
+  var nB = tradabili.filter(function (e) { return e.livello === 'B'; }).length;
+  var nC = tradabili.filter(function (e) { return e.livello === 'C'; }).length;
+  var nL = tradabili.filter(function (e) { return e.signal === 'LONG'; }).length;
+  var nS = tradabili.filter(function (e) { return e.signal === 'SHORT'; }).length;
+
+  salvaNelRegistro(forexData.date, tradabili);
+
+  var spente = Object.keys(lyToggles).filter(function (k) { return lyToggles[k] === false; }).length;
+  var nota = '<div style="padding:6px 14px;font-size:12px;background:rgba(227,179,65,.08);border-bottom:1px solid rgba(255,255,255,.08)">' +
+    'Scala <b>A → B → C</b>: <b>A</b> = Plum Blossom, Liu Yao e Da Liu Ren concordano (68%) · ' +
+    '<b>B</b> = sistema attuale e Da Liu Ren concordano (66%) · <b>C</b> = Plum Blossom e Liu Yao concordano e il Da Liu Ren tace (62%). ' +
+    'Se il Da Liu Ren contrasta due sistemi concordi: fermo. Termometro canonico, tutte le vie accese.' +
+    (spente ? ' <b style="color:#e3b341">Nota: a schermo hai ' + spente + ' via' + (spente > 1 ? ' spente' : ' spenta') +
+      ' — il report le ignora e le usa comunque accese.</b>' : '') + '</div>';
+
+  box.style.display = 'block';
+  box.innerHTML =
+    '<div style="' + css.card + '">' +
+      '<div style="' + css.head + '">' +
+        '<b style="font-size:16px">Report tre sistemi · ' + forexData.date + ' 00:00 GMT</b>' +
+        '<span style="font-size:12px;opacity:.8">' + tradabili.length + ' da tradare (' + nL + ' long, ' + nS + ' short) · ' +
+        'A ' + nA + ' · B ' + nB + ' · C ' + nC + ' · ' + esclusi.length + ' fermi</span>' +
+      '</div>' + nota +
+      '<div style="' + css.sect + '">' +
+        '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">DA TRADARE · livello A, B o C</div>' + righeOk +
+      '</div>' +
+      '<div style="' + css.sect + ';background:rgba(248,81,73,.05);border-top:1px solid rgba(255,255,255,.10)">' +
+        '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">FERMI</div>' + righeNo +
+      '</div>' +
+    '</div>' + '<div id="regbox">' + htmlRegistro() + '</div>';
+
+  box.querySelectorAll('.repline').forEach(function (el) {
+    el.addEventListener('click', function () {
+      var pill = document.querySelector('#forexbar .pill[data-cross="' + el.dataset.cross + '"]');
+      if (pill) { selectForexCross(pill.dataset.cross, pill.dataset.branch, pill); pill.scrollIntoView({ block: 'center' }); }
+    });
+  });
+  wireRegistro(box);
+  box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function reportTreSistemi() {
+  var box = $('report');
+  if (box) { box.style.display = 'block'; box.innerHTML = '<div style="padding:12px">Tre sistemi sui nove cross in corso…</div>'; }
+  if (!forexData || !forexData.rows) await loadForex();
+  renderReportTreSistemi();
 }
 
 async function reportGiornaliero() {
@@ -1203,7 +1356,8 @@ function renderTrend(cross, chart, dArr, row) {
     R1: L[0].top.branch, R2: L[1].top.branch, R3: L[2].top.branch, R4: L[3].top.branch,
     metodo: chart.transmission.method, vuoti: chart.hourVoid || [],
     generaleMese: chart.monthGeneral && chart.monthGeneral.branch, oraRamo: chart.hourBranch,
-    treMessaggi: t3
+    treMessaggi: t3,
+    spiritoR1: (L[0].top.general && L[0].top.general.cn) || null
   };
   var lettura = MD.leggi(carta);
 
@@ -1251,6 +1405,7 @@ window.addEventListener('DOMContentLoaded', function () {
   $('build').addEventListener('click', build);
   $('forex').addEventListener('click', loadForex);
   if ($('reportall')) $('reportall').addEventListener('click', reportGiornaliero);
+  if ($('report3')) $('report3').addEventListener('click', reportTreSistemi);
   $('now').addEventListener('click', function () { setNow(); build(); });
   $('gmt').addEventListener('click', function () { // chart for 00:00 GMT of the chosen date
     if (!$('date').value) setNow();
