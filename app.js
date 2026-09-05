@@ -466,7 +466,8 @@ function analizzaCrossPerReport(r, utcMs, dateStr) {
               R1: L4[0].top.branch, R2: L4[1].top.branch, R3: L4[2].top.branch, R4: L4[3].top.branch,
               metodo: chart.transmission.method, vuoti: chart.hourVoid || [],
               generaleMese: chart.monthGeneral && chart.monthGeneral.branch, oraRamo: chart.hourBranch, treMessaggi: t3,
-              spiritoR1: (L4[0].top.general && L4[0].top.general.cn) || null };
+              spiritoR1: (L4[0].top.general && L4[0].top.general.cn) || null,
+              ramoMese: chart.monthBranch || null, generaleOra: generaleSopraOra(chart) };
             var ld = MD.leggi(cartaD);
             out.dlrDir = (ld && ld.dir) || null; out.dlrVia = (ld && ld.via) || null;
           }
@@ -747,6 +748,12 @@ function wireRegistro(box) {
 // MAI prendere steli di anno o mese dal pilastro di un'ora convenzionale: nei giorni a cavallo
 // di un termine solare apparterrebbero al mese (o all'anno) sbagliato rispetto alle 00:00 GMT.
 // Anno: dall'anno civile + ramo d'anno. Mese: 五虎遁 dallo stelo d'anno. Ora: 五鼠遁 dal giorno.
+// Generale (天將) sopra il ramo dell'ora nel piatto (S37): serve alla via 27 del motore DLR.
+function generaleSopraOra(chart) {
+  var pal = (chart && chart.generals && chart.generals.palaces) || [], i;
+  for (i = 0; i < pal.length; i++) if (pal[i].earth === chart.hourBranch) return (pal[i].general && pal[i].general.cn) || null;
+  return null;
+}
 function steliDiData(dateStr, yearBranch, monthBranch, dayStem, oraBranch) {
   var STm = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
   var BR12 = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
@@ -1357,7 +1364,8 @@ function renderTrend(cross, chart, dArr, row) {
     metodo: chart.transmission.method, vuoti: chart.hourVoid || [],
     generaleMese: chart.monthGeneral && chart.monthGeneral.branch, oraRamo: chart.hourBranch,
     treMessaggi: t3,
-    spiritoR1: (L[0].top.general && L[0].top.general.cn) || null
+    spiritoR1: (L[0].top.general && L[0].top.general.cn) || null,
+    ramoMese: chart.monthBranch || null, generaleOra: generaleSopraOra(chart)
   };
   var lettura = MD.leggi(carta);
 

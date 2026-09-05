@@ -567,11 +567,415 @@ function via14_bConDragoAzzurro(c) {
     perche: 'R1 ' + c.R1 + ' e\' B per lo stelo del giorno ' + c.steloGiorno + ' e porta il 青龍 (Drago Azzurro): il B col Drago addosso non contende, lo host vince' };
 }
 
+// ============================================================================
+//  VIA 15 · LO SPIRITO SOPRA LO STELO GENERA IL RAMO DEL GIORNO  —  S37, 04/09/2026
+// ============================================================================
+// Concetto classico portato da Edu (S37): "lo spirito sopra lo stelo del giorno genera il ramo del
+// giorno: host e guest si giovano a vicenda". R1 (non vuoto) genera per elemento il ramo del giorno -> LONG.
+// Misura CONCETTO=4 (soglia 20), nella posizione reale in catena (dopo le vie 1-14, sulle mute):
+//   n 82   58,5% LONG  z 1,55  +773 pip   vec 63,9 / rec 52,4
+// Casella intera: 392 carte 53,8%. La forma gemella (b) "R3 genera lo stelo del giorno" da sola
+// vince il 56% ma perde pip (-91 sulle mute): non cablata. Cablata su decisione di Edu. In CODA.
+function via15_r1GeneraIlRamoDelGiorno(c) {
+  if (!c.R1 || !c.ramoGiorno) return null;
+  if ((c.vuoti || []).indexOf(c.R1) >= 0) return null;      // il vuoto non agisce
+  if (GENERA[EL_RAMO[c.R1]] !== EL_RAMO[c.ramoGiorno]) return null;
+  return { dir: 'LONG', via: 'R1 genera il ramo del giorno',
+    perche: 'R1 ' + c.R1 + ' (' + EL_RAMO[c.R1] + ') genera il ramo del giorno ' + c.ramoGiorno + ' (' + EL_RAMO[c.ramoGiorno] + '): host e guest si giovano, lo host vince' };
+}
+
+// ============================================================================
+//  VIA 16 · IL 祿 (Lu) INCROCIATO  —  S37, 04/09/2026
+// ============================================================================
+// Concetto classico portato da Edu (S37): "lo spirito sopra lo stelo e' il Lu del ramo del giorno, o lo spirito
+// sopra il ramo e' il Lu dello stelo del giorno". Il testo dice "favorisce lo host"; la misura, nella posizione
+// reale in catena (dopo le vie 1-15, sulle mute), va in senso opposto: vince il GUEST -> SHORT.
+//   (b) R3 e' il 祿 dello stelo del giorno:  52 carte  61,5% SHORT  vec 63,6 / rec 64,3  +938 pip
+//   (a) R1 e' il 祿 del ramo del giorno:     11 carte  72,7% SHORT   (祿 dello stelo nascosto principale del ramo)
+//   (a) o (b):                                63 carte  63,5% SHORT  z 2,14  vec 67,9 / rec 62,5  +1.303 pip
+// Casella intera (tutte le carte): 435 carte 54,0% SHORT. Cablata su decisione di Edu ("sopra il 60% si cabla"). In CODA.
+const LU_STELO = { '甲':'寅','乙':'卯','丙':'巳','丁':'午','戊':'巳','己':'午','庚':'申','辛':'酉','壬':'亥','癸':'子' };
+const STELO_NASCOSTO = { '子':'癸','丑':'己','寅':'甲','卯':'乙','辰':'戊','巳':'丙','午':'丁','未':'己','申':'庚','酉':'辛','戌':'戊','亥':'壬' };
+function via16_luIncrociato(c) {
+  if (!c.R1 || !c.R3 || !c.steloGiorno || !c.ramoGiorno) return null;
+  const V = c.vuoti || [];
+  const a = LU_STELO[STELO_NASCOSTO[c.ramoGiorno]] === c.R1 && V.indexOf(c.R1) < 0;
+  const b = LU_STELO[c.steloGiorno] === c.R3 && V.indexOf(c.R3) < 0;
+  if (!a && !b) return null;
+  const perche = b ? 'R3 ' + c.R3 + ' e\' il 祿 (Lu) dello stelo del giorno ' + c.steloGiorno + ': il guest siede sulla sede di prosperita\' dello host e vince'
+                   : 'R1 ' + c.R1 + ' e\' il 祿 (Lu) del ramo del giorno ' + c.ramoGiorno + ' (stelo nascosto ' + STELO_NASCOSTO[c.ramoGiorno] + '): il guest vince';
+  return { dir: 'SHORT', via: 'il 祿 incrociato fra stelo e ramo', perche: perche };
+}
+
+// ============================================================================
+//  VIA 17 · 驛馬 (Cavallo di posta) SOPRA LO STELO  —  S37, 04/09/2026
+// ============================================================================
+// Concetto classico portato da Edu (S37): "lo spirito sopra lo stelo del giorno e' il Cavallo di posta".
+// 驛馬 dal ramo del giorno: 申子辰->寅 · 寅午戌->申 · 巳酉丑->亥 · 亥卯未->巳. Verso LONG.
+// Nella posizione reale in catena (dopo le vie 1-16, sulle mute): 27 carte 63,0% LONG  vec 53,8 / rec 71,4  +533 pip
+// (vale anche vuoto: 20 carte 60,0%). Casella intera 152 · 52,0%. Cablata su regola di Edu ("sopra il 55% si cabla sempre"). In CODA.
+const YIMA = { '申':'寅','子':'寅','辰':'寅','寅':'申','午':'申','戌':'申','巳':'亥','酉':'亥','丑':'亥','亥':'巳','卯':'巳','未':'巳' };
+function via17_cavalloDiPostaSuR1(c) {
+  if (!c.R1 || !c.ramoGiorno) return null;
+  if (YIMA[c.ramoGiorno] !== c.R1) return null;
+  return { dir: 'LONG', via: '驛馬 sopra lo stelo',
+    perche: 'R1 ' + c.R1 + ' e\' il 驛馬 (Cavallo di posta) del ramo del giorno ' + c.ramoGiorno + ': il movimento e\' dello host, che vince' };
+}
+
+// ============================================================================
+//  VIA 18 · 日祿 (Lu del giorno) SOPRA LO STELO  —  S37, 04/09/2026
+// ============================================================================
+// Concetto classico portato da Edu (S37): "lo spirito sopra lo stelo del giorno e' il Lu dello stelo del giorno".
+// Nella posizione reale in catena (dopo le vie 1-17, sulle mute): 26 carte 57,7% LONG  vec 33,3 / rec 72,7  +297 pip.
+// Il 祿 vuoto va contro (9 carte 22,2%): la via parla solo non vuoto. Casella intera 96 · 51,0%.
+// Cablata su regola di Edu ("sopra il 55% si cabla sempre"). In CODA.
+function via18_luDelGiornoSuR1(c) {
+  if (!c.R1 || !c.steloGiorno) return null;
+  if (LU_STELO[c.steloGiorno] !== c.R1) return null;
+  if ((c.vuoti || []).indexOf(c.R1) >= 0) return null;      // il vuoto non agisce
+  return { dir: 'LONG', via: '日祿 sopra lo stelo',
+    perche: 'R1 ' + c.R1 + ' e\' il 祿 (Lu) dello stelo del giorno ' + c.steloGiorno + ': lo host siede sulla propria sede di prosperita\' e vince' };
+}
+
+// ============================================================================
+//  VIA 19 · 帝旺 DELLO STELO SOPRA IL RAMO DEL GIORNO  —  S37, 04/09/2026
+// ============================================================================
+// Concetto classico portato da Edu (S37, "Prime location", lettura 帝旺 per elemento): lo spirito sopra il ramo del
+// giorno (R3) e' l'apice dell'elemento dello stelo del giorno (木->卯 · 火,土->午 · 金->酉 · 水->子) -> LONG.
+// Nella posizione reale in catena (dopo le vie 1-18, sulle mute): 30 carte 63,3% LONG  vec 66,7 / rec 60,0  +548 pip.
+// Casella intera 160 · 54,4%. Il lato (a) (R1 apice del ramo del giorno) non da' verso. Cablata su regola di Edu. In CODA.
+const DIWANG = { 'Legno':'卯','Fuoco':'午','Terra':'午','Metallo':'酉','Acqua':'子' };
+function via19_apiceDelloSteloSuR3(c) {
+  if (!c.R3 || !c.steloGiorno) return null;
+  if (DIWANG[EL_STELO[c.steloGiorno]] !== c.R3) return null;
+  if ((c.vuoti || []).indexOf(c.R3) >= 0) return null;      // il vuoto non agisce
+  return { dir: 'LONG', via: '帝旺 dello stelo sopra il ramo',
+    perche: 'R3 ' + c.R3 + ' e\' il 帝旺 (apice) dell\'elemento dello stelo del giorno ' + c.steloGiorno + ' (' + EL_STELO[c.steloGiorno] + '): lo host e\' al massimo della forza e vince' };
+}
+
+// ============================================================================
+//  VIA 20 · LO STELO CAVALCA LA PROPRIA TOMBA (墓)  —  S37, 04/09/2026
+// ============================================================================
+// Concetto classico portato da Edu (S37): "stelo e ramo del giorno che cavalcano o siedono sulla tomba: blocco".
+// Regge solo il lato dello stelo: R1 e' la tomba dello stelo del giorno (甲未 乙戌 丙戌 丁丑 戊戌 己丑 庚丑 辛辰 壬辰 癸未) -> SHORT.
+// Nella posizione reale in catena (dopo le vie 1-19, sulle mute): 28 carte 67,9% SHORT  vec 75,0 / rec 64,7  +729 pip.
+// Casella intera 138 · 55,8% SHORT. Il ramo che cavalca la tomba (R3) non da' verso (171 · 53,2% SHORT, mute 26 · 53,8%).
+// Cablata su regola di Edu ("sopra il 55% si cabla sempre"). In CODA.
+const TOMBA_STELO = { '甲':'未','乙':'戌','丙':'戌','丁':'丑','戊':'戌','己':'丑','庚':'丑','辛':'辰','壬':'辰','癸':'未' };
+function via20_steloCavalcaLaTomba(c) {
+  if (!c.R1 || !c.steloGiorno) return null;
+  if (TOMBA_STELO[c.steloGiorno] !== c.R1) return null;
+  return { dir: 'SHORT', via: 'lo stelo cavalca la tomba',
+    perche: 'R1 ' + c.R1 + ' e\' la 墓 (tomba) dello stelo del giorno ' + c.steloGiorno + ': lo host e\' bloccato e perde' };
+}
+
+// ============================================================================
+//  VIA 21 · IL RAMO DEL GIORNO SIEDE SULLA TOMBA  —  S37, 04/09/2026 (in prova)
+// ============================================================================
+// Nel piatto, sotto il ramo del giorno c'e' la tomba del suo elemento (木未 火戌 土戌 金丑 水辰) -> SHORT.
+// In catena (dopo le vie 1-20, sulle mute): 44 carte 59,1% SHORT  vec 56,0 / rec 64,7  +608 pip. Casella intera 214 · 50,5%.
+const TOMBA_EL = { 'Legno':'未','Fuoco':'戌','Terra':'戌','Metallo':'丑','Acqua':'辰' };
+// Il piatto del cielo e' una rotazione: R1 sta sopra il palazzo dello host, quindi "cosa sta sotto b" si ricava da li'.
+function sottoNelPiatto(c, b) {
+  const i1 = RAMI12.indexOf(c.R1), ip = RAMI12.indexOf(c.palazzoHost), ib = RAMI12.indexOf(b);
+  if (i1 < 0 || ip < 0 || ib < 0) return null;
+  return RAMI12[(ib - (i1 - ip) + 24) % 12];
+}
+function via21_ramoSiedeSullaTomba(c) {
+  if (!c.ramoGiorno || !c.R1 || !c.palazzoHost) return null;
+  const sotto = sottoNelPiatto(c, c.ramoGiorno);
+  if (sotto !== TOMBA_EL[EL_RAMO[c.ramoGiorno]]) return null;
+  return { dir: 'SHORT', via: 'il ramo del giorno siede sulla tomba',
+    perche: 'il ramo del giorno ' + c.ramoGiorno + ' siede nel piatto sopra ' + sotto + ', la 墓 (tomba) del suo elemento: blocco, lo host perde' };
+}
+// ============================================================================
+//  VIA 22 · LO STELO DEL GIORNO SIEDE SULLA TOMBA  —  S37, 04/09/2026 (in prova)
+// ============================================================================
+// Nel piatto, sotto il palazzo dello stelo c'e' la tomba dello stelo -> LONG (misurato: verso contrario al testo).
+// In catena (dopo le vie 1-21, sulle mute): 24 carte 62,5% LONG  vec 80,0 / rec 53,8  +555 pip. Casella intera 163 · 44,2% LONG.
+function via22_steloSiedeSullaTomba(c) {
+  if (!c.palazzoHost || !c.steloGiorno || !c.R1) return null;
+  const sotto = sottoNelPiatto(c, c.palazzoHost);
+  if (sotto !== TOMBA_STELO[c.steloGiorno]) return null;
+  return { dir: 'LONG', via: 'lo stelo del giorno siede sulla tomba',
+    perche: 'il palazzo dello stelo ' + c.palazzoHost + ' siede nel piatto sopra ' + sotto + ', la 墓 (tomba) dello stelo ' + c.steloGiorno + ': lo host vince' };
+}
+
+// ============================================================================
+//  VIA 23 · LO STELO CAVALCA LA PROPRIA 絕 (estinzione)  —  S37, 04/09/2026
+// ============================================================================
+// Concetto classico portato da Edu (S37): "spirito sopra lo stelo nella tappa 絕: cattivo". Misurato: verso OPPOSTO al testo.
+// R1 e' la 絕 dello stelo del giorno (甲申 乙酉 丙亥 丁子 戊亥 己子 庚寅 辛卯 壬巳 癸午) -> LONG.
+// In catena (dopo le vie 1-22, sulle mute): 31 carte 71,0% LONG  z 2,33  vec 50,0 / rec 83,3  +1.048 pip. Casella intera 126 · 56,3%.
+// Cablata su regola di Edu ("sopra il 55% si cabla sempre, come misurato"). In CODA.
+const JUE_STELO = { '甲':'申','乙':'酉','丙':'亥','丁':'子','戊':'亥','己':'子','庚':'寅','辛':'卯','壬':'巳','癸':'午' };
+function via23_steloCavalcaLaJue(c) {
+  if (!c.R1 || !c.steloGiorno) return null;
+  if (JUE_STELO[c.steloGiorno] !== c.R1) return null;
+  return { dir: 'LONG', via: 'lo stelo cavalca la 絕',
+    perche: 'R1 ' + c.R1 + ' e\' la 絕 (estinzione) dello stelo del giorno ' + c.steloGiorno + ': misurato, lo host vince' };
+}
+
+// ============================================================================
+//  VIA 24 · IL RAMO CAVALCA LA PROPRIA 絕  —  S37, 04/09/2026
+// ============================================================================
+// Lato del ramo dello stesso concetto: R3 e' la 絕 dell'elemento del ramo del giorno (木申 火亥 土亥 金寅 水巳) -> LONG (verso misurato).
+// In catena (dopo le vie 1-23, sulle mute): 14 carte 57,1% LONG  vec 75,0 / rec 50,0  +97 pip. Casella intera 193 · 44,0% LONG.
+// Cablata su regola di Edu ("sopra il 55% si cabla sempre"). In CODA.
+const JUE_EL = { 'Legno':'申','Fuoco':'亥','Terra':'亥','Metallo':'寅','Acqua':'巳' };
+function via24_ramoCavalcaLaJue(c) {
+  if (!c.R3 || !c.ramoGiorno) return null;
+  if (JUE_EL[EL_RAMO[c.ramoGiorno]] !== c.R3) return null;
+  return { dir: 'LONG', via: 'il ramo cavalca la 絕',
+    perche: 'R3 ' + c.R3 + ' e\' la 絕 (estinzione) dell\'elemento del ramo del giorno ' + c.ramoGiorno + ': misurato, lo host vince' };
+}
+
+// ============================================================================
+//  VIA 25 · R1 E R3 ENTRAMBI VUOTI  —  S37, 04/09/2026
+// ============================================================================
+// Concetto classico portato da Edu (S37): "spiriti sopra stelo e ramo entrambi vuoti: cattivo". Misurato: verso OPPOSTO -> LONG.
+// In catena (dopo le vie 1-24, sulle mute): 21 carte 61,9% LONG  vec 50,0 / rec 66,7  +568 pip. Casella intera 40 · 57,5%.
+// Un solo vuoto (R1 o R3) non da' verso (801 carte 50,7%). Cablata su regola di Edu ("sopra il 55% si cabla sempre"). In CODA.
+function via25_entrambiVuoti(c) {
+  if (!c.R1 || !c.R3) return null;
+  const V = c.vuoti || [];
+  if (V.indexOf(c.R1) < 0 || V.indexOf(c.R3) < 0) return null;
+  return { dir: 'LONG', via: 'R1 e R3 entrambi vuoti',
+    perche: 'R1 ' + c.R1 + ' e R3 ' + c.R3 + ' sono entrambi vuoti: misurato, lo host vince' };
+}
+
+// ============================================================================
+//  VIA 26 · 戌 O 辰 SOPRA IL RAMO DEL GIORNO  —  S37, 04/09/2026
+// ============================================================================
+// Concetto classico portato da Edu (S37): "lo spirito sopra il ramo del giorno e' 戌 o 辰 (le porte del cielo e della terra): cattivo" -> SHORT.
+// In catena (dopo le vie 1-25, sulle mute): 49 carte 69,4% SHORT  z 2,71  vec 87,5 / rec 62,1  +909 pip. Casella intera 375 · 47,7% SHORT.
+// Cablata su regola di Edu ("sopra il 55% si cabla sempre"). In CODA.
+function via26_xuChenSopraIlRamo(c) {
+  if (!c.R3) return null;
+  if (c.R3 !== '戌' && c.R3 !== '辰') return null;
+  return { dir: 'SHORT', via: '戌 o 辰 sopra il ramo del giorno',
+    perche: 'R3 ' + c.R3 + ' sopra il ramo del giorno ' + c.ramoGiorno + ': ' + (c.R3==='戌'?'la porta del cielo':'la porta della terra') + ' sul guest, lo host perde' };
+}
+
+// ============================================================================
+//  VIA 27 · L'ORA E' LA RICCHEZZA DELLO STELO, IN 旺相, CON GENERALE FAUSTO  —  S37, 04/09/2026
+// ============================================================================
+// Concetto classico portato da Edu (S37): "l'ora e' la W dello stelo del giorno, cavalca il qi vigoroso (旺相) ed e'
+// accompagnata da generale fausto: ricchezza in arrivo". Misurato: verso OPPOSTO al testo -> SHORT.
+// 旺 = l'ora ha l'elemento del ramo del mese · 相 = il mese la genera. Generali fausti: 貴人 青龍 六合 太常 天后 太陰.
+// Il generale sopra l'ora e' quello del generale del mese (che sta sempre sopra l'ora nel piatto).
+// In catena (dopo le vie 1-26, sulle mute): 16 carte 75,0% SHORT  vec 80,0 / rec 70,0  +253 pip. Casella intera 103 · 58,3% SHORT.
+// Cablata su regola di Edu ("sopra il 55% si cabla sempre, come misurato"). In CODA.
+const GENERALI_FAUSTI = ['貴人','青龍','六合','太常','天后','太陰'];
+function via27_oraRicchezzaVigorosaFausta(c) {
+  if (!c.oraRamo || !c.steloGiorno || !c.ramoMese || !c.generaleOra) return null;
+  if (parentela(c.steloGiorno, c.oraRamo) !== 'W') return null;
+  const eM = EL_RAMO[c.ramoMese], eO = EL_RAMO[c.oraRamo];
+  const vigorosa = (eM === eO) || (GENERA[eM] === eO);
+  if (!vigorosa) return null;
+  if (GENERALI_FAUSTI.indexOf(c.generaleOra) < 0) return null;
+  return { dir: 'SHORT', via: 'ora W vigorosa con generale fausto',
+    perche: 'l\'ora ' + c.oraRamo + ' e\' la W (Ricchezza) dello stelo ' + c.steloGiorno + ', e\' 旺相 nel mese ' + c.ramoMese + ' e porta il ' + c.generaleOra + ': misurato, lo host perde' };
+}
+
+// ============================================================================
+//  VIA 28 · L'ORA E' IL 驛馬 DEL GIORNO  —  S37, 04/09/2026
+// ============================================================================
+// Concetto classico portato da Edu (S37): "l'ora e' il Cavallo del giorno, non vuota e senza 天空: buono" -> LONG.
+// In catena (dopo le vie 1-27, sulle mute): 24 carte 62,5% LONG  vec 70,0 / rec 61,5  +23 pip (vince spesso ma di poco).
+// Il vuoto e il 天空 non cambiano il verso (8 carte 62,5%): la via parla su tutte. Casella intera 207 · 51,7%.
+// Cablata su regola di Edu ("sopra il 55% si cabla sempre"). In CODA.
+function via28_oraCavalloDelGiorno(c) {
+  if (!c.oraRamo || !c.ramoGiorno) return null;
+  if (YIMA[c.ramoGiorno] !== c.oraRamo) return null;
+  return { dir: 'LONG', via: 'l\'ora e\' il 驛馬 del giorno',
+    perche: 'l\'ora ' + c.oraRamo + ' e\' il 驛馬 (Cavallo di posta) del ramo del giorno ' + c.ramoGiorno + ': il movimento e\' dello host, che vince' };
+}
+
+// ============================================================================
+//  VIA 29 · L'ORA COMBINA COL PALAZZO DELLO STELO (六合 o 三合)  —  S37, 04/09/2026
+// ============================================================================
+// Concetto classico portato da Edu (S37): "l'ora e lo stelo del giorno si combinano (sei combinazioni o triangolo): buono".
+// Misurato sul palazzo dello stelo (寄宮): verso OPPOSTO al testo -> SHORT.
+// In catena (dopo le vie 1-28, sulle mute): 40 carte 62,5% SHORT  vec 72,2 / rec 57,1  +354 pip. Casella intera 648 · 54,5% SHORT.
+// La 五合 fra stelo dell'ora e stelo del giorno non da' verso (mute 22 · 50%). Cablata su regola di Edu. In CODA.
+const SANHE = { '申':['子','辰'],'子':['申','辰'],'辰':['申','子'],'寅':['午','戌'],'午':['寅','戌'],'戌':['寅','午'],'巳':['酉','丑'],'酉':['巳','丑'],'丑':['巳','酉'],'亥':['卯','未'],'卯':['亥','未'],'未':['亥','卯'] };
+function via29_oraCombinaColPalazzo(c) {
+  if (!c.oraRamo || !c.palazzoHost) return null;
+  const lh = LIUHE[c.oraRamo] === c.palazzoHost, sh = (SANHE[c.oraRamo] || []).indexOf(c.palazzoHost) >= 0;
+  if (!lh && !sh) return null;
+  return { dir: 'SHORT', via: 'l\'ora combina col palazzo dello stelo',
+    perche: 'l\'ora ' + c.oraRamo + ' e\' in ' + (lh ? '六合' : '三合') + ' col palazzo dello stelo ' + c.palazzoHost + ': misurato, lo host perde' };
+}
+
+// ============================================================================
+//  VIA 30 · L'ORA COMBINA COL RAMO DEL GIORNO (六合 o 三合)  —  S37, 04/09/2026
+// ============================================================================
+// Concetto classico portato da Edu (S37): "l'ora e il ramo del giorno si combinano: buono, con C meglio" -> LONG.
+// In catena (dopo le vie 1-29, sulle mute): 34 carte 58,8% LONG  vec 63,6 / rec 52,4  +508 pip. Casella intera 621 · 48,5%.
+// Il C non migliora (8 carte 50%). La 六合 da sola 14 · 71,4%, la 三合 20 · 50%: la via parla su entrambe come da testo.
+// Cablata su regola di Edu ("sopra il 55% si cabla sempre"). In CODA.
+function via30_oraCombinaColRamo(c) {
+  if (!c.oraRamo || !c.ramoGiorno) return null;
+  const lh = LIUHE[c.oraRamo] === c.ramoGiorno, sh = (SANHE[c.oraRamo] || []).indexOf(c.ramoGiorno) >= 0;
+  if (!lh && !sh) return null;
+  return { dir: 'LONG', via: 'l\'ora combina col ramo del giorno',
+    perche: 'l\'ora ' + c.oraRamo + ' e\' in ' + (lh ? '六合' : '三合') + ' col ramo del giorno ' + c.ramoGiorno + ': lo host vince' };
+}
+
+// ============================================================================
+//  VIA 31 · L'ORA CLASHA IL PALAZZO DELLO STELO  —  S37, 04/09/2026
+// ============================================================================
+// Concetto classico portato da Edu (S37): "l'ora e lo stelo del giorno si clashano: cattivo" -> SHORT (sul palazzo 寄宮).
+// In catena (dopo le vie 1-30, sulle mute): 10 carte 70,0% SHORT  vec 100 / rec 62,5  +174 pip. Casella intera 224 · 54,5% SHORT.
+// Cablata su regola di Edu ("sopra il 55% si cabla sempre"); n piccolo, da tenere d'occhio. In CODA.
+const CLASH12 = { '子':'午','午':'子','丑':'未','未':'丑','寅':'申','申':'寅','卯':'酉','酉':'卯','辰':'戌','戌':'辰','巳':'亥','亥':'巳' };
+function via31_oraClashaIlPalazzo(c) {
+  if (!c.oraRamo || !c.palazzoHost) return null;
+  if (CLASH12[c.oraRamo] !== c.palazzoHost) return null;
+  return { dir: 'SHORT', via: 'l\'ora clasha il palazzo dello stelo',
+    perche: 'l\'ora ' + c.oraRamo + ' clasha il palazzo dello stelo ' + c.palazzoHost + ': lo host e\' colpito e perde' };
+}
+
+// ============================================================================
+//  VIA 32 · L'ORA CLASHA IL RAMO DEL GIORNO  —  S37, 04/09/2026
+// ============================================================================
+// Concetto classico portato da Edu (S37): "l'ora e il ramo del giorno si clashano: cattivo" -> SHORT.
+// In catena (dopo le vie 1-31, sulle mute): 8 carte 62,5% SHORT  vec 33,3 / rec 80,0  +434 pip. Casella intera 201 · 48,3% SHORT.
+// Cablata su regola di Edu ("sopra il 55% si cabla sempre"); n molto piccolo. In CODA.
+function via32_oraClashaIlRamo(c) {
+  if (!c.oraRamo || !c.ramoGiorno) return null;
+  if (CLASH12[c.oraRamo] !== c.ramoGiorno) return null;
+  return { dir: 'SHORT', via: 'l\'ora clasha il ramo del giorno',
+    perche: 'l\'ora ' + c.oraRamo + ' clasha il ramo del giorno ' + c.ramoGiorno + ': cattivo, lo host perde' };
+}
+
+// ============================================================================
+//  VIA 33 · L'ORA E' PENALIZZATA (刑) DAL RAMO DEL GIORNO  —  S37, 04/09/2026
+// ============================================================================
+// Concetto classico portato da Edu (S37): "l'ora e' penalizzata dal ramo del giorno: cattivo" -> SHORT.
+// 刑: 子->卯 卯->子 寅->巳 巳->申 申->寅 丑->戌 戌->未 未->丑 · 辰午酉亥 si penalizzano da soli.
+// In catena (dopo le vie 1-32, sulle mute): 12 carte 66,7% SHORT  vec 71,4 / rec 60,0  +326 pip. Casella intera 211 · 46,4% SHORT.
+// Cablata su regola di Edu ("sopra il 55% si cabla sempre"); n piccolo. In CODA.
+const XING12 = { '子':'卯','卯':'子','寅':'巳','巳':'申','申':'寅','丑':'戌','戌':'未','未':'丑','辰':'辰','午':'午','酉':'酉','亥':'亥' };
+function via33_oraPenalizzataDalRamo(c) {
+  if (!c.oraRamo || !c.ramoGiorno) return null;
+  if (XING12[c.ramoGiorno] !== c.oraRamo) return null;
+  return { dir: 'SHORT', via: 'l\'ora e\' penalizzata dal ramo del giorno',
+    perche: 'il ramo del giorno ' + c.ramoGiorno + ' penalizza (刑) l\'ora ' + c.oraRamo + ': cattivo, lo host perde' };
+}
+
+// ============================================================================
+//  VIA 34 · IL PRIMO MESSAGGIO E' 沐浴 O 死 DELLO STELO  —  S37, 04/09/2026
+// ============================================================================
+// Concetto classico portato da Edu (S37): "il primo messaggio (初傳) e' nella tappa 沐浴 (Bagno) o 死 (Morte) dello stelo: cattivo".
+// Misurato: verso OPPOSTO al testo -> LONG. In catena (dopo le vie 1-33, sulle mute): 11 carte 63,6% LONG  vec 25,0 / rec 85,7  +179 pip.
+// Casella intera 406 · 51,7% (死 da solo 175 · 56,0%). Cablata su regola di Edu; n molto piccolo. In CODA.
+const MUYU_STELO = { '甲':'子','乙':'巳','丙':'卯','丁':'申','戊':'卯','己':'申','庚':'午','辛':'亥','壬':'酉','癸':'寅' };
+const SI_STELO   = { '甲':'午','乙':'亥','丙':'酉','丁':'寅','戊':'酉','己':'寅','庚':'子','辛':'巳','壬':'卯','癸':'申' };
+function via34_primoMessaggioBagnoOMorte(c) {
+  const M1 = c.treMessaggi && c.treMessaggi.chu; if (!M1 || !c.steloGiorno) return null;
+  const bagno = MUYU_STELO[c.steloGiorno] === M1, morte = SI_STELO[c.steloGiorno] === M1;
+  if (!bagno && !morte) return null;
+  return { dir: 'LONG', via: 'primo messaggio in 沐浴 o 死 dello stelo',
+    perche: 'il primo messaggio ' + M1 + ' e\' la tappa ' + (bagno ? '沐浴 (Bagno)' : '死 (Morte)') + ' dello stelo ' + c.steloGiorno + ': misurato, lo host vince' };
+}
+
+// ============================================================================
+//  VIA 35 · IL PRIMO MESSAGGIO E' LA 墓 DELLO STELO  —  S37, 04/09/2026
+// ============================================================================
+// Concetto classico portato da Edu (S37): "il primo messaggio e' la tomba dello stelo: cattivo". Misurato: verso OPPOSTO -> LONG.
+// In catena (dopo le vie 1-34, sulle mute): 8 carte 75,0% LONG (tutte nel recente) +220 pip. Casella intera 164 · 47,0%.
+// Cablata su regola di Edu; n molto piccolo. In CODA.
+function via35_primoMessaggioTombaDelloStelo(c) {
+  const M1 = c.treMessaggi && c.treMessaggi.chu; if (!M1 || !c.steloGiorno) return null;
+  if (TOMBA_STELO[c.steloGiorno] !== M1) return null;
+  return { dir: 'LONG', via: 'primo messaggio sulla 墓 dello stelo',
+    perche: 'il primo messaggio ' + M1 + ' e\' la 墓 (tomba) dello stelo ' + c.steloGiorno + ': misurato, lo host vince' };
+}
+
+// ============================================================================
+//  VIA 36 · IL PRIMO MESSAGGIO E' LA 長生 DELLO STELO  —  S37, 04/09/2026
+// ============================================================================
+// Concetto classico portato da Edu (S37): "il primo messaggio e' la tappa 長生 (Nascita) dello stelo: buono" -> LONG.
+// In catena (dopo le vie 1-35, sulle mute): 5 carte 60,0% LONG  +25 pip. Casella intera 237 · 46,0% LONG.
+// Cablata su regola di Edu ("anche poche carte, purche' sopra il 55%"). In CODA.
+const CHANGSHENG_STELO = { '甲':'亥','乙':'午','丙':'寅','丁':'酉','戊':'寅','己':'酉','庚':'巳','辛':'子','壬':'申','癸':'卯' };
+function via36_primoMessaggioNascitaDelloStelo(c) {
+  const M1 = c.treMessaggi && c.treMessaggi.chu; if (!M1 || !c.steloGiorno) return null;
+  if (CHANGSHENG_STELO[c.steloGiorno] !== M1) return null;
+  return { dir: 'LONG', via: 'primo messaggio in 長生 dello stelo',
+    perche: 'il primo messaggio ' + M1 + ' e\' la 長生 (Nascita) dello stelo ' + c.steloGiorno + ': lo host nasce e vince' };
+}
+
+// ============================================================================
+//  VIA T · I DUE TRIGONI DEL PIATTO, LETTI PER CARATTERE DEL GUEST  —  S37, 04/09/2026 (in TESTA)
+// ============================================================================
+// Edu (S37, da EURJPY 06/08/2024 s159): lato dello stelo (palazzo, R1, R2) e lato del ramo (ramo, R3, R4) formano
+// due trigoni 三合 completi (nessun membro vuoto: il vuoto rompe il trigono). Il piatto ruota di 4: quando c'e' un
+// trigono da un lato c'e' anche dall'altro. Si legge il CARATTERE del trigono del guest per lo stelo del giorno:
+//   guest G  -> SHORT   56 carte 60,7%  vec 65,5 / rec 57,7  +414 pip
+//   guest W  -> SHORT   47 carte 55,3%  vec 54,2 / rec 59,1  +682 pip   (= lo host C nutre il guest)
+//   guest P  -> LONG    18 carte 66,7%  vec 100 / rec 53,8   +399 pip
+//   guest C  -> tace    21 carte 52,4%
+// Casella intera (le carte sono tutte gia' lette da altre vie: sulle mute non ne resta nessuna). Cablata su regola di Edu
+// ("sopra il 55% si cabla"), in TESTA perche' legge il piatto intero, dopo il gruppo completo del fantasma.
+const TRIGONI = [['申','子','辰','Acqua'],['寅','午','戌','Fuoco'],['巳','酉','丑','Metallo'],['亥','卯','未','Legno']];
+function trigonoLato(a, b, c, V) {
+  if (!a || !b || !c) return null; if ([a,b,c].some(x => V.indexOf(x) >= 0)) return null;
+  for (const t of TRIGONI) if ([a,b,c].every(x => t.indexOf(x) >= 0) && a!==b && b!==c && a!==c) return t[3];
+  return null;
+}
+function carattereEl(stelo, el) {
+  const S = EL_STELO[stelo]; if (!S || !el) return null;
+  return el===S ? 'B' : GENERA[S]===el ? 'C' : GENERA[el]===S ? 'P' : CONTROLLA[S]===el ? 'W' : 'G';
+}
+function viaT_dueTrigoniPerCarattere(c) {
+  const V = c.vuoti || [];
+  const tH = trigonoLato(c.palazzoHost, c.R1, c.R2, V), tG = trigonoLato(c.ramoGiorno, c.R3, c.R4, V);
+  if (!tH || !tG) return null;
+  const car = carattereEl(c.steloGiorno, tG);
+  if (car === 'G') return { dir: 'SHORT', via: 'due trigoni · guest G',
+    perche: 'il lato dello stelo forma il trigono di ' + tH + ' e il lato del ramo quello di ' + tG + ', che e\' G (鬼 Fantasma) per lo stelo ' + c.steloGiorno + ': il guest vince' };
+  if (car === 'W') {
+    // Cascata di Edu (S37, 04/09/2026): (1) lo host genera il guest -> SHORT; (2) ma se la W sta SOPRA (R3/R4) -> LONG;
+    // (3) ma se l'elemento della W e' in TOMBA nel mese -> SHORT. Misura: (1) 10 carte 70% SHORT · (2) 34 carte 50% · (3) 3 carte 2/3 SHORT.
+    const wSopra = parentela(c.steloGiorno, c.R3) === 'W' || parentela(c.steloGiorno, c.R4) === 'W';
+    const testa = 'il lato dello stelo forma il trigono di ' + tH + ' e nutre il trigono di ' + tG + ' del ramo (W per ' + c.steloGiorno + ')';
+    if (!wSopra) return { dir: 'SHORT', via: 'due trigoni · lo host nutre il guest, W solo sotto',
+      perche: testa + ', ma la W sta solo sul ramo del giorno, non sopra: lo host cede e basta' };
+    const TOMBA_EL2 = { 'Legno':'未','Fuoco':'戌','Terra':'戌','Metallo':'丑','Acqua':'辰' };
+    if (c.ramoMese && TOMBA_EL2[tG] === c.ramoMese) return { dir: 'SHORT', via: 'due trigoni · W sopra ma in tomba',
+      perche: testa + ', la W sta sopra ma il ' + tG + ' e\' in tomba nel mese ' + c.ramoMese + ': che ricchezza puo\' portare, lo host cede' };
+    return { dir: 'LONG', via: 'due trigoni · W sopra',
+      perche: testa + ', e la W sta sopra: lo host cede per incassare, vince' };
+  }
+  if (car === 'P') return { dir: 'LONG', via: 'due trigoni · guest P',
+    perche: 'il lato dello stelo forma il trigono di ' + tH + ' e il lato del ramo quello di ' + tG + ', che e\' P (父母 Genitore) per lo stelo ' + c.steloGiorno + ': lo host e\' nutrito e vince' };
+  return null;
+}
+
+// ============================================================================
+//  VIA U · LA CATENA A RITROSO CHE SCORRE NELLA TOMBA  —  S37, 04/09/2026 (in TESTA)
+// ============================================================================
+// Edu (S37, USDCAD 13/06/2023 s133, 戌午寅): "i tre messaggi fanno vedere che la tomba e' generata in sequenza: M1 tomba,
+// M2 genera M1 e M3 genera M2". Tutto il Qi scorre nella tomba: la ricchezza si seppellisce, lo host perde -> SHORT.
+// Condizione: M3 genera M2, M2 genera M1, M1 e' la tomba dell'elemento di M2 (木未 火戌 金丑 水辰).
+// Misura (casella intera, soglia 20): 42 carte 59,5% SHORT  vec 68,2 / rec 62,5  +725 pip. Cablata su regola di Edu, in TESTA.
+function viaU_catenaNellaTomba(c) {
+  const T = c.treMessaggi; if (!T || !T.chu || !T.zhong || !T.mo) return null;
+  const e1 = EL_RAMO[T.chu], e2 = EL_RAMO[T.zhong], e3 = EL_RAMO[T.mo];
+  if (GENERA[e2] !== e1 || GENERA[e3] !== e2) return null;
+  if (TOMBA_EL[e2] !== T.chu) return null;
+  return { dir: 'SHORT', via: 'la catena scorre nella tomba',
+    perche: 'i tre messaggi ' + T.chu + '←' + T.zhong + '←' + T.mo + ' si generano a ritroso e ' + T.chu + ' e\' la tomba del ' + e2 + ' di ' + T.zhong + ': tutto scorre nella tomba, lo host perde' };
+}
+
 // La via del gruppo completo sta in TESTA: legge il movimento intero, non una singola casella,
 // e quando parla comanda su tutte le letture di casella.
 // La via 6 sta in FONDO: condizione ultima, parla solo quando tutto il resto ha taciuto.
 // La via 7 legge ancora una casella (R1/R2): sta dopo la 5 e prima della condizione ultima.
-const CATENA = [ via0_gruppoCompletoFantasma ].concat(VIE, [ via5_R2prendeIlPostoDiR1, via7_fratelloLegato, via6_ricchezzaSulPrimoMessaggio, via8_figlioVuotoRicchezzaInFondo, via9_pDalLatoDelloStelo, via10_oDalLatoDelloSteloNonNutrito, via11_gVuotoSulPrimoMessaggio, via12_oSoproLoSteloHostSulVuoto, via13_oConGancio, via14_bConDragoAzzurro ]);
+const CATENA = [ via0_gruppoCompletoFantasma, viaU_catenaNellaTomba, viaT_dueTrigoniPerCarattere ].concat(VIE, [ via5_R2prendeIlPostoDiR1, via7_fratelloLegato, via6_ricchezzaSulPrimoMessaggio, via8_figlioVuotoRicchezzaInFondo, via9_pDalLatoDelloStelo, via10_oDalLatoDelloSteloNonNutrito, via11_gVuotoSulPrimoMessaggio, via12_oSoproLoSteloHostSulVuoto, via13_oConGancio, via14_bConDragoAzzurro, via15_r1GeneraIlRamoDelGiorno, via16_luIncrociato, via17_cavalloDiPostaSuR1, via18_luDelGiornoSuR1, via19_apiceDelloSteloSuR3, via20_steloCavalcaLaTomba, via21_ramoSiedeSullaTomba, via22_steloSiedeSullaTomba, via23_steloCavalcaLaJue, via24_ramoCavalcaLaJue, via25_entrambiVuoti, via26_xuChenSopraIlRamo, via27_oraRicchezzaVigorosaFausta, via28_oraCavalloDelGiorno, via29_oraCombinaColPalazzo, via30_oraCombinaColRamo, via31_oraClashaIlPalazzo, via32_oraClashaIlRamo, via33_oraPenalizzataDalRamo, via34_primoMessaggioBagnoOMorte, via35_primoMessaggioTombaDelloStelo, via36_primoMessaggioNascitaDelloStelo ]);
 
 // ============================================================================
 //  LETTURA

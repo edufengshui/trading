@@ -997,6 +997,25 @@
 
   // §130 — I DUE PILASTRI INTERI SUL NASCOSTO: EMERGE E NIENTE COMPETE (Edu, 31/08/2026)
   // §137 — IL POSSESSO DI SHI O YING (Edu, 04/09/2026) — PRIMA VIA DELLA CATENA, PRECEDENZA SU TUTTO, MOBILE INCLUSA
+  // S37: il trigono completo (membri come §133) che coinvolge la mobile con la partenza o con l'arrivo (se si muove).
+  function trigonoConMobile(R, ctx) {
+    var M=R.mutante; if (!M || !M.pos) return false; var i,l; var mob=R.linee[M.pos-1]; if (!mob) return false;
+    var TRINI=[['申','子','辰'],['寅','午','戌'],['巳','酉','丑'],['亥','卯','未']];
+    var visfus={}, estesi={};
+    for (i=0;i<R.linee.length;i++){ l=R.linee[i];
+      if (!((R.vuoti||[]).indexOf(l.ramo)>=0 && !l.isMobile)) visfus[l.ramo]=1;
+      var fb=l.fushen && (l.fushen.ramo||l.fushen.b); if (fb && (R.vuoti||[]).indexOf(fb)<0) visfus[fb]=1; }
+    if (M.ramoArr && !M.movimentoNullo) visfus[M.ramoArr]=1;
+    var rd=[R.dayBranch, R.monthBranch, (ctx&&ctx.yearBranch)||R.yearBranch, R.oraBranch||(ctx&&ctx.oraBranch)];
+    for (i=0;i<rd.length;i++){ if (rd[i] && (R.vuoti||[]).indexOf(rd[i])<0) estesi[rd[i]]=1; }
+    var agisce=(M.ramoArr && !M.movimentoNullo)?M.ramoArr:mob.ramo;
+    for (i=0;i<TRINI.length;i++){ var t=TRINI[i];
+      var nVF=(visfus[t[0]]?1:0)+(visfus[t[1]]?1:0)+(visfus[t[2]]?1:0);
+      var full=t.every(function(b){ return visfus[b]||estesi[b]; });
+      if ((nVF===3 || (full && nVF>=2)) && (t.indexOf(mob.ramo)>=0 || t.indexOf(agisce)>=0)) return true; }
+    return false;
+  }
+
   LY_VIE.push({ id:'R75_137', sezione:'§137', cablata:'2026-09-04',
     nome:'Possession of the Shi or the Ying by the date beasts: the seats duel with their new elements, the nourished one wins',
     dottrina:'Edu (04/09/2026), testo suo: "1. Se due bestie arrivano su una linea qualsiasi prendono possesso. 2. Se la bestia del mese arriva su una linea qualsiasi prende possesso. 3. Se un\'altra bestia arriva su una linea lavora con la linea. 4. Se quanto sopra capita con S e Y questo ha la precedenza su ogni altra cosa inclusa linea mobile." Possesso = la linea diventa i rami dei pilastri caduti (la loro bestia siede sulla linea). Precisazione di Edu (USDJPY 06/05/2026): il mese si impone solo se ha la stessa polarita\' della maggioranza degli altri steli; se e\' l\'unico yin o yang non prende possesso ma lavora soltanto. Dopo il possesso Shi e Ying si confrontano coi nuovi elementi: CHI VIENE GENERATO VINCE (EURJPY 13/06/2023: Shi posseduto dal Legno 寅卯, Ying posseduta dal mese 午 Fuoco, lo Shi genera la Ying -> LONG +120). Esclusioni date da Edu: Shi o Ying vuoti; linea nascosta sotto Shi o Ying; rami dei pilastri che clashano fra loro; penalita\' (刑) su Shi o Ying. Senza generazione: tace (il controllo, provato, peggiora: non si usa). La bestia singola che lavora con la linea NON da\' verso da sola (196 carte 46,9%) e non entra qui. Misura (possesso.js POLARITA=maggioranza, 138 carte): la Ying genera lo Shi -> vince lo Shi 55 carte 65,5% (vec 66,7 / rec 64,7); lo Shi genera la Ying -> vince la Ying 83 carte 54,2%; totale 58,7% (vec 58,5 / rec 58,8). Sostituisce le §135/§136 che contenevano aggiunte mie. VIA137=off per disattivarla.',
@@ -1699,6 +1718,10 @@
       var autoc = mob.stato==='autocombinata';
       // §76 (19/08/2026): il sotto-caso "arrival clashed by the day" e' stato TOLTO (211 carte, 49,8%): il clash del giorno attiva la mobile (§74), non fa fallire l'azione.
       if (!(huitou || autoc)) return null;
+      // S37 (Edu, 04/09/2026, EURJPY 06/08/2024 s159): se l'arrivo del 回頭剋 chiude un trigono completo (§133m), l'arrivo
+      // prende il carattere della mobile e NON controlla piu' indietro: l'azione non fallisce, la §52 tace. TRIGMOBILE=off ripristina.
+      // La B mobile resta alla §52-bis (guida EURJPY 22/09/2022 s141): il malus ucciso comanda sul trigono (guida USDCHF 18/05/2022 s99).
+      if (huitou && mob.par!=='B' && trigonoConMobile(R, ctx) && !(typeof process!=='undefined' && process.env && process.env.TRIGMOBILE==='off')) return null;
       // Guardia mobile (Edu, 25/08/2026, audit): §52 sbaglia con mobile B (兄弟). G52B=off ripristina.
       // §52-bis (Edu, 03/09/2026 S36, guida EURJPY 22/09/2022 s141): la B mobile che si muove per essere
       // CONTROLLATA INDIETRO (回頭剋) e' il malus ucciso: il danno se ne va, la sua squadra VINCE la propria sede.
@@ -2797,6 +2820,49 @@
 
 
   // POSIZIONE §133 (S36, regressione carte guida): DOPO §129..§125 — rubava la guida di §129 (AUDUSD 18/04/2022).
+  // §133m — IL TRIGONO CHE COINVOLGE LA MOBILE PRENDE IL SUO CARATTERE (Edu, S37 04/09/2026; da EURJPY 06/08/2024 s159)
+  // Modifica la §133 (carattere del leader/elemento). AZIONE DELLA MOBILE: entrare nel trigono. Sta PRIMA della §52:
+  // l'arrivo assorbito dal trigono non controlla piu' indietro la partenza e non fa fallire l'azione.
+  LY_VIE.push({ id:'R72_133m', sezione:'§133m', cablata:'2026-09-04',
+    nome:'A trigon that involves the mobile line takes the mobile\'s character (action)',
+    dottrina:'Edu (04/09/2026, S37, da EURJPY 06/08/2024 s159): "quando c\'e\' un trigono che coinvolge una linea mobile, i due rami che non si muovono prendono il carattere di quello che si muove". La mobile e\' nel trigono con la partenza o con l\'arrivo (stessi membri della §133: linee visibili non vuote, la mobile anche se vuota, 伏神 non vuoti, l\'arrivo, rami di data non vuoti come terzo membro). Il trigono si legge col CARATTERE DELLA MOBILE: G/W -> la sede del trigono VINCE; B/P -> la sede PERDE; C -> VINCE se non c\'e\' una linea W o G VICINA alla mobile (immediatamente sopra o sotto) ne\' DA COMBINARE (六合) con il ramo con cui la mobile agisce (l\'arrivo se si muove, la partenza se no); altrimenti tace. Sede = maggioranza dei membri visibili (alto LONG, basso SHORT); l\'arrivo rianimato su L1 chiude il trigono in basso. Sulla carta: 亥卯未 chiuso dall\'arrivo 卯 della mobile L1 辰 C; 亥 (伏神 L3) e 未 (L5) diventano C; vicino a L1 c\'e\' L2 B, e 卯 combina 戌 che non c\'e\' -> il C vince la sede bassa -> SHORT (esito -168 SHORT). Sta al posto della §133 (fase dei raduni); la §52 TACE quando l\'arrivo del 回頭剋 e\' assorbito in un trigono che coinvolge la mobile. TRIGMOBILE=off per disattivarla.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.TRIGMOBILE==='off') return null;
+      var M=R.mutante; if (!M || !M.pos) return null; var i,l;
+      var mob=R.linee[M.pos-1]; if (!mob) return null;
+      var TRINI=[['申','子','辰','Water'],['寅','午','戌','Fire'],['巳','酉','丑','Metal'],['亥','卯','未','Wood']];
+      var visfus={}, estesi={}, posOf={};
+      for (i=0;i<R.linee.length;i++){ l=R.linee[i];
+        if (!((R.vuoti||[]).indexOf(l.ramo)>=0 && !l.isMobile)) { visfus[l.ramo]=1; posOf[l.ramo]=l.pos; }
+        var fb=l.fushen && (l.fushen.ramo||l.fushen.b);
+        if (fb && (R.vuoti||[]).indexOf(fb)<0) { visfus[fb]=1; if (posOf[fb]==null) posOf[fb]=l.pos; } }
+      if (M.ramoArr && !M.movimentoNullo) { visfus[M.ramoArr]=1; if (posOf[M.ramoArr]==null) posOf[M.ramoArr]=M.pos; }
+      var rd=[R.dayBranch, R.monthBranch, (ctx&&ctx.yearBranch)||R.yearBranch, R.oraBranch||(ctx&&ctx.oraBranch)];
+      for (i=0;i<rd.length;i++){ var rb=rd[i]; if (rb && (R.vuoti||[]).indexOf(rb)<0) estesi[rb]=1; }
+      var trig=null;
+      for (i=0;i<TRINI.length;i++){ var t=TRINI[i];
+        var nVF=(visfus[t[0]]?1:0)+(visfus[t[1]]?1:0)+(visfus[t[2]]?1:0);
+        var full=[t[0],t[1],t[2]].every(function(b){ return visfus[b]||estesi[b]; });
+        if (nVF===3 || (full && nVF>=2)) { trig=t; break; } }
+      if (!trig) return null;
+      var agisce = (M.ramoArr && !M.movimentoNullo) ? M.ramoArr : mob.ramo;
+      if (trig.indexOf(mob.ramo)<0 && trig.indexOf(agisce)<0) return null;      // la mobile non c'entra
+      var car=mob.par;
+      if (car==='C') {
+        var vicini=[R.linee[M.pos-2], R.linee[M.pos]].filter(function(x){return !!x;});
+        var comb=COMBINA[agisce];
+        for (i=0;i<R.linee.length;i++){ l=R.linee[i]; if (l.pos!==M.pos && l.ramo===comb && !((R.vuoti||[]).indexOf(l.ramo)>=0)) vicini.push(l); }
+        for (i=0;i<vicini.length;i++){ if (vicini[i].par==='W'||vicini[i].par==='G') { state.why='Trigon '+trig[0]+trig[1]+trig[2]+' takes the C of the mobile, but a '+vicini[i].par+' ('+vicini[i].ramo+' L'+vicini[i].pos+') is next to it or combines it: silent.'; return null; } }
+      }
+      var alto=0, basso=0, sede=null;
+      if (M.pos===1 && M.ramoArr && trig.indexOf(M.ramoArr)>=0 && !(visfus[M.ramoArr] && posOf[M.ramoArr]!==1)) sede='SHORT';
+      else { for (i=0;i<3;i++){ var b=trig[i]; if (posOf[b]!=null) { if (posOf[b]>3) alto++; else basso++; } }
+        if (alto===basso) return null; sede = alto>basso ? 'LONG' : 'SHORT'; }
+      var dir = (car==='G'||car==='W'||car==='C') ? sede : (sede==='LONG'?'SHORT':'LONG');
+      state.why='The trigon <b>'+trig[0]+trig[1]+trig[2]+'</b> involves the mobile L'+M.pos+' and takes its character <b>'+car+'</b>: '+((car==='G'||car==='W')?'its seat WINS':car==='C'?'no W/G next to it or combining it, its seat WINS':'its seat LOSES')+' → '+dir+'.';
+      return dir;
+    }});
+
   // §133 — IL TRIGONO COMPLETO SERVE AL SUO ELEMENTO (Edu, 03/09/2026, S36; guida EURJPY 29/04/2024 s169)
   LY_VIE.push({ id:'R71_133', sezione:'§133', coda:true, cablata:'2026-09-03',
     nome:'A complete trigon serves its element: read it by character (tail)',
@@ -2821,6 +2887,10 @@
       if (!trig) return null;
       var el=trig[3], pEl=R.palEl;
       var car = el===pEl?'B': GEN[el]===pEl?'P': GEN[pEl]===el?'C': CTRL[el]===pEl?'G':'W';
+      // S37 (Edu, 04/09/2026): se il trigono COINVOLGE la mobile (partenza o arrivo) lo legge la via §133m, prima
+      // dell'azione: il trigono prende il carattere della mobile. Qui si tace. TRIGMOBILE=off per tornare indietro.
+      var mobCar=null;
+      if (trigonoConMobile(R, ctx) && !(typeof process!=='undefined' && process.env && process.env.TRIGMOBILE==='off')) return null;
       if (car==='C') return null;
       var alto=0, basso=0, sede=null;
       // L'ARRIVO RIANIMATO dal giorno su L1 chiude il trigono: la sede e' dove l'azione atterra, L1 (Edu 29/08/2026, USDJPY 23/01/2026).
@@ -2831,7 +2901,7 @@
         sede = alto>basso ? 'LONG' : 'SHORT';
       }
       var dir = (car==='G'||car==='W') ? sede : (sede==='LONG'?'SHORT':'LONG');
-      state.why='The trigon <b>'+trig[0]+trig[1]+trig[2]+'</b> ('+el+') is complete and serves its element: as a <b>'+car+'</b> for the palace ('+pEl+') it '+((car==='G'||car==='W')?'makes its seat WIN':'makes its seat LOSE')+'. Its members sit '+(alto>basso?'above':'below')+' → '+dir+'.';
+      state.why='The trigon <b>'+trig[0]+trig[1]+trig[2]+'</b> ('+el+') is complete and '+(mobCar?'takes the character of the MOBILE line L'+M.pos+': as a <b>'+car+'</b> it ':'serves its element: as a <b>'+car+'</b> for the palace ('+pEl+') it ')+((car==='G'||car==='W')?'makes its seat WIN':'makes its seat LOSE')+'. Its members sit '+(alto>basso?'above':'below')+' → '+dir+'.';
       return dir;
     }});
 
