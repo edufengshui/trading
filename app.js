@@ -813,11 +813,14 @@ function capolineaDelFlusso(chart) {
 }
 
 /* ---------------- TRE SISTEMI A SCALARE (Edu, 03/09/2026, sessione S36) ----------------
- * Livello A: Plum Blossom, Liu Yao e Da Liu Ren concordano            (382 carte · 68,3%)
- * Livello B: sistema attuale (PB+LY+rafforzativi) e Da Liu Ren concordano (410 · 66,3%)
- * Livello C: Plum Blossom e Liu Yao concordano e il Da Liu Ren TACE   (646 · 62,4%)
- * Altrimenti fermo. Scala misurata: 1.438 carte · 65,1% · +30.351 pip (pb_stress.js TRESIST=1).
- * Se il Da Liu Ren contrasta due sistemi concordi e' una moneta (315 · 53%): fermo.
+ * Livello A: Plum Blossom, Liu Yao e Da Liu Ren concordano                 (559 carte · 69,59%)
+ * Livello B: sistema attuale (PB+LY+rafforzativi) e Da Liu Ren concordano (512 · 65,23%)
+ * Livello C: Plum Blossom e Liu Yao concordano e il Da Liu Ren TACE       (403 · 63,52%)
+ * Altrimenti fermo. Scala misurata al 05/09/2026 (S38): 1.474 carte · 66,42% · z 12,61
+ * · +34.409 pip · 23,3 pip a trade · vecchio 66,92% / recente 66,23% (pb_stress.js TRESIST=1).
+ * Se il Da Liu Ren contrasta due sistemi concordi e' una moneta (491 · 51,53%, vec 55,56 /
+ * rec 47,86): fermo. Questa regola era gia' qui e si e' rivelata giusta: il 05/09/2026
+ * e' stato pb_stress.js ad essere allineato all'app, non il contrario.
  */
 function livelloTreSistemi(e) {
   var pb = e.pbDir || null, ly = e.lyDir || null, at = e.attuale || null, dlr = e.dlrDir || null;

@@ -954,6 +954,42 @@ function viaT_dueTrigoniPerCarattere(c) {
                 ': la ricchezza e\' invalidata e resta la relazione nuda, lo host genera il guest e si scarica' };
     const wSopra = parentela(c.steloGiorno, c.R3) === 'W' || parentela(c.steloGiorno, c.R4) === 'W';
     const testa = testa0;
+    // (0-ter) Edu (S38, 05/09/2026, dubbio sollevato su EURGBP 07/08/2025 s87): la tomba all'inizio dei tre messaggi,
+    //     con le fasi che corrono in AVANTI, non qualifica il trigono del ramo come trigono di RICCHEZZA.
+    //     Condizione: i tre messaggi SONO il trigono del guest e le loro fasi sono 墓 -> 長生 -> 帝旺.
+    //     In quel caso il punto 2 TACE (non si legge ne' LONG ne' SHORT) e la carta scende alle vie a valle.
+    //     Misura del ramo W spaccato per ordine delle fasi (messaggi dentro il guest, W sopra):
+    //       帝旺>長生>墓  16 carte  63% LONG  +185 pip   <- e' questo che regge il punto 2
+    //       墓>長生>帝旺   5 carte  40% LONG    +3 pip   <- piatto: non qualifica in nessuna direzione
+    //       帝旺>墓>長生   2 carte   0% LONG  -115 pip   <- gia' presa dall'invalidazione (0)
+    //       墓>帝旺>長生   2 carte   0% LONG   -78 pip
+    //     Motore con il punto 2 muto su questo pattern: 60,83% -> 60,87%, z 10,81 -> 10,85, +33.022 -> +33.134 pip.
+    //     Il punto 2 passa da 28 carte 60,71% a 23 carte 65,22%: quelle 5 carte non erano sue.
+    const FASE_TRI = { '申子辰':'Acqua', '寅午戌':'Fuoco', '巳酉丑':'Metallo', '亥卯未':'Legno' };
+    const FASE = { 'Acqua':{'申':1,'子':2,'辰':3}, 'Fuoco':{'寅':1,'午':2,'戌':3},
+                   'Metallo':{'巳':1,'酉':2,'丑':3}, 'Legno':{'亥':1,'卯':2,'未':3} };
+    const Tm = c.treMessaggi, msg = [Tm.chu, Tm.zhong, Tm.mo];
+    let kMsg = null, kGuest = null;
+    for (const t of Object.keys(FASE_TRI)) {
+      if (msg.every(x => t.indexOf(x) >= 0) && new Set(msg).size === 3) kMsg = t;
+      if ([c.ramoGiorno, c.R3, c.R4].every(x => t.indexOf(x) >= 0)) kGuest = t;
+    }
+    if (kMsg && kMsg === kGuest) {
+      const f = msg.map(x => FASE[FASE_TRI[kMsg]][x]);
+      if (f[0] === 3 && f[1] === 1 && f[2] === 2) return null;   // 墓 -> 長生 -> 帝旺: non qualifica, tace
+    }
+    // (0-bis) Edu (S38, 05/09/2026, da EURUSD 04/05/2023 s110): il ramo del giorno e' la SEDE del trigono del guest.
+    //     Se il mese lo CLASHA (冲) e l'ora lo PENALIZZA (刑) insieme, la sede della ricchezza e' rotta: la W non si
+    //     incassa. Ma la generazione in uscita (il trigono dello stelo alimenta quello del ramo) regge -> SHORT.
+    //     Serve la congiunzione: dentro il punto 2 la sola penalita' dell'ora sta al 25% su 4 carte (letta SHORT sbaglia),
+    //     il solo clash del mese non compare mai. Misura della congiunzione dentro il punto 2: 2 carte 2/2 +85 pip, che
+    //     pero' sono lo STESSO piatto (壬戌, ora 丑) visto su EURUSD e USDJPY dello stesso giorno: un piatto solo.
+    //     Fuori dai due trigoni la stessa condizione sta al 48% su 25 carte: neutra, come dev'essere una invalidazione.
+    if (CLASH12[c.ramoMese] === c.ramoGiorno && XING12[c.oraRamo] === c.ramoGiorno)
+      return { dir: 'SHORT', via: 'due trigoni · sede del guest rotta da mese e ora',
+        perche: testa0 + ', ma il ramo del giorno ' + c.ramoGiorno + ', che e\' la sede del trigono del guest, e\' clashato dal mese ' +
+                c.ramoMese + ' e penalizzato dall\'ora ' + c.oraRamo + ': la sede della ricchezza e\' rotta e la W non si incassa, ' +
+                'resta la generazione in uscita e lo host si scarica' };
     if (!wSopra) return { dir: 'SHORT', via: 'due trigoni · lo host nutre il guest, W solo sotto',
       perche: testa + ', ma la W sta solo sul ramo del giorno, non sopra: lo host cede e basta' };
     const TOMBA_EL2 = { 'Legno':'未','Fuoco':'戌','Terra':'戌','Metallo':'丑','Acqua':'辰' };
