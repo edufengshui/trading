@@ -940,13 +940,29 @@ function viaT_dueTrigoniPerCarattere(c) {
   if (car === 'W') {
     // Cascata di Edu (S37, 04/09/2026): (1) lo host genera il guest -> SHORT; (2) ma se la W sta SOPRA (R3/R4) -> LONG;
     // (3) ma se l'elemento della W e' in TOMBA nel mese -> SHORT. Misura: (1) 10 carte 70% SHORT · (2) 34 carte 50% · (3) 3 carte 2/3 SHORT.
+    // (0) Edu (S38, 05/09/2026, da USDCHF 20/05/2021 s90): se il PRIMO MESSAGGIO e' la W dello stelo ed e' SEDUTO SOPRA
+    //     LA PROPRIA TOMBA (il secondo messaggio), la W e' INVALIDATA: cade il "cede per incassare" e resta la relazione
+    //     nuda fra i due lati, cioe' il trigono dello stelo genera quello del ramo -> lo host si scarica -> SHORT.
+    //     Si legge PRIMA della posizione della W. Perimetro vero (dentro i due trigoni): 2 carte, 2/2, +115 pip.
+    //     Fuori dai due trigoni la stessa condizione sta al 49,14% su 116 carte: non e' una via a se', e' una invalidazione.
+    const TOMBA_EL3 = { 'Legno':'未', 'Fuoco':'戌', 'Terra':'戌', 'Metallo':'丑', 'Acqua':'辰' };
+    const T3 = c.treMessaggi, m1 = T3 && T3.chu, m2 = T3 && T3.zhong;
+    const testa0 = 'il lato dello stelo forma il trigono di ' + tH + ' e nutre il trigono di ' + tG + ' del ramo (W per ' + c.steloGiorno + ')';
+    if (m1 && m2 && parentela(c.steloGiorno, m1) === 'W' && TOMBA_EL3[EL_RAMO[m1]] === m2)
+      return { dir: 'SHORT', via: 'due trigoni · W del primo messaggio seduta sulla propria tomba',
+        perche: testa0 + ', ma il primo messaggio ' + m1 + ' e\' la W dello stelo ed e\' seduto sulla propria tomba ' + m2 +
+                ': la ricchezza e\' invalidata e resta la relazione nuda, lo host genera il guest e si scarica' };
     const wSopra = parentela(c.steloGiorno, c.R3) === 'W' || parentela(c.steloGiorno, c.R4) === 'W';
-    const testa = 'il lato dello stelo forma il trigono di ' + tH + ' e nutre il trigono di ' + tG + ' del ramo (W per ' + c.steloGiorno + ')';
+    const testa = testa0;
     if (!wSopra) return { dir: 'SHORT', via: 'due trigoni · lo host nutre il guest, W solo sotto',
       perche: testa + ', ma la W sta solo sul ramo del giorno, non sopra: lo host cede e basta' };
     const TOMBA_EL2 = { 'Legno':'未','Fuoco':'戌','Terra':'戌','Metallo':'丑','Acqua':'辰' };
     if (c.ramoMese && TOMBA_EL2[tG] === c.ramoMese) return { dir: 'SHORT', via: 'due trigoni · W sopra ma in tomba',
       perche: testa + ', la W sta sopra ma il ' + tG + ' e\' in tomba nel mese ' + c.ramoMese + ': che ricchezza puo\' portare, lo host cede' };
+    const P2 = process.env.P2 || 'long';   // 'long' (attuale) · 'short' · 'tace'
+    if (P2 === 'tace') return null;
+    if (P2 === 'short') return { dir: 'SHORT', via: 'due trigoni · W sopra',
+      perche: testa + ', la W sta sopra' };
     return { dir: 'LONG', via: 'due trigoni · W sopra',
       perche: testa + ', e la W sta sopra: lo host cede per incassare, vince' };
   }
