@@ -90,6 +90,8 @@ function fuoriSelezione(carta) {
   if (m.indexOf('返吟') >= 0) {
     // S39: quelle in cui lo host e' piu' in stagione del guest si leggono, vedi via 44.
     if (_rangoStagione(carta.R1, carta.generaleMese) > _rangoStagione(carta.R3, carta.generaleMese)) return null;
+    // S40: e quelle in cui lo stelo del giorno controlla il ramo del mese, vedi via 46.
+    if (CONTROLLA[EL_STELO[carta.steloGiorno]] === EL_RAMO[carta.ramoMese]) return null;
     return '返吟 (il ronzio che torna)';
   }
   return null;
@@ -1100,6 +1102,28 @@ function via44_fanyinHostPiuInStagione(c) {
             c.R1 + ' e\' piu\' in stagione del lato guest ' + c.R3 + ' rispetto al generale ' + c.generaleMese };
 }
 
+// --- VIA 46 · 返吟 · LO STELO DEL GIORNO CONTROLLA IL RAMO DEL MESE ---------
+// S40, 07/09/2026. Candidato misurato in S39 e lasciato in sospeso, rimisurato e cablato.
+// Lo stelo del giorno letto DIRETTAMENTE contro il ramo del mese, senza passare dai
+// palazzi (寄宮): con i palazzi la casella crolla al 54,17%.
+// POSIZIONE: sotto le quattro vie 八專 (37-40), appena prima della catena principale.
+//   sotto le 八專   33 carte · 25 piatti · 69,70% · z 2,26 · +315 pip · vec 75,00 / rec 69,23
+//                    motore 3085 · 60,71% · z 11,90 · +39.596 pip
+//   sopra le 八專   36 carte · 63,89% · z 1,67 · -109 pip
+//                    motore 3085 · 60,62% · z 11,79 · +38.748 pip
+// Sopra ruba tre carte alla via 39 (八專 · l'ora nutre il ramo del giorno), che scende
+// da 39 carte al 56,41% e +760 pip a 36 al 52,78% e +336 pip. Stessa lezione della via 40
+// in S39: la regola e' vera, la posizione decide il valore.
+function via46_fanyinSteloControllaMese(c) {
+  if (String(c.metodo || '').indexOf('\u8fd4\u541f') < 0) return null;
+  const eS = EL_STELO[c.steloGiorno], eM = EL_RAMO[c.ramoMese];
+  if (eS == null || eM == null) return null;
+  if (CONTROLLA[eS] !== eM) return null;
+  return { dir: 'SHORT', via: '\u8fd4\u541f \u00b7 lo stelo del giorno controlla il ramo del mese',
+    perche: 'carta \u8fd4\u541f: lo stelo del giorno ' + c.steloGiorno + ' (' + eS + ') controlla il ramo del mese ' +
+            c.ramoMese + ' (' + eM + ') letto senza passare dai palazzi' };
+}
+
 // --- VIA 43 · 伏吟 · LA RICCHEZZA FERMA SUL LATO DEL GUEST -------------------
 // S39. Nel ronzio nascosto niente si muove e nessuno puo' attaccare nessuno: non conta
 // chi controlla, conta che cosa lo stelo del giorno si trova davanti. La ricchezza
@@ -1265,6 +1289,8 @@ function leggi(carta) {
   if (bzG2) return bzG2;
   const bzN = via39_bazhuanOraNutreIlRamo(carta);
   if (bzN) return bzN;
+  const fn2 = via46_fanyinSteloControllaMese(carta);
+  if (fn2) return fn2;
   for (const via of CATENA) {
     const v = via(carta);
     if (v && v.dir) return v;
