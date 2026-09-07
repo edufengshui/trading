@@ -92,6 +92,8 @@ function fuoriSelezione(carta) {
     if (_rangoStagione(carta.R1, carta.generaleMese) > _rangoStagione(carta.R3, carta.generaleMese)) return null;
     // S40: e quelle in cui lo stelo del giorno controlla il ramo del mese, vedi via 46.
     if (CONTROLLA[EL_STELO[carta.steloGiorno]] === EL_RAMO[carta.ramoMese]) return null;
+    // S40: e quelle in cui il giorno genera chi cavalca il ramo del mese, vedi via 47.
+    if (_via47cond(carta)) return null;
     return '返吟 (il ronzio che torna)';
   }
   return null;
@@ -1102,6 +1104,88 @@ function via44_fanyinHostPiuInStagione(c) {
             c.R1 + ' e\' piu\' in stagione del lato guest ' + c.R3 + ' rispetto al generale ' + c.generaleMese };
 }
 
+// --- VIA 50 · IL SEME DIVISO PER 60 --------------------------------------
+// S40, 07/09/2026, regola di Edu. Il seme diviso per 60 da' un pilastro del ciclo
+// sessagesimale: seme 153 -> pilastro 33 -> 丙申. Lo stelo di quel pilastro vota LONG,
+// il ramo vota SHORT, e vince chi controlla l'altro.
+// Misurata sulle carte MUTE la regola e' risultata ROVESCIATA rispetto alla lettura, ed
+// Edu ha fatto cablare il verso misurato (stessa cosa gia' avvenuta per la via 41 in S39).
+// Su sua indicazione la via vale anche sulle 昴星 (冬蛇掩目 e 虎視轉蓬), che restano
+// fuori selezione per tutto il resto del motore.
+// STA IN CODA A TUTTO: legge solo le carte che nessun'altra via legge, sia quelle fuori
+// selezione sia quelle su cui la catena tace.
+//   lo stelo controlla il ramo -> SHORT   76 carte · 74 piatti · 59,21% · z 1,61 · +315 pip
+//                                         vec 63,64%/22 · rec 60,87%/46
+//   stelo e ramo stesso elemento -> LONG  64 carte · 63 piatti · 64,06% · z 2,25 · +1.078 pip
+//                                         vec 60,87%/23 · rec 65,85%/41
+// FUORI, misurata e scartata: il ramo che controlla lo stelo -> LONG, 84 carte · 54,76% ·
+// -184 pip · rec 53,49%. E' l'altra meta' della regola di Edu e non regge: cablandola il
+// motore scende da 60,81% a 60,59% e perde 1.261 pip. Scelta di Edu: tenere solo cio' che
+// rende. AVVERTENZA a verbale: il 比和 non era nella regola (Edu lo dava come pari) ed e'
+// cablato su un numero, non su una lettura dottrinale.
+const _STELI60 = ['\u7532','\u4e59','\u4e19','\u4e01','\u620a','\u5df1','\u5e9a','\u8f9b','\u58ec','\u7678'];
+const _RAMI60  = ['\u5b50','\u4e11','\u5bc5','\u536f','\u8fb0','\u5df3','\u5348','\u672a','\u7533','\u9149','\u620c','\u4ea5'];
+function _semePilastro(c) {
+  const s = c.seme; if (s == null || !isFinite(s)) return null;
+  let p = Math.round(s) % 60; if (p <= 0) p += 60;
+  return { stelo: _STELI60[(p-1)%10], ramo: _RAMI60[(p-1)%12], n: p };
+}
+function via50_semePilastro(c) {
+  const P = _semePilastro(c); if (!P) return null;
+  const A = EL_STELO[P.stelo], B = EL_RAMO[P.ramo]; if (A == null || B == null) return null;
+  const testa = 'il seme ' + c.seme + ' da\' il pilastro ' + P.n + ' ' + P.stelo + P.ramo;
+  if (A === B) return { dir: 'LONG', via: 'seme \u00b7 stelo e ramo dello stesso elemento',
+    perche: testa + ': stelo e ramo sono entrambi ' + A + ', nessuno dei due controlla l\'altro' };
+  if (CONTROLLA[A] === B) return { dir: 'SHORT', via: 'seme \u00b7 lo stelo controlla il ramo',
+    perche: testa + ': lo stelo ' + P.stelo + ' (' + A + ') controlla il ramo ' + P.ramo + ' (' + B + ')' };
+  return null;
+}
+
+// --- VIA 47 · 返吟 · IL GIORNO GENERA CHI CAVALCA IL RAMO DEL MESE ------------
+// S40, 07/09/2026. Prima via nata dall'impianto dottrinale dei quattro pilastri di Edu:
+// il giorno e' l'energia del giorno, il mese l'influenza dei trader e del trend, l'anno
+// gli istituzionali, l'ora l'onda emotiva; le relazioni si leggono fra CIO' CHE CAVALCA
+// ogni pilastro, cioe' il ramo del cielo sopra il suo palazzo (寄宮).
+// Trovata scandendo le sole carte MUTE: sul dataset intero le carte gia' lette gonfiano
+// il risultato. Nelle 八專 e nelle 伏吟 nessuna casella arriva a 25 carte mute.
+// POSIZIONE: sotto la via 46, dopo le 八專, appena prima della catena principale.
+//   sotto   28 carte · 21 piatti · 67,86% · z 1,89 · +478 pip · vec 77,78%/9 · rec 58,82%/17
+//           motore 3113 · 60,78% · z 12,03 · +40.074 pip
+//   sopra   44 carte · 61,36% · vec 55,56 / rec 60,87  (ruba 15 carte alla via 46)
+// AVVERTENZA: il verso e' LONG, opposto alle due vie 返吟 gia' cablate (44 e 46, SHORT).
+// Sulle carte mute del ronzio che torna l'impianto dei pilastri dice il contrario della
+// stagione. Campione piccolo: il periodo vecchio sta su 9 carte.
+// Cio' che cavalca un ramo e' il ramo del cielo sopra il suo palazzo: il cielo e' ruotato
+// dello scarto fra il generale del mese e il ramo dell'ora. Cio' che cavalca lo stelo del
+// giorno e' per costruzione R1.
+const _R12 = ['\u5b50','\u4e11','\u5bc5','\u536f','\u8fb0','\u5df3','\u5348','\u672a','\u7533','\u9149','\u620c','\u4ea5'];
+function _cavalca(ramo, generaleMese, oraRamo) {
+  const i = _R12.indexOf(ramo), g = _R12.indexOf(generaleMese), o = _R12.indexOf(oraRamo);
+  if (i < 0 || g < 0 || o < 0) return null;
+  return _R12[(i + ((g - o) % 12 + 12) % 12) % 12];
+}
+function _via47cond(c) {
+  if (String(c.metodo || '').indexOf('\u8fd4\u541f') < 0) return false;
+  const b = _cavalca(c.ramoMese, c.generaleMese, c.oraRamo); if (!b) return false;
+  const A = EL_RAMO[c.R1], B = EL_RAMO[b];
+  return A != null && B != null && A !== B && GENERA[A] === B;
+}
+function _via48cond(c) {
+  if (String(c.metodo || '').indexOf('\u8fd4\u541f') < 0) return false;
+  const A = EL_RAMO[c.R1], B = EL_RAMO[c.generaleMese];
+  return A != null && B != null && A !== B && CONTROLLA[A] === B;
+}
+function via47_fanyinR1GeneraCavalcaMese(c) {
+  if (!_via47cond(c)) return null;
+  return { dir: 'LONG', via: '\u8fd4\u541f \u00b7 il giorno genera chi cavalca il ramo del mese',
+    perche: 'carta \u8fd4\u541f: cio\' che cavalca lo stelo del giorno (' + c.R1 + ') genera cio\' che cavalca il ramo del mese' };
+}
+function via48_fanyinR1ControllaGenerale(c) {
+  if (!_via48cond(c)) return null;
+  return { dir: 'LONG', via: '\u8fd4\u541f \u00b7 il giorno controlla chi cavalca l\'ora',
+    perche: 'carta \u8fd4\u541f: cio\' che cavalca lo stelo del giorno (' + c.R1 + ') controlla il generale del mese ' + c.generaleMese };
+}
+
 // --- VIA 46 · 返吟 · LO STELO DEL GIORNO CONTROLLA IL RAMO DEL MESE ---------
 // S40, 07/09/2026. Candidato misurato in S39 e lasciato in sospeso, rimisurato e cablato.
 // Lo stelo del giorno letto DIRETTAMENTE contro il ramo del mese, senza passare dai
@@ -1268,7 +1352,10 @@ const CATENA = [ via0_gruppoCompletoFantasma, viaU_catenaNellaTomba, viaT_dueTri
 // ritorna { dir:'LONG'|'SHORT'|null, via, perche }  ·  dir null = il motore TACE
 function leggi(carta) {
   const fuori = fuoriSelezione(carta);
-  if (fuori) return { dir: null, via: null, perche: 'carta fuori selezione: ' + fuori };
+  if (fuori) {
+    const sm = via50_semePilastro(carta); if (sm) return sm;
+    return { dir: null, via: null, perche: 'carta fuori selezione: ' + fuori };
+  }
   // S39 · la forma 八專 sui pilastri che portano si legge da sola, non passa dalla
   // catena: le vie a valle sono nate su carte dove host e guest sono distinti.
   const fy = via41_fuyinHostNelVuoto(carta);
@@ -1291,10 +1378,13 @@ function leggi(carta) {
   if (bzN) return bzN;
   const fn2 = via46_fanyinSteloControllaMese(carta);
   if (fn2) return fn2;
+  const fn3 = via47_fanyinR1GeneraCavalcaMese(carta);
+  if (fn3) return fn3;
   for (const via of CATENA) {
     const v = via(carta);
     if (v && v.dir) return v;
   }
+  const sm = via50_semePilastro(carta); if (sm) return sm;
   return { dir: null, via: null, perche: 'nessun attore riconosciuto: il motore tace' };
 }
 

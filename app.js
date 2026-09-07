@@ -470,6 +470,8 @@ function analizzaCrossPerReport(r, utcMs, dateStr) {
               ramoMese: chart.monthBranch || null, generaleOra: generaleSopraOra(chart),
               // S39: l'anno entra nella carta (influenza degli istituzionali). Per ora
               // nessuna via lo usa: serve a poterlo cablare senza rompere la parita'.
+              // S40: il seme entra nella carta (diviso per 60 da' un pilastro del ciclo).
+              seme: (r && r.seed != null) ? r.seed : null,
               ramoAnno: (chart.source && chart.source.yearPillar) ? chart.source.yearPillar.charAt(1) : null,
               steloAnno: (chart.source && chart.source.yearPillar) ? chart.source.yearPillar.charAt(0) : null };
             var ld = MD.leggi(cartaD);
@@ -1374,6 +1376,8 @@ function renderTrend(cross, chart, dArr, row) {
     spiritoR1: (L[0].top.general && L[0].top.general.cn) || null,
     ramoMese: chart.monthBranch || null, generaleOra: generaleSopraOra(chart),
     // S39: l'anno entra nella carta (influenza degli istituzionali). Nessuna via lo usa ancora.
+    // S40: il seme entra nella carta (diviso per 60 da' un pilastro del ciclo).
+    seme: (row && row.seed != null) ? row.seed : null,
     ramoAnno: (chart.source && chart.source.yearPillar) ? chart.source.yearPillar.charAt(1) : null,
     steloAnno: (chart.source && chart.source.yearPillar) ? chart.source.yearPillar.charAt(0) : null
   };
