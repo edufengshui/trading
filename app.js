@@ -467,7 +467,11 @@ function analizzaCrossPerReport(r, utcMs, dateStr) {
               metodo: chart.transmission.method, vuoti: chart.hourVoid || [],
               generaleMese: chart.monthGeneral && chart.monthGeneral.branch, oraRamo: chart.hourBranch, treMessaggi: t3,
               spiritoR1: (L4[0].top.general && L4[0].top.general.cn) || null,
-              ramoMese: chart.monthBranch || null, generaleOra: generaleSopraOra(chart) };
+              ramoMese: chart.monthBranch || null, generaleOra: generaleSopraOra(chart),
+              // S39: l'anno entra nella carta (influenza degli istituzionali). Per ora
+              // nessuna via lo usa: serve a poterlo cablare senza rompere la parita'.
+              ramoAnno: (chart.source && chart.source.yearPillar) ? chart.source.yearPillar.charAt(1) : null,
+              steloAnno: (chart.source && chart.source.yearPillar) ? chart.source.yearPillar.charAt(0) : null };
             var ld = MD.leggi(cartaD);
             out.dlrDir = (ld && ld.dir) || null; out.dlrVia = (ld && ld.via) || null;
           }
@@ -1368,7 +1372,10 @@ function renderTrend(cross, chart, dArr, row) {
     generaleMese: chart.monthGeneral && chart.monthGeneral.branch, oraRamo: chart.hourBranch,
     treMessaggi: t3,
     spiritoR1: (L[0].top.general && L[0].top.general.cn) || null,
-    ramoMese: chart.monthBranch || null, generaleOra: generaleSopraOra(chart)
+    ramoMese: chart.monthBranch || null, generaleOra: generaleSopraOra(chart),
+    // S39: l'anno entra nella carta (influenza degli istituzionali). Nessuna via lo usa ancora.
+    ramoAnno: (chart.source && chart.source.yearPillar) ? chart.source.yearPillar.charAt(1) : null,
+    steloAnno: (chart.source && chart.source.yearPillar) ? chart.source.yearPillar.charAt(0) : null
   };
   var lettura = MD.leggi(carta);
 
