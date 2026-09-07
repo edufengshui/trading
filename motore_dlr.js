@@ -62,13 +62,36 @@ function parentela(steloGiorno, ramo) {
 //  · 伏吟 (il ronzio nascosto) e 返吟 (il ronzio che torna): carte immobili o rovesciate.
 function fuoriSelezione(carta) {
   const m = carta.metodo || '';
-  if (carta.palazzoHost === carta.ramoGiorno) return '八專 (Otto Specialita\')';
+  if (carta.palazzoHost === carta.ramoGiorno) {
+    const pil = carta.steloGiorno + carta.ramoGiorno;
+    if (pil === '甲寅' || pil === '丁未') return null;                  // S39: via 37
+    if (parentela(carta.steloGiorno, carta.oraRamo) === 'G') return null; // S39: via 38
+    if (parentela(carta.steloGiorno, carta.R2) === 'G') return null;       // S39: via 40
+    const _hs = steloDellOra(carta.steloGiorno, carta.oraRamo);            // S39: via 39
+    const _pal = _hs ? PALAZZO_STELO[_hs] : null;
+    if (_pal && _pal !== carta.ramoGiorno && GENERA[EL_RAMO[_pal]] === EL_RAMO[carta.ramoGiorno]) return null;
+    return '八專 (Otto Specialita\')';
+  }
   if (m.indexOf('昴星') >= 0) {
     const yin = ['乙','丁','己','辛','癸'].includes(carta.steloGiorno);
     return yin ? '冬蛇掩目 (Winter Snake)' : '虎視轉蓬 (stessa famiglia di 昴星)';
   }
-  if (m.indexOf('伏吟') >= 0) return '伏吟 (il ronzio nascosto)';
-  if (m.indexOf('返吟') >= 0) return '返吟 (il ronzio che torna)';
+  if (m.indexOf('伏吟') >= 0) {
+    // S39: le 伏吟 col palazzo dello host nel vuoto si leggono, vedi via 41.
+    if ((carta.vuoti || []).indexOf(carta.R1) >= 0) return null;
+    // S39: e quelle coi due lati dello stesso elemento, vedi via 42.
+    if (carta.R1 !== carta.R3 && EL_RAMO[carta.R1] === EL_RAMO[carta.R3]) return null;
+    // S39: e quelle con la ricchezza ferma sul lato del guest, vedi via 43.
+    if (parentela(carta.steloGiorno, carta.R3) === 'W') return null;
+    // S39: e quelle in cui lo host e' piu' in stagione del guest, vedi via 45.
+    if (_rangoStagione(carta.R1, carta.generaleMese) > _rangoStagione(carta.R3, carta.generaleMese)) return null;
+    return '伏吟 (il ronzio nascosto)';
+  }
+  if (m.indexOf('返吟') >= 0) {
+    // S39: quelle in cui lo host e' piu' in stagione del guest si leggono, vedi via 44.
+    if (_rangoStagione(carta.R1, carta.generaleMese) > _rangoStagione(carta.R3, carta.generaleMese)) return null;
+    return '返吟 (il ronzio che torna)';
+  }
   return null;
 }
 
@@ -1027,6 +1050,190 @@ function viaU_catenaNellaTomba(c) {
 // e quando parla comanda su tutte le letture di casella.
 // La via 6 sta in FONDO: condizione ultima, parla solo quando tutto il resto ha taciuto.
 // La via 7 legge ancora una casella (R1/R2): sta dopo la 5 e prima della condizione ultima.
+// --- VIA 45 · 伏吟 · LO HOST PIU' IN STAGIONE DEL GUEST ----------------------
+// S39, dalla stagione presa dal generale del mese estesa a tutti i perimetri.
+// Sulle 伏吟 rimaste dopo le vie 41-43 (quota SHORT):
+//   host piu' in stagione   86 · 71 piatti · SHORT 39,53%  → LONG 60,47%
+//                                            vec LONG 60,53 / rec LONG 58,97
+//   guest piu' in stagione  66 · SHORT 48,48%   (muta, resta fuori)
+// Nel ronzio nascosto niente si scontra: il lato piu' in stagione semplicemente tiene,
+// e se e' lo host il giorno regge. E' il rovescio del 返吟 (via 44), dove i due lati si
+// scontrano sempre e lo host piu' in stagione perde: la stessa misura da' versi opposti
+// nelle due forme, ed e' la differenza fra stare fermi e scontrarsi.
+// Nelle 八專 la stessa misura non si applica: R1 e R3 stanno sopra lo stesso ramo,
+// quindi il rango e' pari in tutte e 92 le carte.
+function via45_fuyinHostPiuInStagione(c) {
+  if (String(c.metodo || '').indexOf('伏吟') < 0) return null;
+  if (_rangoStagione(c.R1, c.generaleMese) <= _rangoStagione(c.R3, c.generaleMese)) return null;
+  return { dir: 'LONG', via: '伏吟 · lo host piu\' in stagione del guest',
+    perche: 'carta 伏吟: nulla si muove e nulla si scontra; il lato host ' + c.R1 +
+            ' e\' piu\' in stagione del lato guest ' + c.R3 + ' rispetto al generale ' + c.generaleMese + ': tiene lo host' };
+}
+
+// --- VIA 44 · 返吟 · LO HOST PIU' IN STAGIONE DEL GUEST ----------------------
+// S39. Nel ronzio che torna il cielo e' ruotato di mezzo giro: ogni ramo siede sul
+// proprio opposto e i due lati si scontrano sempre. Misurato chi vince lo scontro
+// con la stagione presa dal generale del mese (quota SHORT):
+//   lo host piu' in stagione  128 · 97 piatti · SHORT 56,25% · vec 58,18 / rec 55,56
+//   il guest piu' in stagione 108 · SHORT 50,93%   ·   pari 51 · SHORT 49,02%
+// Attenzione, due riserve messe a verbale: (1) con la stagione presa dal ramo del mese,
+// che e' la fonte canonica, l'asse sparisce (host 53,10%, guest 54,47%): la via vive
+// solo sulla stagione dal generale; (2) l'esito e' il rovescio della lettura di Edu,
+// che dava vincente il piu' timely. Cablata su sua regola dei 55% (S39).
+const _RANGO_STAG = { '旺':4, '相':3, '休':2, '囚':1, '死':0 };
+function _rangoStagione(ramo, generaleMese) {
+  const el = EL_RAMO[ramo], mel = EL_RAMO[generaleMese];
+  if (el == null || mel == null) return -1;
+  let s;
+  if (el === mel) s = '旺';
+  else if (GENERA[mel] === el) s = '相';
+  else if (GENERA[el] === mel) s = '休';
+  else if (CONTROLLA[el] === mel) s = '囚';
+  else s = '死';
+  return _RANGO_STAG[s];
+}
+function via44_fanyinHostPiuInStagione(c) {
+  if (String(c.metodo || '').indexOf('返吟') < 0) return null;
+  if (_rangoStagione(c.R1, c.generaleMese) <= _rangoStagione(c.R3, c.generaleMese)) return null;
+  return { dir: 'SHORT', via: '返吟 · lo host piu\' in stagione del guest',
+    perche: 'carta 返吟: ogni ramo siede sul proprio opposto e i due lati si scontrano; il lato host ' +
+            c.R1 + ' e\' piu\' in stagione del lato guest ' + c.R3 + ' rispetto al generale ' + c.generaleMese };
+}
+
+// --- VIA 43 · 伏吟 · LA RICCHEZZA FERMA SUL LATO DEL GUEST -------------------
+// S39. Nel ronzio nascosto niente si muove e nessuno puo' attaccare nessuno: non conta
+// chi controlla, conta che cosa lo stelo del giorno si trova davanti. La ricchezza
+// ferma davanti a uno stelo immobile e' ricchezza che non si prende.
+// Carattere del lato guest (il ramo del giorno) sulle 199 伏吟 rimaste, quota SHORT:
+//   W 47 · 33 piatti · 61,70% · vec 65,22 / rec 59,09   ← parla
+//   G 42 · 47,62%   ·   C 53 · 45,28%   ·   P 36 · 38,89%   ·   B 21 · 38,10%
+// Da notare: il G dal lato del guest, che sulle 八專 da' la via 40 al 65,71%, qui e'
+// muto. Nelle 八專 host e guest stanno nello stesso palazzo e vince chi attacca; qui
+// il cielo e' fermo sulla terra e l'attacco non arriva.
+function via43_fuyinRicchezzaFermaDalGuest(c) {
+  if (String(c.metodo || '').indexOf('伏吟') < 0) return null;
+  if (parentela(c.steloGiorno, c.R3) !== 'W') return null;
+  return { dir: 'SHORT', via: '伏吟 · la ricchezza ferma sul lato del guest',
+    perche: 'carta 伏吟: il lato del guest ' + c.R3 + ' e\' W (妻財) per lo stelo del giorno ' +
+            c.steloGiorno + ', ma nel ronzio nascosto nulla si muove: la ricchezza sta davanti e non si prende' };
+}
+
+// --- VIA 42 · 伏吟 · I DUE LATI DELLO STESSO ELEMENTO ------------------------
+// S39. Nel ronzio nascosto niente si muove, e i due lati sono il palazzo dello stelo
+// del giorno (host) e il ramo del giorno (guest). Misurate le cinque relazioni fra i
+// due lati sulle 232 伏吟 con lo host pieno (quota SHORT):
+//   比和 stesso elemento          33 · 22 piatti · SHORT 57,58% · vec 54,55 / rec 63,16
+//   lo host genera il guest       60 · SHORT 51,67%   ·  lo host controlla il guest 37 · 48,65%
+//   il guest controlla lo host    56 · SHORT 48,21%   ·  il guest genera lo host   46 · 41,30%
+// L'asse ha il segno giusto in tutte e cinque, ma solo il 比和 arriva alla soglia.
+// Rami identici esclusi: quelli sono 八專 e li prendono le vie 37-40.
+function via42_fuyinDueLatiStessoElemento(c) {
+  if (String(c.metodo || '').indexOf('伏吟') < 0) return null;
+  if (c.R1 === c.R3) return null;
+  if (EL_RAMO[c.R1] !== EL_RAMO[c.R3]) return null;
+  return { dir: 'SHORT', via: '伏吟 · i due lati dello stesso elemento',
+    perche: 'carta 伏吟: host ' + c.R1 + ' e guest ' + c.R3 + ' sono dello stesso elemento ' +
+            EL_RAMO[c.R1] + ' e nessuno dei due nutre l\'altro: nessuno vince' };
+}
+
+// --- VIA 41 · 伏吟 · LO HOST NEL VUOTO --------------------------------------
+// S39. Nel ronzio nascosto il cielo cade sulla terra: ogni ramo siede su se stesso,
+// quindi R1 = R2 sempre (verificato su tutte e 293 le carte) e il lato guest R3, che
+// e' il ramo del giorno, non puo' mai essere vuoto -- i due rami vuoti sono per
+// definizione fuori dalla decade del giorno. Nel ronzio nascosto, dunque, solo lo host
+// puo' cadere nel vuoto, e quando ci cade resta in piedi solo l'ospite.
+// Misura (soglia 20 pip, 9 cross, 2020-2026):
+//   61 carte · 39 piatti · LONG 55,74% · z 0,90 · vecchio 57,89% · recente 58,33%
+//   le 232 伏吟 con lo host pieno restano fuori: 50,86% LONG, mute.
+function via41_fuyinHostNelVuoto(c) {
+  if (String(c.metodo || '').indexOf('伏吟') < 0) return null;
+  if ((c.vuoti || []).indexOf(c.R1) < 0) return null;
+  return { dir: 'LONG', via: '伏吟 · lo host nel vuoto',
+    perche: 'carta 伏吟: il cielo cade sulla terra e niente si muove; il palazzo dello host ' +
+            c.R1 + ' e\' nel vuoto del giorno e non agisce, mentre l\'ospite ' + c.R3 +
+            ' non puo\' essere vuoto: resta in piedi solo lui' };
+}
+
+// --- VIA 40 · 八專 · IL G (鬼) SUL LATO DEL GUEST ---------------------------
+// S39. Nelle 八專 le quattro lezioni si riducono a due: R1=R3 (lato host) e R2=R4
+// (lato guest). Se il ramo del lato guest e' G (鬼) per lo stelo del giorno -- il ramo
+// che lo controlla con la stessa polarita' -- lo host perde -> SHORT.
+// Misura sul perimetro che arriva qui (no 甲寅/丁未, no ora G):
+//   n 35 · 24 piatti · SHORT 65,71% · z 1,86 · +594 pip · vec 69,23% / rec 66,67%
+// Sta sopra la via 39 per prova di efficienza (Edu, S39).
+function via40_bazhuanFantasmaDalGuest(c) {
+  if (c.palazzoHost !== c.ramoGiorno) return null;
+  if (parentela(c.steloGiorno, c.R2) !== 'G') return null;
+  return { dir: 'SHORT', via: '八專 · G dal lato del guest',
+    perche: 'carta 八專: il lato del guest ' + c.R2 + ' e\' G (鬼) per lo stelo del giorno ' +
+            c.steloGiorno + ': lo host e\' attaccato e perde' };
+}
+
+// --- VIA 39 · 八專 · IL PALAZZO DELLO STELO DELL'ORA NUTRE IL RAMO DEL GIORNO ---
+// S39, spunto di Edu: incrociare il palazzo (寄宮) dello stelo dell'ora col ramo del
+// giorno, che nelle 八專 e' anche il palazzo dello host. Le sei relazioni, dentro le
+// 八專 (soglia 20 pip, 9 cross, 2020-2026, quota LONG):
+//   il palazzo GENERA il DB      56 · 44 piatti · 62,50% LONG   ← parla
+//   stesso ramo                  50 · 38 piatti · 62,00% LONG   (candidato, vedi .md)
+//   比和 stesso elemento          55 · 39 piatti · 56,36% LONG
+//   il DB GENERA il palazzo      39 · 25 piatti · 51,28%
+//   il DB CONTROLLA il palazzo   55 · 43 piatti · 49,09%
+//   il palazzo CONTROLLA il DB   40 · 28 piatti · 45,00%
+// Fuori dalle 八專 la stessa casella e' neutra (607 carte, 52,22% LONG).
+// Dottrina: lo host siede nel proprio palazzo e l'ora lo nutre da fuori: tiene -> LONG.
+const PALAZZO_STELO = { '甲':'寅','乙':'辰','丙':'巳','戊':'巳','丁':'未','己':'未','庚':'申','辛':'戌','壬':'亥','癸':'丑' };
+// 五鼠遁: lo stelo dell'ora si ricava dallo stelo del giorno, senza bisogno di campi nuovi.
+const STELI_10 = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+const WUSHU_39 = { '甲':'甲','己':'甲','乙':'丙','庚':'丙','丙':'戊','辛':'戊','丁':'庚','壬':'庚','戊':'壬','癸':'壬' };
+function steloDellOra(steloGiorno, oraRamo) {
+  const s0 = WUSHU_39[steloGiorno], i = RAMI12.indexOf(oraRamo);
+  if (!s0 || i < 0) return null;
+  return STELI_10[(STELI_10.indexOf(s0) + i) % 10];
+}
+function via39_bazhuanOraNutreIlRamo(c) {
+  if (c.palazzoHost !== c.ramoGiorno) return null;
+  const hs = steloDellOra(c.steloGiorno, c.oraRamo);
+  const pal = hs ? PALAZZO_STELO[hs] : null;
+  if (!pal || pal === c.ramoGiorno) return null;
+  if (GENERA[EL_RAMO[pal]] !== EL_RAMO[c.ramoGiorno]) return null;
+  return { dir: 'LONG', via: '八專 · l\'ora nutre il ramo del giorno',
+    perche: 'carta 八專: il palazzo ' + pal + ' dello stelo dell\'ora ' + hs +
+            ' genera il ramo del giorno ' + c.ramoGiorno + ', che e\' anche il palazzo dello host: lo host e\' nutrito e tiene' };
+}
+
+// --- VIA 38 · 八專 CON L'ORA G (鬼) ----------------------------------------
+// S39. Dentro le 八專 il carattere del ramo dell'ora per lo stelo del giorno spacca
+// il perimetro. L'ora G (鬼, il ramo che controlla lo stelo con la stessa polarita')
+// e' l'unica casella che parla, e parla LONG (soglia 20 pip, 9 cross, 2020-2026):
+//   八專 · ora G   n 29 · 23 piatti · LONG 72,41% · z 2,41 · vec 85,7 / rec 72,2
+//   le altre cinque caselle stanno fra 46,5 e 53,5% e non dicono niente.
+// Controprova: fuori dalle 八專 la stessa casella e' neutra (301 carte, 53,2% LONG),
+// quindi e' una firma della forma, non una tendenza del dataset.
+// Sta sopra la via 37: vale su tutti e cinque i pilastri (Edu, S39).
+function via38_bazhuanOraFantasma(c) {
+  if (c.palazzoHost !== c.ramoGiorno) return null;
+  if (parentela(c.steloGiorno, c.oraRamo) !== 'G') return null;
+  return { dir: 'LONG', via: '八專 con l\'ora G',
+    perche: 'carta 八專: host e guest nello stesso palazzo ' + c.palazzoHost +
+            '; il ramo dell\'ora ' + c.oraRamo + ' e\' G (鬼) per lo stelo del giorno ' +
+            c.steloGiorno + ': misurato, lo host vince' };
+}
+
+// --- VIA 37 · 八專 SUI PILASTRI 甲寅 E 丁未 --------------------------------
+// S39. Le carte 八專 erano tutte fuori selezione. Misurate per pilastro sul verso
+// assoluto (soglia 20 pip, 9 cross, 2020-2026):
+//   甲寅 n 55 · 43 piatti · LONG 61,82% · z 1,75 · +561 pip · vec 56,52 / rec 62,96
+//   丁未 n 51 · 40 piatti · LONG 60,78% · z 1,54 · +573 pip · vec 71,43 / rec 57,58
+//   庚申 54,17% · 己未 51,67% · 癸丑 SHORT 52,63% (periodi opposti) → restano fuori.
+function via37_bazhuanPilastriChePortano(c) {
+  if (c.palazzoHost !== c.ramoGiorno) return null;
+  const pil = c.steloGiorno + c.ramoGiorno;
+  if (pil !== '甲寅' && pil !== '丁未') return null;
+  return { dir: 'LONG', via: '八專 sul pilastro ' + pil,
+    perche: 'carta 八專: host e guest nello stesso palazzo ' + c.palazzoHost +
+            '; sul pilastro ' + pil + ' il verso misurato e\' LONG' };
+}
+
 const CATENA = [ via0_gruppoCompletoFantasma, viaU_catenaNellaTomba, viaT_dueTrigoniPerCarattere ].concat(VIE, [ via5_R2prendeIlPostoDiR1, via7_fratelloLegato, via6_ricchezzaSulPrimoMessaggio, via8_figlioVuotoRicchezzaInFondo, via9_pDalLatoDelloStelo, via10_oDalLatoDelloSteloNonNutrito, via11_gVuotoSulPrimoMessaggio, via12_oSoproLoSteloHostSulVuoto, via13_oConGancio, via14_bConDragoAzzurro, via15_r1GeneraIlRamoDelGiorno, via16_luIncrociato, via17_cavalloDiPostaSuR1, via18_luDelGiornoSuR1, via19_apiceDelloSteloSuR3, via20_steloCavalcaLaTomba, via21_ramoSiedeSullaTomba, via22_steloSiedeSullaTomba, via23_steloCavalcaLaJue, via24_ramoCavalcaLaJue, via25_entrambiVuoti, via26_xuChenSopraIlRamo, via27_oraRicchezzaVigorosaFausta, via28_oraCavalloDelGiorno, via29_oraCombinaColPalazzo, via30_oraCombinaColRamo, via31_oraClashaIlPalazzo, via32_oraClashaIlRamo, via33_oraPenalizzataDalRamo, via34_primoMessaggioBagnoOMorte, via35_primoMessaggioTombaDelloStelo, via36_primoMessaggioNascitaDelloStelo ]);
 
 // ============================================================================
@@ -1038,6 +1245,26 @@ const CATENA = [ via0_gruppoCompletoFantasma, viaU_catenaNellaTomba, viaT_dueTri
 function leggi(carta) {
   const fuori = fuoriSelezione(carta);
   if (fuori) return { dir: null, via: null, perche: 'carta fuori selezione: ' + fuori };
+  // S39 · la forma 八專 sui pilastri che portano si legge da sola, non passa dalla
+  // catena: le vie a valle sono nate su carte dove host e guest sono distinti.
+  const fy = via41_fuyinHostNelVuoto(carta);
+  if (fy) return fy;
+  const fy2 = via42_fuyinDueLatiStessoElemento(carta);
+  if (fy2) return fy2;
+  const fy3 = via43_fuyinRicchezzaFermaDalGuest(carta);
+  if (fy3) return fy3;
+  const fy4 = via45_fuyinHostPiuInStagione(carta);
+  if (fy4) return fy4;
+  const fn = via44_fanyinHostPiuInStagione(carta);
+  if (fn) return fn;
+  const bzG = via38_bazhuanOraFantasma(carta);
+  if (bzG) return bzG;
+  const bz = via37_bazhuanPilastriChePortano(carta);
+  if (bz) return bz;
+  const bzG2 = via40_bazhuanFantasmaDalGuest(carta);
+  if (bzG2) return bzG2;
+  const bzN = via39_bazhuanOraNutreIlRamo(carta);
+  if (bzN) return bzN;
   for (const via of CATENA) {
     const v = via(carta);
     if (v && v.dir) return v;
