@@ -353,19 +353,30 @@
     // Le 110 carte guida non cambiano di una (78 giuste, 32 storte).
     var rafforzato = false;
 
-    // TREND VUOTO NEL PAREGGIO (Edu, 09/08/2026): nel pareggio 比和 il corpo (Ti) vuoto perde
-    // il pari → non segue. Palazzo del Trend vuoto (旬空); il ramo attivo, nei palazzi a due
-    // rami, è scelto dalla posizione della linea mutante (1,3,5 = yang · 2,4,6 = yin).
+    // IL TI VUOTO (Edu, 09/08/2026 · RISCRITTA E ALLARGATA l'08/09/2026 dalla EURJPY
+    // 21/10/2025, seme 175). Il palazzo del Ti vuoto (旬空) rende il Ti inagibile in
+    // QUALSIASI relazione, non piu' soltanto nel pareggio 比和 → non segue.
+    // Tre punti, tutti dettati da Edu l'08/09/2026:
+    //  - nei palazzi a due rami il ramo attivo lo sceglie lo yin/yang del GIORNO (prima lo
+    //    sceglieva la posizione della linea mutante);
+    //  - il vuoto c'e' anche quando il ramo e' prospero di stagione: l'eccezione 旺不为空 qui
+    //    non vale;
+    //  - dal vuoto si esce solo col CLASH, che lo risveglia: dal giorno sempre, dall'anno
+    //    solo se il ramo dell'anno e' 旺 o 相.
     var vuotoPareggio = false;
-    if (rel === '比和' && clash && clash.vuoti && clash.vuoti.length) {
+    if (clash && clash.vuoti && clash.vuoti.length && bz) {
       var palT = HOUTIAN[trendNum], ramoT;
       if (palT.length === 1) ramoT = palT[0];
-      else { var lineaYangT = (linea % 2 === 1); ramoT = palT.filter(function (b) { return isYang(b) === lineaYangT; })[0]; }
-      // 旺不为空: un ramo prospero di stagione (elemento = elemento del mese) non è davvero vuoto
-      var ramoProsperoT = ramoT != null && bz && WX[ramoT] === WX[bz.monthBranch];
-      if (ramoT != null && clash.vuoti.indexOf(ramoT) >= 0 && !ramoProsperoT) {
-        vuotoPareggio = true;
-        if (segueFinale === true) segueFinale = false;
+      else { var giornoYangT = isYang(bz.dayBranch); ramoT = palT.filter(function (b) { return isYang(b) === giornoYangT; })[0]; }
+      if (ramoT != null && clash.vuoti.indexOf(ramoT) >= 0) {
+        var stagAnnoT = stagione(WX[bz.yearBranch], WX[bz.monthBranch]);
+        var annoTimelyT = (stagAnnoT === '旺' || stagAnnoT === '相');
+        var risvegliatoT = (CLASH[bz.dayBranch] === ramoT) ||
+                           (CLASH[bz.yearBranch] === ramoT && annoTimelyT);
+        if (!risvegliatoT) {
+          vuotoPareggio = true;
+          if (segueFinale === true) segueFinale = false;
+        }
       }
     }
 
@@ -382,9 +393,13 @@
     var sopraffTrasf = (CTRL[yongTrasf.el] === trend.el);
     var flussoVersoTi = false, nayinSalva = false;
     if (sopraffTrasf && bz && bz.yearBranch && bz.monthBranch && bz.dayBranch) {
+      // ALLARGATA AI QUATTRO PILASTRI (Edu, 08/09/2026, dalla EURJPY 28/11/2023 seme 162):
+      // la catena del qi prende anche l'ORA. Coi tre rami soli quella carta dava il capolinea
+      // sul Legno del Ti; con l'ora 巳 il capolinea passa al Fuoco e il Ti risulta drenato.
       var elsPres = [];
-      [bz.yearBranch, bz.monthBranch, bz.dayBranch].forEach(function (b) {
-        if (elsPres.indexOf(WX[b]) < 0) elsPres.push(WX[b]);
+      var oraFlusso = clash ? clash.oraBranch : null;
+      [bz.yearBranch, bz.monthBranch, bz.dayBranch, oraFlusso].forEach(function (b) {
+        if (b && WX[b] && elsPres.indexOf(WX[b]) < 0) elsPres.push(WX[b]);
       });
       var fRiceve = function (e) { return elsPres.some(function (x) { return GEN[x] === e; }); };
       var fCede = function (e) { return elsPres.indexOf(GEN[e]) >= 0; };
