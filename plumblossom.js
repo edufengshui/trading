@@ -346,12 +346,12 @@
     // ma il Yong esce RAFFORZATO dalla mutazione — caso 1 生我 (il trasformato genera il Yong)
     // o caso 5 比和 (stesso elemento) — il Yong si impone e il verdetto passa a "non segue".
     // Spento quando il trend EMA persiste da >=20 giorni: lì il trend forte va seguito.
+    // RITIRATA in S41 (07/09/2026). Girava 485 verdetti e ne girava bene il 53,61%, quindi
+    // come voce guadagnava 5.485 pip. Ma il Plum Blossom nel sistema serve da filtro, non da
+    // voce: ogni verdetto girato lo faceva concordare col Liu Yao nel posto sbagliato.
+    // Tolta: il sistema attuale sale da 58,57% a 58,97%, la scala da 37.823 a 38.381 pip.
+    // Le 110 carte guida non cambiano di una (78 giuste, 32 storte).
     var rafforzato = false;
-    if (segueBase === true && !(clash && clash.salvato)) {
-      var forteMut = (yongOrig.el === yongTrasf.el) || (GEN[yongTrasf.el] === yongOrig.el);
-      var trendPersistente = extra && extra.emaRun != null && extra.emaRun >= 20;
-      if (forteMut && !trendPersistente) { rafforzato = true; segueFinale = false; }
-    }
 
     // TREND VUOTO NEL PAREGGIO (Edu, 09/08/2026): nel pareggio 比和 il corpo (Ti) vuoto perde
     // il pari → non segue. Palazzo del Trend vuoto (旬空); il ramo attivo, nei palazzi a due
@@ -401,14 +401,33 @@
     var sopraffAttiva = sopraffTrasf && !flussoVersoTi && !nayinSalva;
     if (sopraffAttiva && segueFinale === true) segueFinale = false;
 
-    // DRENAGGIO DEL TI (Edu, 09/08/2026): se il Ti genera il trasformato (Ti drenato) e il
-    // trasformato è preponderante nel Bazi (netStr >= 3), il corpo si svuota → non segue.
+    // DRENAGGIO DEL TI (Edu, 09/08/2026): se il Ti genera il trasformato, il corpo si svuota
+    // → non segue. Il cancello di forza sul Bazi (il trasformato sostenuto da almeno tre rami)
+    // e' stato TOLTO in S41 (07/09/2026): scattava su 43 carte con i due periodi a 37% e 65%,
+    // e valeva quindici pip sull'intero sistema. Adesso la regola guarda solo la relazione.
     var drenaggio = false;
-    if (bz && GEN[trend.el] === yongTrasf.el) {
-      var ramiBz = [bz.yearBranch, bz.monthBranch, bz.dayBranch];
-      var nsT = ramiBz.filter(function (b) { return WX[b] === yongTrasf.el || GEN[WX[b]] === yongTrasf.el; }).length
-              - ramiBz.filter(function (b) { return CTRL[WX[b]] === yongTrasf.el; }).length;
-      if (nsT >= 3) { drenaggio = true; if (segueFinale === true) segueFinale = false; }
+    if (GEN[trend.el] === yongTrasf.el) {
+      drenaggio = true; if (segueFinale === true) segueFinale = false;
+    }
+
+    // HU GUA — IL CONCORRENTE DEL TI (Edu, 07/09/2026, dalla USDJPY 17/09/2024 seme 140).
+    // Quando il Yong muta in un trigramma dello STESSO elemento del Ti, il trasformato non e'
+    // piu' un ospite: e' un concorrente. A decidere chi vince e' lo Hu Gua (互卦, l'esagramma
+    // nucleare: linee 2-3-4 il trigramma inferiore, linee 3-4-5 il superiore). Il trigramma
+    // dello Hu Gua dalla parte del Ti lo genera o no; quello dalla parte del Yong genera o no
+    // il trasformato. Vince chi riceve il sostegno.
+    var huGua = null;
+    if (yongTrasf.el === trend.el) {
+      var yinL = function (n, p) { return ((((n - 1) >> (3 - p)) & 1) === 1); };
+      var trigDa = function (a, b, c) { return 1 + ((a ? 1 : 0) << 2) + ((b ? 1 : 0) << 1) + (c ? 1 : 0); };
+      var Lg = [null, yinL(infNum, 1), yinL(infNum, 2), yinL(infNum, 3),
+                      yinL(supNum, 1), yinL(supNum, 2), yinL(supNum, 3)];
+      var huInf = TRIGRAM[trigDa(Lg[2], Lg[3], Lg[4])], huSup = TRIGRAM[trigDa(Lg[3], Lg[4], Lg[5])];
+      var tiSopra = (linea <= 3);
+      var huTi = tiSopra ? huSup : huInf, huYong = tiSopra ? huInf : huSup;
+      var sostTi = (GEN[huTi.el] === trend.el), sostTrasf = (GEN[huYong.el] === yongTrasf.el);
+      if (sostTrasf && !sostTi) { huGua = 'concorrente'; segueFinale = false; }
+      else if (sostTi && !sostTrasf) { huGua = 'ti'; segueFinale = true; }
     }
 
     // RISCATTO DEL TRASFORMATO MORTO (Edu, 10/08/2026 — da USDJPY 31/07/2024):
@@ -454,7 +473,7 @@
       superiore: supNum, inferiore: infNum, linea: linea,
       trend: trend, yongOriginale: yongOrig, yongTrasformato: yongTrasf,
       relazione: rel, relazioneTesto: relTesto, pareggio: pareggio,
-      segueBase: segueBase, segue: segueFinale, noTradeClash: noTradeClash, riscatto: riscatto, rafforzato: rafforzato, vuotoPareggio: vuotoPareggio, sopraffTrasf: sopraffTrasf, sopraffAttiva: sopraffAttiva, flussoVersoTi: flussoVersoTi, nayinSalva: nayinSalva, drenaggio: drenaggio,
+      segueBase: segueBase, segue: segueFinale, noTradeClash: noTradeClash, riscatto: riscatto, rafforzato: rafforzato, huGua: huGua, vuotoPareggio: vuotoPareggio, sopraffTrasf: sopraffTrasf, sopraffAttiva: sopraffAttiva, flussoVersoTi: flussoVersoTi, nayinSalva: nayinSalva, drenaggio: drenaggio,
       clash: clash,
       original:  { sup: supNum, inf: infNum },
       mutual:    { sup: nucSup, inf: nucInf },

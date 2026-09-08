@@ -476,8 +476,48 @@ function analizzaCrossPerReport(r, utcMs, dateStr) {
               steloAnno: (chart.source && chart.source.yearPillar) ? chart.source.yearPillar.charAt(0) : null };
             var ld = MD.leggi(cartaD);
             out.dlrDir = (ld && ld.dir) || null; out.dlrVia = (ld && ld.via) || null;
+            // S41: distinguere il silenzio per FORMA (carta fuori selezione) dal silenzio per
+            // mancanza di attore. Il primo si riammette, il secondo resta silenzio vero.
+            out.dlrEscluso = !!(ld && !ld.dir && String(ld.perche || '').indexOf('fuori selezione') >= 0);
           }
         } catch (e3) { out.dlrDir = null; }
+        // --- SPIRITI (S41): il Serpente (螣蛇 Teng She) e le Sei Unioni (六合 Liu He) come
+        // indicatori del trend. Serpente su R3 -> il mercato segue; su R4 -> non segue.
+        // Sei Unioni su R2 o R3 -> non segue. Valgono solo quando ne parla UNO SOLO.
+        out.spirito = null; out.spiritoChi = null;
+        try {
+          var L4s = chart.fourLessons;
+          if (L4s && L4s.length >= 4) {
+            var nm = function (x) { return (x && x.top && x.top.general && x.top.general.cn) || null; };
+            var segue = out.trend, nonSegue = (out.trend === 'LONG') ? 'SHORT' : 'LONG';
+            var s3 = nm(L4s[2]) === '螣蛇', s4 = nm(L4s[3]) === '螣蛇';
+            var ser = null; if (s3 && !s4) ser = segue; else if (s4 && !s3) ser = nonSegue;
+            var u2 = nm(L4s[1]) === '六合', u3 = nm(L4s[2]) === '六合';
+            var uni = (u2 || u3) ? nonSegue : null;
+            if (ser && !uni) { out.spirito = ser; out.spiritoChi = 'Serpente'; }
+            else if (uni && !ser) { out.spirito = uni; out.spiritoChi = 'Sei Unioni'; }
+          }
+        } catch (e4) { out.spirito = null; out.spiritoChi = null; }
+        // --- STELO DEL GIORNO DEBOLE (S41): lo stelo fuori stagione tradisce il trend.
+        // Vale per Legno, Terra e Acqua. Metallo e Fuoco tacciono, e tace ogni stelo che sia
+        // prospero o in crescita nel mese. Livello A: 196 carte al 76,53%, contro un 70,96%.
+        out.steloVoce = null; out.steloEl = null;
+        try {
+          var WXBs = { '子':'Water','丑':'Earth','寅':'Wood','卯':'Wood','辰':'Earth','巳':'Fire',
+                       '午':'Fire','未':'Earth','申':'Metal','酉':'Metal','戌':'Earth','亥':'Water' };
+          var STEMELs = { '甲':'Wood','乙':'Wood','丙':'Fire','丁':'Fire','戊':'Earth','己':'Earth',
+                          '庚':'Metal','辛':'Metal','壬':'Water','癸':'Water' };
+          var GENs = { Wood:'Fire', Fire:'Earth', Earth:'Metal', Metal:'Water', Water:'Wood' };
+          var ITs = { Wood:'Legno', Earth:'Terra', Water:'Acqua' };
+          var sEl = STEMELs[chart.dayStem], mEl = WXBs[chart.monthBranch];
+          if (sEl && mEl && (sEl === 'Wood' || sEl === 'Earth' || sEl === 'Water')) {
+            var inStagione = (sEl === mEl) || (GENs[mEl] === sEl);
+            if (!inStagione) {
+              out.steloVoce = (out.trend === 'LONG') ? 'SHORT' : 'LONG';
+              out.steloEl = ITs[sEl];
+            }
+          }
+        } catch (e5) { out.steloVoce = null; out.steloEl = null; }
         if (lyDir === null) {
           out.classe = 'tace';
           finale = pbDir; decisore = 'PB — il LY tace (riserva S2)';
@@ -829,22 +869,39 @@ function capolineaDelFlusso(chart) {
  * e' stato pb_stress.js ad essere allineato all'app, non il contrario.
  */
 function livelloTreSistemi(e) {
+  // S41 (07/09/2026) — LA SCALA RISCRITTA SUL CONSIGLIO DELLE VOCI.
+  // Non piu' livelli fissi. Si contano le voci che parlano e si guarda se qualcuna dissente.
+  // La misura ha mostrato che non conta quante sono d'accordo, conta che nessuna sia contraria:
+  // con una sola voce contraria si scende al 59% qualunque sia il numero delle concordi.
+  //   unanimi 6 voci  46 carte 82,61%   ·  unanimi 5  211  75,36%
+  //   unanimi 4      350        73,14%   ·  unanimi 3   41  63,41%
+  //   una contraria 1153        59,32%   ·  due o piu' 631  56,42%
   var pb = e.pbDir || null, ly = e.lyDir || null, at = e.attuale || null, dlr = e.dlrDir || null;
-  var voci = 'PB ' + (pb || '—') + ' · LY ' + (ly || 'tace') + ' · attuale ' + (at || '—') + ' · DLR ' + (dlr || 'tace');
-  if (!pb) return { liv: null, dir: null, perche: 'Plum Blossom non disponibile', voci: voci };
-  if (ly && dlr && pb === ly && ly === dlr)
-    return { liv: 'A', dir: pb, perche: 'Plum Blossom, Liu Yao e Da Liu Ren concordano', voci: voci };
-  if (dlr && at === dlr)
-    return { liv: 'B', dir: at, perche: 'sistema attuale e Da Liu Ren concordano' +
-             (ly ? (ly === pb ? '' : ' (PB e LY in contrasto, il sistema attuale ha scelto ' + at + ')') : ' (il Liu Yao tace)'), voci: voci };
-  if (ly && pb === ly && !dlr)
-    return { liv: 'C', dir: pb, perche: 'Plum Blossom e Liu Yao concordano, il Da Liu Ren tace', voci: voci };
-  var perche;
-  if (dlr && ly && pb === ly) perche = 'il Da Liu Ren (' + dlr + ') contrasta Plum Blossom e Liu Yao concordi (' + pb + '): moneta, fermo';
-  else if (dlr) perche = 'sistema attuale (' + at + ') contro Da Liu Ren (' + dlr + '): fermo';
-  else if (ly) perche = 'Plum Blossom (' + pb + ') contro Liu Yao (' + ly + ') e il Da Liu Ren tace: fermo';
-  else perche = 'parla solo il Plum Blossom: fermo';
-  return { liv: null, dir: null, perche: perche, voci: voci };
+  var sp = e.spirito || null, st = e.steloVoce || null;
+  var voci = 'PB ' + (pb || '—') + ' · LY ' + (ly || 'tace') + ' · attuale ' + (at || '—') +
+             ' · DLR ' + (dlr || 'tace') + ' · Spirito ' + (sp || 'tace') + ' · stelo ' + (st || 'tace');
+  var tutte = [pb, ly, at, dlr, sp, st].filter(function (v) { return !!v; });
+  if (!tutte.length) return { liv: null, dir: null, perche: 'nessuna voce parla', voci: voci };
+  var nL = 0, nS = 0, k;
+  for (k = 0; k < tutte.length; k++) { if (tutte[k] === 'LONG') nL++; else nS++; }
+  if (nL === nS) return { liv: null, dir: null, perche: 'le voci si dividono a meta: fermo', voci: voci };
+  var dir = nL > nS ? 'LONG' : 'SHORT';
+  var contrarie = Math.min(nL, nS);
+  var liv, perche;
+  if (contrarie === 0) {
+    // S41: sotto le quattro voci l'unanimita' non vale. U3 faceva 41 carte al 63,41% con il
+    // periodo recente al 55,56%; troppo poche voci perche' l'accordo dica qualcosa. Fermo.
+    if (tutte.length < 4)
+      return { liv: null, dir: null, perche: 'parlano solo ' + tutte.length +
+               ' voci: troppo poche perche l accordo conti, fermo', voci: voci };
+    liv = 'U' + tutte.length;
+    perche = 'tutte e ' + tutte.length + ' le voci che parlano dicono ' + dir + ', nessuna contraria';
+  } else if (contrarie === 1) {
+    liv = 'M1'; perche = 'una voce sola contraria su ' + tutte.length;
+  } else {
+    liv = 'M2'; perche = contrarie + ' voci contrarie su ' + tutte.length;
+  }
+  return { liv: liv, dir: dir, perche: perche, voci: voci };
 }
 
 function renderReportTreSistemi() {
@@ -867,7 +924,7 @@ function renderReportTreSistemi() {
     return e;
   });
   var tradabili = esiti.filter(function (e) { return e.livello && (e.signal === 'LONG' || e.signal === 'SHORT'); });
-  var ordine = { A: 0, B: 1, C: 2 };
+  var ordine = { U6: 0, U5: 1, U4: 2, U3: 3, U2: 4, M1: 5, M2: 6 };
   tradabili.sort(function (a, b) { return ordine[a.livello] - ordine[b.livello]; });
   var esclusi = esiti.filter(function (e) { return tradabili.indexOf(e) < 0; });
 
@@ -885,7 +942,8 @@ function renderReportTreSistemi() {
       'font-weight:800;font-size:13px;letter-spacing:.4px;color:#0e1022;background:' + col + '">' + sig + '</span>';
   }
   function livBadge(l) {
-    var col = l === 'A' ? '#e3b341' : l === 'B' ? '#58a6ff' : '#b18cff';
+    var col = (l === 'U6' || l === 'U5') ? '#3fb950' : (l === 'U4' || l === 'U3' || l === 'U2') ? '#e3b341' :
+              l === 'M1' ? '#58a6ff' : '#8b949e';
     return '<span style="display:inline-block;min-width:26px;text-align:center;padding:3px 8px;border-radius:6px;' +
       'font-weight:900;font-size:13px;color:#0e1022;background:' + col + '" title="livello ' + l + '">' + l + '</span>';
   }
@@ -901,9 +959,9 @@ function renderReportTreSistemi() {
       '<span style="' + css.name + ';opacity:.75">' + e.cross + '</span>' + badge('NO TRADE') +
       '<span style="' + css.note + '">' + e.motivo + '</span></div>';
   }).join('') || '<div style="padding:8px 0;opacity:.7">Nessun cross fermo.</div>';
-  var nA = tradabili.filter(function (e) { return e.livello === 'A'; }).length;
-  var nB = tradabili.filter(function (e) { return e.livello === 'B'; }).length;
-  var nC = tradabili.filter(function (e) { return e.livello === 'C'; }).length;
+  var cont = function (L) { return tradabili.filter(function (e) { return e.livello === L; }).length; };
+  var nU = cont('U6') + cont('U5') + cont('U4') + cont('U3') + cont('U2');
+  var nM1 = cont('M1'), nM2 = cont('M2');
   var nL = tradabili.filter(function (e) { return e.signal === 'LONG'; }).length;
   var nS = tradabili.filter(function (e) { return e.signal === 'SHORT'; }).length;
 
@@ -923,7 +981,7 @@ function renderReportTreSistemi() {
       '<div style="' + css.head + '">' +
         '<b style="font-size:16px">Report tre sistemi · ' + forexData.date + ' 00:00 GMT</b>' +
         '<span style="font-size:12px;opacity:.8">' + tradabili.length + ' da tradare (' + nL + ' long, ' + nS + ' short) · ' +
-        'A ' + nA + ' · B ' + nB + ' · C ' + nC + ' · ' + esclusi.length + ' fermi</span>' +
+        'unanimi ' + nU + ' · una contraria ' + nM1 + ' · due o piu ' + nM2 + ' · ' + esclusi.length + ' fermi</span>' +
       '</div>' + nota +
       '<div style="' + css.sect + '">' +
         '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">DA TRADARE · livello A, B o C</div>' + righeOk +
