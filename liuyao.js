@@ -1414,11 +1414,27 @@
       return cand[0].pos<=3 ? 'SHORT' : 'LONG';
     }});
 
+  // L'ARRIVO DELLA MOBILE NEL FLUSSO (Edu, 09/09/2026, S44, EURUSD 28/05/2026 s116): "se la
+  // regola vale deve farlo per tutte le linee, specialmente quelle mobili che sono quelle che
+  // agiscono". Il capolinea del flusso del qi si cerca anche sull'ARRIVO della mobile, che entra
+  // nella carta con il suo elemento e il carattere di quell'elemento nel palazzo. Il movimento
+  // deve concludersi (non nullo). FLUSSOARR=off ripristina il flusso sulle sole linee ferme.
+  function _flussoConArrivo(R, c) {
+    var vivi = R.linee.filter(c.vivo);
+    var ENVf = (typeof process!=='undefined' && process.env) ? process.env : {};
+    if (ENVf.FLUSSOARR !== 'off' && R.mutante && !R.mutante.movimentoNullo && R.mutante.arrEl) {
+      var pe = R.palEl, e = R.mutante.arrEl;
+      var par = e===pe ? 'B' : GEN[pe]===e ? 'C' : CTRL[pe]===e ? 'W' : CTRL[e]===pe ? 'G' : 'P';
+      vivi = vivi.concat([{ pos: R.mutante.pos, el: e, ramo: R.mutante.ramoArr, par: par, arrivo: true, fushen: null }]);
+    }
+    return vivi;
+  }
+
   LY_VIE.push({ id:'R2', sezione:'—', nome:'Terminal G drained by its hidden line',
     dottrina:'The terminal of the qi flow (receives, does not give) is a single G, and its hidden line drains it (G generates the hidden): direction of the G\'s seat.',
     test: function (R, ctx, state) {
       var c = _ctx(R);
-      var vivi = R.linee.filter(c.vivo);
+      var vivi = _flussoConArrivo(R, c);
       var els = {}; vivi.forEach(function(l){els[l.el]=true;}); c.bazi.forEach(function(b){els[WX[b]]=true;});
       var elsArr = Object.keys(els);
       var cap = vivi.filter(function (l) {
@@ -1481,7 +1497,7 @@
     dottrina:'The terminal of the qi flow is a single G (even without a draining hidden line): direction of its seat.',
     test: function (R, ctx, state) {
       var c = _ctx(R);
-      var vivi = R.linee.filter(c.vivo);
+      var vivi = _flussoConArrivo(R, c);
       var els = {}; vivi.forEach(function(l){els[l.el]=true;}); c.bazi.forEach(function(b){els[WX[b]]=true;});
       var elsArr = Object.keys(els);
       var cap = vivi.filter(function (l) {
@@ -1493,7 +1509,7 @@
       if (!capG) return null;
       // Guardia mobile (Edu, 25/08/2026, audit): R4 sbaglia con mobile G. GR4G=off ripristina.
       if ((typeof process==='undefined' || !process.env || process.env.GR4G!=='off') && R.linee[R.mutante.pos-1].par==='G') return null;
-      state.why = 'The qi flow of lines + Bazi (year '+c.Y+', month '+c.Mo+', day '+c.D+') ends on a single <b>G</b> L'+capG.pos+' ('+capG.ramo+') → direction of the G\'s seat.';
+      state.why = 'The qi flow of lines + Bazi (year '+c.Y+', month '+c.Mo+', day '+c.D+') ends on a single <b>G</b> '+(capG.arrivo?'— the ARRIVAL '+capG.ramo+' of the mobile L'+capG.pos:'L'+capG.pos+' ('+capG.ramo+')')+' → direction of the G\'s seat.';
       return capG.pos<=3 ? 'SHORT' : 'LONG';
     }});
 
@@ -1739,20 +1755,82 @@
     }});
 
   LY_VIE.push({ id:'R6', sezione:'—', nome:'Seasonal gathering with the month',
-    dottrina:'The three branches of a seasonal gathering are all present together with the month branch: if above/below are unbalanced, the majority wins. Silent when the mobile is G (§77).',
+    dottrina:'Edu (09/09/2026, S44). Il raduno dei tre rami della stagione (三會) si compone pescando i rami sia dai QUATTRO pilastri della data sia dalle linee dell\'esagramma, ma un ramo portato da una LINEA conta solo se quella linea FA QUALCOSA: e\' la mobile, e\' lo Shi o la Ying, e\' ferma ma clashata (六冲) dal giorno, e\' combinata (六合) dal giorno, oppure siede su di lei la bestia dello stelo di uno dei quattro pilastri. Perche\' il raduno sia significativo il suo ELEMENTO nel suo insieme deve essere timely (旺 o 相 su mese e stagione) — il vincolo precedente (il ramo del mese fra i tre) e\' sostituito da questo. Restano: la maggioranza sopra/sotto delle linee dell\'elemento decide la direzione, e la via TACE quando la mobile e\' una G (§77, 19/08/2026). R6=vecchia riporta la versione precedente; R6COMB=mobile allarga la combinata anche a quella prodotta dalla mobile.',
     test: function (R, ctx, state) {
       var c = _ctx(R);
       var HUI=[{r:['寅','卯','辰'],el:'Wood'},{r:['巳','午','未'],el:'Fire'},
                {r:['申','酉','戌'],el:'Metal'},{r:['亥','子','丑'],el:'Water'}];
-      var tutti = {}; R.linee.forEach(function(l){tutti[l.ramo]=true;}); c.bazi.forEach(function(b){tutti[b]=true;});
-      var fh = HUI.filter(function (h) { return h.r.every(function(x){return tutti[x];}) && h.r.indexOf(c.Mo)>=0; });
+      var ENV = (typeof process!=='undefined' && process.env) ? process.env : {};
+      if (ENV.R6==='off') return null;
+
+      if (ENV.R6==='vecchia') {
+        var tuttiV = {}; R.linee.forEach(function(l){tuttiV[l.ramo]=true;}); c.bazi.forEach(function(b){tuttiV[b]=true;});
+        var fhV = HUI.filter(function (h) { return h.r.every(function(x){return tuttiV[x];}) && h.r.indexOf(c.Mo)>=0; });
+        if (fhV.length!==1) return null;
+        var mobV = R.linee[R.mutante.pos-1]; if (mobV && mobV.par==='G') return null;
+        var lnV = R.linee.filter(function (l) { return l.el===fhV[0].el; });
+        var bV = lnV.filter(function(l){return l.pos<=3;}).length, aV = lnV.length-bV;
+        if (bV===aV) return null;
+        state.why = 'Seasonal gathering '+fhV[0].r.join('')+' ('+fhV[0].el+') complete with the <b>month '+c.Mo+'</b>: '+bV+' lines below vs '+aV+' above → majority.';
+        return bV>aV ? 'SHORT' : 'LONG';
+      }
+
+      // --- i quattro pilastri della data
+      var hb = R.oraBranch || (ctx && ctx.oraBranch) || null;
+      var dataRami = [R.yearBranch, R.monthBranch, R.dayBranch]; if (hb) dataRami.push(hb);
+      var ys=ctx&&ctx.yearStem, ms=ctx&&ctx.monthStem, hs=ctx&&ctx.hourStem, ds=R.dayStem;
+      var BDI6={'甲':'青龍','乙':'青龍','丙':'朱雀','丁':'朱雀','戊':'勾陳','己':'螣蛇','庚':'白虎','辛':'白虎','壬':'玄武','癸':'玄武'};
+      var bestiePil = {}; [ys,ms,ds,hs].forEach(function(st){ if (st && BDI6[st]) bestiePil[BDI6[st]]=true; });
+
+      // --- "fare qualcosa": mobile, Shi/Ying, ferma clashata dal giorno, combinata dal giorno,
+      //     bestia di un pilastro seduta sulla linea
+      var arr = R.mutante ? R.mutante.ramoArr : null, dep = R.mutante ? R.mutante.ramoDep : null;
+      function attiva(l){
+        if (l.isMobile) return 'mobile';
+        if (l.isShi) return 'Shi';
+        if (l.isYing) return 'Ying';
+        if (CLASH[c.D]===l.ramo) return 'clashed by the day';
+        if (COMBINA[c.D]===l.ramo) return 'combined by the day';
+        if (ENV.R6COMB==='mobile' && (COMBINA[arr]===l.ramo || COMBINA[dep]===l.ramo)) return 'combined by the mobile';
+        if (l.bestia && bestiePil[l.bestia.cn]) return 'beast of a pillar';
+        return null;
+      }
+
+      var fh = HUI.filter(function (h) {
+        if (ENV.R6TIMELY==='off') { if (h.r.indexOf(c.Mo)<0) return false; }
+        else if (!c.timely(h.el)) return false;                         // l'elemento del raduno deve essere timely
+        return h.r.every(function (x) {
+          if (dataRami.indexOf(x)>=0) return true;                      // portato dalla data
+          var lx = R.linee.filter(function(l){ return l.ramo===x && (ENV.R6ATTIVA==='off' || attiva(l)); });
+          return lx.length>0;                                           // o da una linea che fa qualcosa
+        });
+      });
       if (fh.length!==1) return null;
-      // §77 (19/08/2026): this way is SILENT when the mobile is G (Official): 95 cards at 45.3% (recent 36%).
-      var mobR6 = R.linee[R.mutante.pos-1]; if (mobR6 && mobR6.par==='G') return null;
+
+      var mobR6 = R.linee[R.mutante.pos-1]; if (mobR6 && mobR6.par==='G') return null;   // §77
+      if (ENV.R6DIR==='carattere') {
+        // LETTURA DI EDU (09/09/2026, USDJPY 08/02/2024): il raduno agisce col CARATTERE del suo
+        // elemento nel palazzo, sulla linea che tocca. G/W fanno vincere la sede toccata, P/B la
+        // fanno perdere, C tace. Serve una sede sola fra le linee toccate.
+        var toccate = [];
+        fh[0].r.forEach(function(x){ R.linee.forEach(function(l){ if (l.ramo===x && attiva(l)) toccate.push(l); }); });
+        if (!toccate.length) return null;
+        var sedeT = toccate[0].pos<=3 ? 'basso' : 'alto';
+        if (!toccate.every(function(l){ return (l.pos<=3 ? 'basso' : 'alto')===sedeT; })) return null;
+        var pe = R.palEl, e = fh[0].el, par6 = e===pe ? 'B' : GEN[pe]===e ? 'C' : CTRL[pe]===e ? 'W' : CTRL[e]===pe ? 'G' : 'P';
+        if (par6==='C') return null;
+        var vinceT = (par6==='G' || par6==='W');
+        state.why = 'Seasonal gathering '+fh[0].r.join('')+' ('+e+', timely) touches L'+toccate.map(function(l){return l.pos;}).join('/L')+' with the character '+par6+' → the touched seat '+(vinceT?'wins':'loses')+'.';
+        return (sedeT==='basso') === vinceT ? 'SHORT' : 'LONG';
+      }
       var ln = R.linee.filter(function (l) { return l.el===fh[0].el; });
       var b_ = ln.filter(function(l){return l.pos<=3;}).length, a_ = ln.length-b_;
       if (b_===a_) return null;
-      state.why = 'Seasonal gathering '+fh[0].r.join('')+' ('+fh[0].el+') complete with the <b>month '+c.Mo+'</b>: '+b_+' lines below vs '+a_+' above → majority.';
+      var det = fh[0].r.map(function(x){
+        if (dataRami.indexOf(x)>=0) return x+' (date)';
+        var lx = R.linee.filter(function(l){ return l.ramo===x && (ENV.R6ATTIVA==='off' || attiva(l)); })[0];
+        return lx ? x+' (L'+lx.pos+', '+(attiva(lx)||'inert')+')' : x; }).join(' + ');
+      state.why = 'Seasonal gathering '+fh[0].r.join('')+' ('+fh[0].el+', timely) complete: '+det+' — '+b_+' lines below vs '+a_+' above → majority.';
       return b_>a_ ? 'SHORT' : 'LONG';
     }});
 
