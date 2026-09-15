@@ -451,6 +451,9 @@ function analizzaCrossPerReport(r, utcMs, dateStr) {
         var lyDir = (t && t.dir) || null;
         out.lyDir = lyDir;
         out.lySez = (t && t.sezione) || null;
+        // MOTORE DI LETTURA (S47): voce mostrata nel report, non contata nella scala.
+        var lett = letturaMotore(ly, dateStr, yearBranch, chart.monthBranch, chart.dayStem || null, chart.dayBranch, oraB0);
+        out.lettDir = lett.dir; out.lettGradino = lett.gradino; out.lettPerche = lett.perche; out.lettRacconto = lett.racconto;
         // --- TRE SISTEMI (Edu, 03/09/2026 S36): oltre a PB e LY si annotano il verdetto del
         // SISTEMA ATTUALE (PB + LY + rafforzativi, canonico = combinaS9 con tutte le vie accese)
         // e il verdetto del motore DA LIU REN (motore_dlr.js, stessa carta del pannello).
@@ -800,6 +803,36 @@ function generaleSopraOra(chart) {
   for (i = 0; i < pal.length; i++) if (pal[i].earth === chart.hourBranch) return (pal[i].general && pal[i].general.cn) || null;
   return null;
 }
+
+// =============================================================================
+// MOTORE DI LETTURA (S47, 16/09/2026) — il motore di ricerca portato nell'app.
+// Legge la stessa carta Liu Yao col processo di Edu (i quattro principi: le linee mobili,
+// le bestie se portano vantaggio, Shi contro Ying, la linea piu' forte, poi l'esagramma
+// futuro). Fa girare insieme alla mobile anche le linee incompatibili: e' la differenza
+// che il 15/09/2026 su NZDUSD ha dato SHORT (giusto) dove la lettura vecchia dava LONG.
+// Per ora e' una VOCE MOSTRATA, non contata nella scala dei livelli: si conta solo dopo
+// averla misurata dentro la scala. Il file motore_lettura.js e' lo stesso del repo di
+// ricerca (storico-trading), senza modifiche.
+// =============================================================================
+function letturaMotore(ly, dateStr, yearBranch, monthBranch, dayStem, dayBranch, oraBranch) {
+  var out = { dir: null, gradino: null, perche: null, racconto: '' };
+  try {
+    if (typeof creaMotore !== 'function' || !window.XKDGLiuYao || !ly || ly.error) return out;
+    var stD = steliDiData(dateStr, yearBranch, monthBranch, dayStem, oraBranch);
+    var ctx = { yearStem: stD.yearStem, monthStem: stD.monthStem, hourStem: stD.hourStem,
+                pilastri: [ { nome: 'anno',   stelo: stD.yearStem,  ramo: yearBranch  },
+                            { nome: 'mese',   stelo: stD.monthStem, ramo: monthBranch },
+                            { nome: 'giorno', stelo: dayStem,       ramo: dayBranch   },
+                            { nome: 'ora',    stelo: stD.hourStem,  ramo: oraBranch   } ] };
+    var v = creaMotore(window.XKDGLiuYao).leggi(ly, ctx);
+    out.dir = (v && v.dir) || null;
+    out.gradino = (v && v.gradino) || null;
+    out.perche = (v && v.perche) || null;
+    out.racconto = (v && v.racconto) || '';
+  } catch (e) { out.perche = 'motore di lettura non disponibile: ' + e.message; }
+  return out;
+}
+
 function steliDiData(dateStr, yearBranch, monthBranch, dayStem, oraBranch) {
   var STm = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
   var BR12 = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
@@ -879,7 +912,9 @@ function livelloTreSistemi(e) {
   var pb = e.pbDir || null, ly = e.lyDir || null, at = e.attuale || null, dlr = e.dlrDir || null;
   var sp = e.spirito || null, st = e.steloVoce || null;
   var voci = 'PB ' + (pb || '—') + ' · LY ' + (ly || 'tace') + ' · attuale ' + (at || '—') +
-             ' · DLR ' + (dlr || 'tace') + ' · Spirito ' + (sp || 'tace') + ' · stelo ' + (st || 'tace');
+             ' · DLR ' + (dlr || 'tace') + ' · Spirito ' + (sp || 'tace') + ' · stelo ' + (st || 'tace') +
+             ' · <b>Lettura S47 ' + (e.lettDir || 'tace') + '</b>' + (e.lettGradino ? ' (' + e.lettGradino + ')' : '');
+  // NB: la voce "Lettura S47" e' mostrata ma NON conta nei livelli finche' non e' misurata nella scala.
   var tutte = [pb, ly, at, dlr, sp, st].filter(function (v) { return !!v; });
   if (!tutte.length) return { liv: null, dir: null, perche: 'nessuna voce parla', voci: voci };
   var nL = 0, nS = 0, k;
@@ -957,7 +992,7 @@ function renderReportTreSistemi() {
   var righeNo = esclusi.map(function (e) {
     return '<div style="' + css.row + '">' +
       '<span style="' + css.name + ';opacity:.75">' + e.cross + '</span>' + badge('NO TRADE') +
-      '<span style="' + css.note + '">' + e.motivo + '</span></div>';
+      '<span style="' + css.note + '">' + e.motivo + (e.lettDir ? ' · <b>Lettura S47 ' + e.lettDir + '</b>' : '') + '</span></div>';
   }).join('') || '<div style="padding:8px 0;opacity:.7">Nessun cross fermo.</div>';
   var cont = function (L) { return tradabili.filter(function (e) { return e.livello === L; }).length; };
   var nU = cont('U6') + cont('U5') + cont('U4') + cont('U3') + cont('U2');
@@ -1309,7 +1344,22 @@ function renderLiuYao(cross, chart, row, lyp, pbCtx) {
     termHtml = renderTermometro(ly, ctxT, pbCtx.finalDir);
   }
 
-  lyp.innerHTML = head + emaLine + baziLine + spiritLine + hexBlock + palLine + mutLine + table + termHtml;
+  // MOTORE DI LETTURA (S47): il verdetto col racconto, sotto la tabella delle linee.
+  var lettHtml = '';
+  try {
+    var lettP = letturaMotore(ly, pbCtx ? pbCtx.date : (forexData && forexData.date), ly.yearBranch, ly.monthBranch,
+                              ly.dayStem || null, ly.dayBranch, oraBranchSeme);
+    var lettCls = lettP.dir === 'LONG' ? 'long' : lettP.dir === 'SHORT' ? 'short' : '';
+    var emaSigL = (pbCtx && pbCtx.emaDir === 'up') ? 'LONG' : (pbCtx && pbCtx.emaDir === 'down') ? 'SHORT' : null;
+    lettHtml = '<div class="trendmsgs" style="margin-top:10px;padding:8px 10px;border-left:3px solid #58a6ff;background:rgba(88,166,255,.06)">' +
+      '<b>Motore di lettura (S47):</b> ' + (lettP.dir ? '<span class="sig ' + lettCls + '" style="display:inline-block">' + lettP.dir + '</span>' : '<b>tace</b>') +
+      (lettP.dir && emaSigL ? ' <b>' + (lettP.dir === emaSigL ? 'segue il trend' : 'non segue il trend') + '</b>' : '') +
+      (lettP.gradino ? ' <span style="opacity:.75">· ' + lettP.gradino + '</span>' : '') +
+      (lettP.racconto ? '<div style="margin-top:6px;font-size:13px;white-space:pre-line">' + lettP.racconto + '</div>' : '') +
+      '</div>';
+  } catch (e3) { lettHtml = ''; }
+
+  lyp.innerHTML = head + emaLine + baziLine + spiritLine + hexBlock + palLine + mutLine + table + lettHtml + termHtml;
   lyp.style.display = 'block';
   wireTermometroToggles(cross, chart, row, lyp, pbCtx);
 }
