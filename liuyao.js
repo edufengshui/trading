@@ -200,6 +200,38 @@
     var pInTrig = linea <= 3 ? linea : linea - 3;
     var bb = [yangLine(trigMob,1), yangLine(trigMob,2), yangLine(trigMob,3)];
     bb[pInTrig-1] = !bb[pInTrig-1];
+    // LE LINEE INCOMPATIBILI GIRANO INSIEME ALLA MOBILE (Edu, 16/09/2026, S48: "fallo ora",
+    // dopo NZDUSD 15/09/2026 seme 57, persa perche' la catena non aveva le incompatibili).
+    // Dottrina di Edu (S45, 09/09/2026): la linea incompatibile col trigramma che la ospita
+    // NON PUO' STARE DOVE STA — ferma diventa mobile; mobile non si lascia fermare. Coppie:
+    // 卯 in 兌 · 午 in 坎 · 申 in 艮 (col ponte della data: Acqua, Legno, Acqua, salva se in
+    // almeno due dei quattro rami) · 丑 in 坤 · 辰 in 乾 · 亥 in 巽 (ponte di Legno, S46).
+    // Freno di Edu (13/09/2026): la ferma incompatibile combinata da DUE rami della data resta ferma.
+    // L'esagramma futuro si calcola con tutte le linee che girano insieme (Edu, 11/09/2026,
+    // AUDUSD 22/12/2025): l'ARRIVO della mobile viene dal futuro comune. Primo passo delle
+    // incompatibili nella catena: solo l'arrivo. MISURA (16/09/2026): S17 da 58,54% a 57,32%
+    // (-5.364 pip), carte guida da 78 a 74: SEI letture certificate da Edu cambiano verdetto
+    // (NZDUSD 22/06/2023 e 15/06/2022, USDJPY 29/11/2024, 16/10/2024, 06/11/2024 +320, 09/12/2024),
+    // tutte lette da Edu in agosto senza le incompatibili. FERMATO come vuole la regola delle carte
+    // guida: SPENTO finche' Edu non decide. INCFUTURO=1 per accenderlo (anche nell'app: localStorage).
+    var incompatibili = [];
+    (function(){
+      var on = (typeof process !== 'undefined' && process.env && process.env.INCFUTURO === '1') ||
+               (typeof localStorage !== 'undefined' && localStorage && localStorage.getItem('INCFUTURO') === '1');
+      if (!on) return;
+      var INC = { '卯':{trig:2,ponte:'Water'}, '午':{trig:6,ponte:'Wood'}, '申':{trig:7,ponte:'Water'},
+                  '丑':{trig:8,ponte:null}, '辰':{trig:1,ponte:null}, '亥':{trig:5,ponte:'Wood'} };
+      var ramiData = [yearBranch, monthBranch, dayBranch, oraBranch].filter(function(x){ return !!x; });
+      for (var pp = 1; pp <= 6; pp++) {
+        if (pp === linea) continue;
+        var rr = ramoAl(pp), k = INC[rr]; if (!k) continue;
+        if (k.trig !== (pp <= 3 ? infNum : supNum)) continue;
+        if (k.ponte) { var np = 0; ramiData.forEach(function(x){ if (WX[x] === k.ponte) np++; }); if (np >= 2) continue; }
+        var nc = 0; ramiData.forEach(function(x){ if (COMBINA[x] === rr) nc++; }); if (nc >= 2) continue;
+        incompatibili.push(pp);
+        if ((pp <= 3) === (linea <= 3)) { var q = pp <= 3 ? pp : pp - 3; bb[q-1] = !bb[q-1]; }
+      }
+    })();
     var trigTrasf = trigFromBits(bb);
     var ramoDep = ramoAl(linea);
     var ramoArr = (linea <= 3 ? NAJIA_IN : NAJIA_OUT)[trigTrasf][pInTrig-1];
@@ -518,9 +550,14 @@
       // data — niente 暗動, niente rotta/mossa/eliminata da quel clash. Sulla guida
       // il giorno 戌 (col mese 戌 a potenziare) non tocca la L1 辰 = anno: la carta
       // resta nuda e decide il duello (Shi vuota -> vince la Ying). Aperto: il clash
-      // dell'ARRIVO sulla linea del Tai Sui (non toccato qui). TSDIFENDE=off per audit.
+      // dell'ARRIVO sulla linea del Tai Sui (non toccato qui).
+      // ABOLITA DA EDU (16/09/2026, S48), sulla stessa carta guida, riletta con le
+      // incompatibili: "L3 moves to control back. L2 moves and brings the winner line to
+      // L4. Long". Sostituita da due principi: 1) le bestie si usano DOPO che il movimento
+      // delle linee non produce un effetto chiaro; 2) e anche allora servono solo ad aiutare
+      // la lettura a trovare una direzione chiara e razionale. TSDIFENDE=1 per la misura.
       if (br === yearBranch && yearBranch != null &&
-          !(typeof process !== 'undefined' && process.env && process.env.TSDIFENDE === 'off'))
+          (typeof process !== 'undefined' && process.env && process.env.TSDIFENDE === '1'))
         return { eff: false, dayC: false, yearC: false, monthC: false, potenza: 0 };
       var dayC   = !!(dayBranch   && CLASH[dayBranch]   === br) && !_gioNoClash;
       var yearC  = !!(yearBranch  && CLASH[yearBranch]  === br && annoTimely);
@@ -687,7 +724,7 @@
     };
 
     return {
-      sup: supNum, inf: infNum, linea: linea,
+      sup: supNum, inf: infNum, linea: linea, incompatibili: incompatibili,
       palNum: palNum, palName: TRIGRAM[palNum].name, palPinyin: TRIGRAM[palNum].pinyin,
       palEl: palEl, palElIt: EL_IT[palEl],
       shi: pal.shi, ying: pal.ying,

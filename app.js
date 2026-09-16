@@ -267,6 +267,7 @@ async function loadForex() {
     return showErr('<b>Feed returned no data.</b> ' + ((forexData && forexData.error) || ''));
   }
   renderForexBar();
+  var tg = $('fxtag'); if (tg) tg.textContent = 'Forex · ' + forexData.date + ' 00:00 GMT · ' + forexData.rows.filter(function (r) { return r.status === 'ok'; }).length + ' cross nel feed';
 }
 
 function renderForexBar() {
@@ -989,9 +990,7 @@ function renderReportTreSistemi() {
 
   var spente = Object.keys(lyToggles).filter(function (k) { return lyToggles[k] === false; }).length;
   var nota = '<div style="padding:6px 14px;font-size:12px;background:rgba(227,179,65,.08);border-bottom:1px solid rgba(255,255,255,.08)">' +
-    'Scala <b>A → B → C → D</b> (16/09/2026): <b>A</b> = Plum Blossom, Liu Yao e Da Liu Ren concordano (71%) · ' +
-    '<b>B</b> = sistema attuale e Da Liu Ren concordano (65%) · <b>C</b> = Plum Blossom e Liu Yao concordano e il Da Liu Ren tace (70%) · ' +
-    '<b>D</b> = su tutte le altre carte, Da Liu Ren e Lettura S47 concordano (58%, dal 2024 62%). Altrimenti fermo. Termometro canonico, tutte le vie accese.' +
+    'Scala <b>A → B → C → D</b>: <b>A</b> 71% · <b>B</b> 65% · <b>C</b> 70% · <b>D</b> 58% (dal 2024 62%) di trade giusti nei sei anni. Tutto il resto è fermo.' +
     (spente ? ' <b style="color:#e3b341">Nota: a schermo hai ' + spente + ' via' + (spente > 1 ? ' spente' : ' spenta') +
       ' — il report le ignora e le usa comunque accese.</b>' : '') + '</div>';
 
@@ -999,26 +998,27 @@ function renderReportTreSistemi() {
   box.innerHTML =
     '<div style="' + css.card + '">' +
       '<div style="' + css.head + '">' +
-        '<b style="font-size:16px">Report tre sistemi · ' + forexData.date + ' 00:00 GMT</b>' +
+        '<b style="font-size:16px">Da tradare oggi · ' + forexData.date + ' 00:00 GMT</b>' +
         '<span style="font-size:12px;opacity:.8">' + tradabili.length + ' da tradare (' + nL + ' long, ' + nS + ' short) · ' +
         'A ' + nA + ' · B ' + nB + ' · C ' + nC + ' · D ' + nD + ' · ' + esclusi.length + ' fermi</span>' +
       '</div>' + nota +
       '<div style="' + css.sect + '">' +
         '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">DA TRADARE · livello A, B, C o D</div>' + righeOk +
       '</div>' +
-      '<div style="' + css.sect + ';background:rgba(248,81,73,.05);border-top:1px solid rgba(255,255,255,.10)">' +
-        '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">FERMI</div>' + righeNo +
-      '</div>' +
+      '<details style="' + css.sect + ';background:rgba(248,81,73,.05);border-top:1px solid rgba(255,255,255,.10)">' +
+        '<summary style="font-size:12px;letter-spacing:1px;opacity:.65;cursor:pointer">FERMI · ' + esclusi.length + ' cross (tocca per vedere perché)</summary>' + righeNo +
+      '</details>' +
     '</div>' + '<div id="regbox">' + htmlRegistro() + '</div>';
 
+  // il dettaglio della carta si apre solo con gli strumenti avanzati a schermo
   box.querySelectorAll('.repline').forEach(function (el) {
     el.addEventListener('click', function () {
+      var adv = $('avanzato'); if (!adv || adv.style.display === 'none') return;
       var pill = document.querySelector('#forexbar .pill[data-cross="' + el.dataset.cross + '"]');
       if (pill) { selectForexCross(pill.dataset.cross, pill.dataset.branch, pill); pill.scrollIntoView({ block: 'center' }); }
     });
   });
   wireRegistro(box);
-  box.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 async function reportTreSistemi() {
@@ -1519,8 +1519,12 @@ window.addEventListener('DOMContentLoaded', function () {
   setNow();                                   // default to the current moment
   $('build').addEventListener('click', build);
   $('forex').addEventListener('click', loadForex);
+  // 16/09/2026 (Edu): a schermo SOLO la scala A/B/C/D. Il Report giornaliero (regola del 28/08) e' fuori
+  // dalla pagina; "Aggiorna" ricarica il feed e ricalcola la scala. Il resto vive in #avanzato (nascosto).
   if ($('reportall')) $('reportall').addEventListener('click', reportGiornaliero);
-  if ($('report3')) $('report3').addEventListener('click', reportTreSistemi);
+  if ($('report3')) $('report3').addEventListener('click', function () { forexData = null; reportTreSistemi(); });
+  var adv = $('avanzato');
+  if (adv && typeof localStorage !== 'undefined' && localStorage.getItem('AVANZATO') === '1') adv.style.display = '';
   $('now').addEventListener('click', function () { setNow(); build(); });
   $('gmt').addEventListener('click', function () { // chart for 00:00 GMT of the chosen date
     if (!$('date').value) setNow();
@@ -1539,7 +1543,8 @@ window.addEventListener('DOMContentLoaded', function () {
   applyDlrVisibility();
   // Plum Blossom is the default: open straight on the forex feed (00:00 GMT seeds), PB panel first.
   // "Build chart" / "Now" / "00:00 GMT" still switch to manual mode with the DLR chart.
-  if (METHOD === 'pb') loadForex(); else build();
+  // All'apertura: feed delle 00:00 GMT e subito la scala A/B/C/D.
+  reportTreSistemi();
 });
 
 /* ---------- service worker (relative scope /trading/) ---------- */

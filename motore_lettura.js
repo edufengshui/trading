@@ -28,6 +28,14 @@
  *   T0e  la seconda mobile impiglia/blocca DUEMUTPART=on (spento: costa)
  *   T0g  il trigono in movimento          MLTRIGMOB  partenze+arrivi delle linee che girano
  *                                                    formano un trigono che circonda una sede
+ *   T0x  le vincenti portate (Edu 16/09) MLPORTATE  l'incompatibile controllata indietro combina;
+ *                                                    l'arrivo sul Tai Sui clashato scende e combina;
+ *                                                    i G/W finiscono in un trigramma: vince
+ *   T0m  lo stato del movimento (Edu 16/09) MLSTATOMOV nel vuoto -> linea invalidata; partenza toccata
+ *                                                    -> non parte (vuota: attiva; piena: inusabile);
+ *                                                    arrivo toccato -> solo l'arrivo; TS e incompatibili
+ *   T0a  la sede in ritardo (Edu 16/09)  MLSVEGLIACOMB sede mobile VUOTA con la partenza combinata dal
+ *                                                    giorno: non si trasforma ma e' viva; controllo
  *   T0s  l'effetto scala                 MLSCALA    una seconda arriva sul ramo da cui parte la
  *                                                    mobile: il movimento prosegue e parla l'arrivo
  *                                                    finale (P/B perde; G/W solo con MLSCALAGW=on)
@@ -90,6 +98,7 @@ function creaMotore(LYM) {
   var RETRO = { '寅':'亥', '巳':'辰', '申':'未', '亥':'戌', '卯':'寅', '午':'巳', '酉':'申',
                 '子':'亥', '辰':'丑', '未':'辰', '戌':'未', '丑':'戌' };
   var AUTOPEN = { '辰': 1, '午': 1, '酉': 1, '亥': 1 };
+  var AVANZA = {}; Object.keys(RETRO).forEach(function (a) { AVANZA[RETRO[a]] = a; });   // 進神: l'inverso della ritirata
   var XING = { '寅':'巳','巳':'申','申':'寅','丑':'戌','戌':'未','未':'丑','子':'卯','卯':'子' };
   var SEASON = { '寅':'Wood','卯':'Wood','辰':'Wood','巳':'Fire','午':'Fire','未':'Fire',
                  '申':'Metal','酉':'Metal','戌':'Metal','亥':'Water','子':'Water','丑':'Water' };
@@ -781,6 +790,7 @@ function creaMotore(LYM) {
     // movimento nullo, ma per Edu la linea si muove eccome. Da qui in giu' si usa questo.
     var passoNullo = R.mutante.movimentoNullo &&
         String(R.mutante.motivoNullo || '').indexOf('self-combination') < 0;
+    var mobileNutrita = false;   // S48: la mobile nutrita dal proprio arrivo non fa altro
     var arrMorto = false;   // S47: l'arrivo della mobile ucciso dalla penalita' della data
 
     // DUE LINEE IN MOVIMENTO: la ferma incompatibile "diventa mobile", quindi in quelle
@@ -933,6 +943,158 @@ function creaMotore(LYM) {
                             'T0e la seconda ' + (secCombDep ? 'impiglia' : 'blocca'));
     }
     var mobileAnnullata = !!annullate[pos];
+
+    // --- T0m: LO STATO DEL MOVIMENTO (dottrina dettata da Edu il 16/09/2026) --------------
+    // "Se una linea si muove per andare nel vuoto si invalida l'intera linea, non solo l'arrivo
+    // (un treno che parte e si ferma in mezzo alla campagna). Se una linea si muove ma il suo
+    // arrivo e' clashato o combinato, solo l'arrivo e' annullato ma la partenza e' ancora
+    // attiva (un treno con la tabella di marcia modificata). Se una linea mobile viene
+    // clashata o combinata alla partenza non parte proprio e non si puo' usare. Se una linea
+    // vuota e' mobile e viene clashata o combinata alla partenza non parte ma rimane attiva,
+    // si puo' usare. Eccezioni: il Tai Sui e le incompatibili. Le incompatibili si muovono
+    // comunque. Tai Sui: clashato alla partenza o all'arrivo puo' muoversi, se combinato no."
+    // Le bestie che aiutano il movimento (compatibili: stesso elemento, drenano, generano) e
+    // quelle che se ne impadroniscono (controllano, clashano) "solo se serve a trovare una
+    // soluzione": NON cablate qui, restano ai gradini delle bestie.
+    // Carta: NZDUSD 15/06/2022 seme 62 (LONG +60): L3 B 午 incompatibile va nel vuoto 辰 ->
+    // invalidata; la Ying P 寅, piena e Tai Sui, combinata alla partenza dal giorno 亥 -> non
+    // parte e non si usa; resta in piedi solo lo Shi -> LONG. Gemella 22/06/2023: la Ying era
+    // VUOTA -> non parte ma si usa (T0a, la sede in ritardo) -> SHORT.
+    // MISURA (16/09): mazzo da 53,45% a 53,31% (-3.463 pip), e OTTO carte di riferimento lette da Edu
+    // cambiano verdetto: SPENTO in attesa di Edu (MLSTATOMOV=on accende).
+    var statoMob = 'muove';   // muove | invalidata | fermaAttiva | fermaInusabile | arrivoAnnullato
+    if (!off('MLSTATOMOV')) {
+      // Edu, 16/09/2026 (USDCHF 28/02/2022 seme 92): "se la linea e' super-timely e avanza lo fa
+      // lo stesso!" -> la linea in stagione, seduta sul ramo del mese o dell'anno, che AVANZA
+      // (進神) verso un arrivo vuoto si muove comunque: non e' invalidata.
+      var superTimely = function (Ldep) {
+        return C.timely(WX[Ldep]) && (Ldep === R.monthBranch || Ldep === R.yearBranch);
+      };
+      // Le bestie che aiutano il movimento (Edu, 16/09/2026, "Tutte e tre giuste"):
+      //  - nel vuoto: la linea parte e arriva se sopra siede una bestia COMPATIBILE (stesso
+      //    elemento, la genera, o la linea la genera) oppure una bestia il cui ramo COMBINA
+      //    l'arrivo vuoto ("se la bestia combina con una linea vuota e farla uscire dal vuoto
+      //    aiuterebbe a trovare una soluzione, allora fa uscire dal vuoto" — USDCAD 16/03/2020, 庚子
+      //    che combina 丑);
+      //  - piena, clashata o combinata alla partenza: con una bestia compatibile si muove lo stesso.
+      var bestiaAiuta = function (Lpos, Ldep, Larr, anche) {
+        // Qui vale la definizione di Edu del 16/09 (stesso elemento, genera, o DRENA), piu' larga di
+        // quella dell'11/09 usata per Q.agisce (solo stesso elemento o genera): non si filtra su agisce.
+        return (C.suLinea[Lpos] || []).filter(function (Q) {
+          var eb = WX[Q.ramo], el = WX[Ldep];
+          if (eb === el || GEN[eb] === el || GEN[el] === eb) return true;
+          return anche && COMBINA[Q.ramo] === Larr;
+        })[0] || null;
+      };
+      var statoDi = function (Ldep, Larr, isInc, isMobVoid, Lpos) {
+        if (!Larr) return 'muove';
+        var D0 = C.D;
+        var depTocc = D0 && (CLASH[D0] === Ldep || COMBINA[D0] === Ldep);
+        var arrTocc = D0 && (CLASH[D0] === Larr || COMBINA[D0] === Larr);
+        var taiSui = R.yearBranch && Ldep === R.yearBranch;
+        // ORDINE (EURUSD 11/03/2022, Edu: "L5 cannot move because of the clash. Still survive as
+        // the month generate it"): prima la partenza — se non parte, non va nemmeno nel vuoto.
+        // E la linea piena ferma alla partenza che il mese genera (o del suo elemento) sopravvive:
+        // resta usabile.
+        if (depTocc && !isInc && !(taiSui && CLASH[D0] === Ldep) && !isMobVoid) {
+          var mEl = WX[R.monthBranch];
+          if (mEl && (mEl === WX[Ldep] || GEN[mEl] === WX[Ldep])) {
+            racconto.push('L' + Lpos + ' (' + Ldep + ') è ' + (COMBINA[D0] === Ldep ? 'combinata' : 'clashata') + ' alla partenza dal giorno ' + D0 +
+              ': non parte, ma sopravvive perché il mese ' + R.monthBranch + ' la ' + (mEl === WX[Ldep] ? 'sostiene' : 'genera'));
+            return 'fermaAttiva';
+          }
+        }
+        // NZDUSD 10/03/2020 (Edu: "L3 cannot move into a G because of the penalty from the day"):
+        // l'arrivo penalizzato dalla data muore prima di arrivare, anche se e' vuoto: la linea non
+        // parte e resta se' stessa, usabile (S47: la penalita' e' la morte del movimento).
+        if (D0 && (XING[D0] === Larr || (D0 === Larr && AUTOPEN[Larr])) && !isInc) {
+          racconto.push('L' + Lpos + ' vorrebbe andare in ' + Larr + ', ma il giorno ' + D0 + ' penalizza l\'arrivo: il movimento muore, la linea resta ' + Ldep);
+          return 'fermaAttiva';
+        }
+        // USDJPY 02/10/2024 (Edu: "Effetto scala. L3 si muove in G 午, L2 continua il movimento e
+        // arriva a P 辰" — 辰 vuoto, la lettura vale lo stesso): la linea SPINTA da una seconda che
+        // arriva sulla sua partenza non si ferma nel vuoto, come il clash sul Tai Sui la spinge avanti.
+        var spinta = (C.seconde || []).some(function (X) { return X.L.pos !== Lpos && X.arr === Ldep; });
+        if (C.vuoto(Larr) && spinta) {
+          racconto.push('L' + Lpos + ' è spinta dalla linea che arriva sulla sua partenza ' + Ldep + ': effetto scala, prosegue in ' + Larr + ' anche se vuoto');
+          return 'muove';
+        }
+        if (C.vuoto(Larr) && !(depTocc && !isInc && !(taiSui && CLASH[D0] === Ldep))) {
+          if (AVANZA[Ldep] === Larr && superTimely(Ldep)) return 'muove';
+          var bv = bestiaAiuta(Lpos, Ldep, Larr, true);
+          if (bv) { racconto.push('L' + Lpos + ' andrebbe nel vuoto ' + Larr + ', ma la bestia del ' + bv.nome + ' ' + bv.stelo + bv.ramo +
+            (COMBINA[bv.ramo] === Larr ? ' combina ' + Larr + ' e lo fa uscire dal vuoto' : ' è compatibile con la linea e la aiuta') + ': la linea arriva');
+            return 'muove'; }
+          return 'invalidata';
+        }
+        if (depTocc) {
+          if (isInc) return 'muove';
+          if (taiSui) return COMBINA[D0] === Ldep ? 'fermaInusabile' : 'muove';
+          if (isMobVoid) return 'fermaAttiva';
+          var bp = bestiaAiuta(Lpos, Ldep, Larr, false);
+          if (bp) { racconto.push('L' + Lpos + ' è ' + (COMBINA[D0] === Ldep ? 'combinata' : 'clashata') + ' alla partenza dal giorno ' + D0 +
+            ', ma la bestia del ' + bp.nome + ' ' + bp.stelo + bp.ramo + ' le è compatibile: si muove lo stesso');
+            return 'muove'; }
+          return 'fermaInusabile';
+        }
+        if (arrTocc) return 'arrivoAnnullato';
+        return 'muove';
+      };
+      (C.seconde || []).forEach(function (X) {
+        X.stato = statoDi(X.dep, X.arr, true, C.vuoto(X.dep), X.L.pos);
+        if (X.stato === 'invalidata') {
+          racconto.push('L' + X.L.pos + ' (' + PAR_IT[X.L.par] + ' ' + X.dep + ') si muove per andare nel vuoto ' + X.arr +
+            ': il treno si ferma in mezzo alla campagna, l\'intera linea è invalidata');
+          annullate[X.L.pos] = true; X.arr = null; X.vuota = true;
+        }
+      });
+      if (!mobileAnnullata) {
+        statoMob = statoDi(dep, arr, !!C.incompDi(mob), C.vuoto(dep), pos);
+        if (statoMob === 'invalidata') {
+          racconto.push('la mobile L' + pos + ' (' + PAR_IT[mob.par] + ' ' + dep + ') si muove per andare nel vuoto ' + arr +
+            ': il treno si ferma in mezzo alla campagna, l\'intera linea è invalidata');
+          annullate[pos] = true; mobileAnnullata = true;
+        } else if (statoMob === 'fermaInusabile') {
+          // Le bestie (Edu, 16/09/2026): "possono intervenire ad aiutare il movimento anche quando
+          // la linea non potrebbe muoversi, ma devono essere compatibili con la linea (stesso
+          // elemento, o drenano o generano)". EURUSD 17/06/2026: il G 辰 clashato alla partenza
+          // dal giorno 戌 ha sopra il mese 午, che lo genera: resta in gioco, sveglio, col proprio
+          // carattere. Con una bestia compatibile la linea non parte ma si puo' usare.
+          var aiuto = (C.suLinea[pos] || []).filter(function (Q) {
+            var eb = WX[Q.ramo], el = WX[dep];
+            return Q.agisce !== false && (eb === el || GEN[eb] === el || GEN[el] === eb);
+          })[0];
+          if (aiuto) {
+            statoMob = 'fermaAttiva';
+            racconto.push('la mobile L' + pos + ' (' + PAR_IT[mob.par] + ' ' + dep + ') è ' + (COMBINA[C.D] === dep ? 'combinata' : 'clashata') +
+              ' alla partenza dal giorno ' + C.D + ', ma la bestia del ' + aiuto.nome + ' ' + aiuto.stelo + aiuto.ramo +
+              ' le è compatibile e la aiuta: non parte ma resta in gioco col proprio carattere');
+          }
+        }
+        if (statoMob === 'fermaInusabile') {
+          racconto.push('la mobile L' + pos + ' (' + PAR_IT[mob.par] + ' ' + dep + ', piena' + (dep === R.yearBranch ? ', Tai Sui' : '') +
+            ') è ' + (COMBINA[C.D] === dep ? 'combinata' : 'clashata') + ' alla partenza dal giorno ' + C.D + ': non parte proprio e non si può usare');
+          annullate[pos] = true; mobileAnnullata = true;
+        } else if (statoMob === 'arrivoAnnullato') {
+          racconto.push('l\'arrivo ' + arr + ' della mobile è ' + (COMBINA[C.D] === arr ? 'combinato' : 'clashato') + ' dal giorno ' + C.D +
+            ': solo l\'arrivo è annullato, la partenza ' + dep + ' resta attiva (tabella di marcia modificata)');
+        }
+      }
+      // NESSUNA CONCLUSIONE QUI (16/09/2026): T0m fissa solo lo STATO delle linee che si muovono;
+      // a concludere sono i gradini che seguono (il malus nel vuoto T0v, la piu' forte, le bestie,
+      // Shi contro Ying). La prima versione concludeva "resta in piedi solo l'altra sede" e
+      // rompeva sette letture di Edu (USDJPY 17/01/2024, USDCAD 16/03/2020, EURUSD 11/03/2022...):
+      // ogni carta prosegue per la propria via. MLSTATOMOVFINE=on riaccende quella conclusione.
+      if (ENV.MLSTATOMOVFINE === 'on' && mobileAnnullata && (pos === R.shi || pos === R.ying) &&
+          !(C.seconde || []).some(function (X) { return X.arr && !X.vuota && !annullate[X.L.pos]; })) {
+        var altraSt = pos === R.shi ? R.ying : R.shi;
+        if (!annullate[altraSt]) {
+          if (statoMob === 'invalidata' && (mob.par === 'P' || mob.par === 'B'))
+            return fine(sede(pos), 'il malus della sede va nel vuoto: la sua squadra non può perdere', 'T0m il malus della sede se ne va');
+          return fine(sede(altraSt), 'la sede mobile è fuori uso, resta in piedi solo l\'altra', 'T0m resta solo l\'altra sede');
+        }
+      }
+    }
 
     // Edu, 09/09/2026: l'autocombinazione c'e' solo se l'arrivo torna indietro a
     // combinare. 午 che diventa 未 non e' questo: e' una trasformazione e basta, la
@@ -1163,6 +1325,148 @@ function creaMotore(LYM) {
         var dH = confrontoDiretto(R, C, SH.p === R.shi ? eSedeH : eAltH, SH.p === R.shi ? eAltH : eSedeH, racconto);
         if (dH) return fine(dH, 'la sede sale la scala e diventa ' + grad.a + ': confronto con l\'altra sede',
                             'T0h la sede sale la scala');
+      }
+    }
+
+    // --- T0w: LE LINEE VINCENTI PORTATE ALL'ALTRO TRIGRAMMA ---------------------------
+    // Edu, 16/09/2026 (USDJPY 06/11/2024 seme 151, LONG +320), riletta con le incompatibili:
+    // "una linea incompatibile puo' controllare indietro ma non puo' rimanere in quel trigramma
+    // quindi dopo aver controllato indietro comunque si muove in avanti e cerca qualcosa da
+    // fare. Qui si combina con Y portando la G w la' sopra su Y. L2 invece puo' muoversi perche'
+    // il clash contro il Tai Sui non annulla o blocca la linea ma la spinge in avanti, quindi
+    // per effetto scala G w arriva su L1 che e' ancora clashato in avanti per diventare Yin e
+    // combinarsi con L4. Risultato: il trigramma superiore riceve due winner G w" -> il basso
+    // che le cede perde -> LONG. Precisazione: "G w capita dentro il trigramma futuro Kan quindi
+    // questo e' un altro motivo per cui e' spinta in avanti". Gli arrivi sono del FUTURO COMUNE.
+    // Due modi in cui una linea vincente (G o W) viene PORTATA su una linea:
+    //  a) la seconda (incompatibile) il cui arrivo controlla indietro la partenza e nel palazzo
+    //     e' G/W: non si ferma, combina con la linea che porta il ramo combinato dell'arrivo;
+    //  b) la mobile G/W il cui arrivo e' il ramo del Tai Sui clashato dal giorno: non e' bloccata,
+    //     scende sulla linea che porta quel ramo, la quale avanza al proprio ramo nel futuro
+    //     comune e combina con la linea che lo combina.
+    // Conclusione: le linee raggiunte stanno tutte nello stesso trigramma -> quel trigramma vince.
+    // Basta UNA portata (validato da Edu il 16/09/2026); MLPORTATE=due per il perimetro stretto
+    // della carta; MLPORTATE=off spegne.
+    if (!off('MLPORTATE') && arr && !passoNullo) {
+      var portate = [];
+      (C.seconde || []).forEach(function (X) {
+        if (!X.arr || X.vuota || annullate[X.L.pos]) return;
+        var pA = parDi(WX[X.arr], palEl);
+        if (KE[WX[X.arr]] !== WX[X.dep] || (pA !== 'G' && pA !== 'W')) return;
+        var tg = R.linee.filter(function (L) { return L.pos !== X.L.pos && L.pos !== pos && COMBINA[X.arr] === L.ramo; })[0];
+        if (!tg) return;
+        racconto.push('L' + X.L.pos + ' è incompatibile e si muove in ' + X.arr + ', che la controlla indietro (' + PAR_IT[pA] +
+          ' nel palazzo); non può restare lì e va avanti: ' + X.arr + ' combina con ' + tg.ramo + ' di L' + tg.pos +
+          ' e porta il ' + PAR_IT[pA] + ' su L' + tg.pos);
+        portate.push({ pos: tg.pos, par: pA });
+      });
+      var pM = mob.par;
+      if ((pM === 'G' || pM === 'W') && arr === R.yearBranch && R.dayBranch && CLASH[R.dayBranch] === arr) {
+        var L1t = R.linee.filter(function (L) { return L.pos !== pos && !L.isMobile && L.ramo === arr; })[0];
+        var RF2 = C.futuro && C.futuro.RF;
+        var ramoFut = (L1t && RF2 && RF2.linee) ? RF2.linee[L1t.pos - 1].ramo : null;
+        var tg2 = ramoFut ? R.linee.filter(function (L) { return L.pos !== L1t.pos && L.pos !== pos && COMBINA[ramoFut] === L.ramo; })[0] : null;
+        if (L1t && tg2) {
+          racconto.push('la mobile ' + PAR_IT[pM] + ' arriva in ' + arr + ', il ramo del Tai Sui, clashato dal giorno ' + R.dayBranch +
+            ': il clash non la blocca, la spinge avanti; per effetto scala il ' + PAR_IT[pM] + ' scende su L' + L1t.pos + ' (' + arr +
+            '), che avanza in ' + ramoFut + ' e combina con ' + tg2.ramo + ' di L' + tg2.pos + ': il ' + PAR_IT[pM] + ' sale su L' + tg2.pos);
+          portate.push({ pos: tg2.pos, par: pM });
+        }
+      }
+      // Edu, 16/09/2026: "Puoi accenderla. E' frequente che in una lettura ci siano piu' motivi
+      // attraverso cui si ottiene un risultato positivo" -> basta UNA portata (MLPORTATE=due torna
+      // al perimetro stretto della carta).
+      var minPortate = ENV.MLPORTATE === 'due' ? 2 : 1;
+      if (portate.length >= minPortate) {
+        var lati = {}; portate.forEach(function (P) { lati[P.pos <= 3 ? 'basso' : 'alto'] = true; });
+        if (!(lati.basso && lati.alto)) {
+          var latoV = lati.alto ? 'alto' : 'basso';
+          racconto.push('il trigramma ' + (latoV === 'alto' ? 'superiore' : 'inferiore') + ' riceve ' + portate.length +
+            ' line' + (portate.length > 1 ? 'e vincenti' : 'a vincente') + ': vince');
+          return fine(latoV === 'alto' ? 'LONG' : 'SHORT', 'le linee vincenti sono portate al trigramma ' + latoV,
+                      'T0x le vincenti portate');
+        }
+      }
+    }
+
+    // --- T0a: LA SEDE VUOTA SVEGLIATA DALLA COMBINAZIONE DEL GIORNO ------------------
+    // Edu, 16/09/2026 (NZDUSD 22/06/2023 seme 62, SHORT -27), riletta con le incompatibili:
+    // "L3 moves into an healthy C which cannot stay in Qian and have to scale down to L2.
+    // L1 at Y cannot change into G Zi because of the day combining but it's awake out of the
+    // void. Then Y controls S and wins."
+    // Due cose: 1) la seconda (incompatibile) che arriva in un ramo a sua volta incompatibile
+    // col trigramma futuro non puo' restarci e SCENDE sulla linea che porta quel ramo (qui il C
+    // 辰 su L2, un C: non decide); 2) la SEDE mobile, vuota, la cui partenza e' combinata dal
+    // giorno: non puo' trasformarsi nell'arrivo, ma NON e' inerte. Precisazione di Edu
+    // (16/09/2026): "Non e' la combinazione che la sveglia, e' il fatto che e' comunque una
+    // linea mobile. E' come un treno in partenza, subisce un ritardo ma ha comunque i motori
+    // accesi" (la mobile non e' mai vuota, 動不為空). Parla col proprio elemento: confronto
+    // diretto per controllo con l'altra sede. Il vuoto della partenza NON e' la condizione:
+    // MLSVEGLIACOMB=vuota per il perimetro stretto della carta (partenza vuota).
+    // Sostituisce, su questa carta, la lettura di agosto (padrone del giorno + duello per
+    // generazione), che dava lo stesso SHORT. MLSVEGLIACOMB=off spegne.
+    // Dottrina di Edu (16/09/2026): la mobile PIENA combinata alla partenza non si usa (T0m); qui
+    // arriva solo la mobile VUOTA, che non parte ma resta attiva.
+    if (!off('MLSVEGLIACOMB') && (pos === R.shi || pos === R.ying) && C.D && COMBINA[C.D] === dep && C.vuoto(dep) && !mobileAnnullata) {
+      (C.seconde || []).forEach(function (X) {
+        if (!X.arr || !C.incompFuturo(X.arr, X.L.pos)) return;
+        var giu = R.linee.filter(function (L) { return L.pos !== X.L.pos && L.pos !== pos && L.ramo === X.arr; })[0];
+        racconto.push('L' + X.L.pos + ' è incompatibile e si muove in ' + X.arr + ' (' + PAR_IT[parDi(WX[X.arr], palEl)] +
+          ' nel palazzo), ma ' + X.arr + ' è a sua volta incompatibile col trigramma futuro: non può restarci' +
+          (giu ? ' e scende su L' + giu.pos + ', che porta ' + giu.ramo : ''));
+      });
+      // Edu, 16/09/2026: "Si usa se non c'e' nient'altro da leggere. Hai fatto la stessa
+      // verifica?" -> la sede in ritardo agisce sull'altra sede SOLO se nessun'altra linea in
+      // movimento produce un effetto: ogni seconda (incompatibile) deve essere senza arrivo,
+      // nel vuoto, o scesa perche' a sua volta incompatibile col futuro. Altrimenti si prosegue
+      // e il ritardo resta solo raccontato. MLSVEGLIACOMB=subito per concludere comunque.
+      var altroDaLeggere = (C.seconde || []).some(function (X) {
+        return X.arr && !X.vuota && !C.incompFuturo(X.arr, X.L.pos);
+      });
+      var altraS = pos === R.shi ? R.ying : R.shi;
+      var eSede = WX[dep], eAltra = WX[R.linee[altraS - 1].ramo];
+      // LETTURA DI CLAUDE (16/09/2026) sulle gemelle NZDUSD 22/06/2023 (SHORT), 15/06/2022 (LONG) e
+      // 19/12/2023 (LONG), stesso esagramma, stessa mobile L1, stesso giorno 亥, DA VALIDARE:
+      // il controllo della sede in ritardo (una P) e' debole; a decidere prima e' la linea
+      // seduta sul RAMO DEL MESE, la piu' forte dell'esagramma, col suo carattere — se resta.
+      // 22/06/2023: il mese 午 siede sul B di L3, che pero' se ne va (incompatibile, arriva in un
+      //   C sano e scende su L2): nessuno sta sul mese, decide il controllo della Ying -> SHORT.
+      // 15/06/2022: stesso B 午 sul mese, ma il suo arrivo 辰 e' VUOTO: va nel vuoto, il B resta
+      //   sul mese nel trigramma basso e fa perdere la propria squadra -> LONG.
+      // 19/12/2023: il mese 子 siede sul G di L5, in alto: il G piu' forte fa vincere l'alto -> LONG.
+      // Spiega le tre gemelle, ma sul mazzo la linea sul mese decide 25 carte al 40%: SPENTA finche' Edu
+      // non la valida o la corregge. MLRITARDOMESE=on accende.
+      var suMese = null;
+      if (ENV.MLRITARDOMESE === 'on' && R.monthBranch) {
+        R.linee.forEach(function (L) {
+          if (L.pos === pos || L.ramo !== R.monthBranch || annullate[L.pos]) return;
+          var seconda = (C.seconde || []).filter(function (X) { return X.L.pos === L.pos; })[0];
+          if (seconda && seconda.arr && !seconda.vuota) return;   // si muove davvero: se ne va dal mese
+          suMese = L;
+        });
+      }
+      if (suMese && (suMese.par === 'G' || suMese.par === 'W' || suMese.par === 'P' || suMese.par === 'B')) {
+        var vinceMese = (suMese.par === 'G' || suMese.par === 'W');
+        racconto.push('L' + suMese.pos + ' ' + PAR_IT[suMese.par] + ' ' + suMese.ramo + ' siede sul ramo del mese ed è la linea più forte: ' +
+          (vinceMese ? 'fa vincere' : 'fa perdere') + ' la propria squadra, prima del controllo della sede in ritardo');
+        return fine(vinceMese ? sede(suMese.pos) : opposto(sede(suMese.pos)),
+          'la linea sul mese decide prima della sede in ritardo (' + PAR_IT[suMese.par] + ')', 'T0a la sede in ritardo: la linea sul mese');
+      }
+      if (altroDaLeggere && ENV.MLSVEGLIACOMB !== 'subito') {
+        racconto.push('la sede in ritardo resta viva, ma c\'è altro movimento da leggere prima: si prosegue');
+      } else {
+      racconto.push('la ' + (pos === R.shi ? 'Shi' : 'Ying') + ' L' + pos + ' (' + PAR_IT[mob.par] + ' ' + dep +
+        (C.vuoto(dep) ? ', vuota' : '') + ') non può trasformarsi in ' + arr + ' perché il giorno ' + C.D + ' combina la partenza; ' +
+        'ma è comunque una linea mobile, in ritardo coi motori accesi: non è vuota, è viva e porta ' + EL_IT[eSede]);
+      if (KE[eSede] === eAltra) {
+        racconto.push(EL_IT[eSede] + ' controlla ' + EL_IT[eAltra] + ' dell\'altra sede: la ' + (pos === R.shi ? 'Shi' : 'Ying') + ' vince');
+        return fine(sede(pos), 'la sede in ritardo per la combinazione del giorno controlla l\'altra sede', 'T0a la sede in ritardo');
+      }
+      if (KE[eAltra] === eSede) {
+        racconto.push(EL_IT[eAltra] + ' dell\'altra sede controlla ' + EL_IT[eSede] + ': la ' + (pos === R.shi ? 'Shi' : 'Ying') + ' perde');
+        return fine(opposto(sede(pos)), 'la sede in ritardo per la combinazione del giorno è controllata dall\'altra sede', 'T0a la sede in ritardo');
+      }
+      racconto.push('fra le due sedi non c\'è controllo: si prosegue');
       }
     }
 
@@ -1805,7 +2109,8 @@ function creaMotore(LYM) {
     // nel vuoto: il suo malus va nel vuoto, e la sua squadra non puo' perdere -> vince.
     // Perimetro: la sede e' P o B, e' la mobile, e il suo arrivo e' nel vuoto del giorno.
     // MLMALUSVUOTO=off.
-    if (!off('MLMALUSVUOTO') && arr && !mobileAnnullata && (pos === R.shi || pos === R.ying) &&
+    // Con lo stato del movimento (T0m): la sede invalidata nel vuoto E' il malus che se ne va.
+    if (!off('MLMALUSVUOTO') && arr && (!mobileAnnullata || statoMob === 'invalidata') && (pos === R.shi || pos === R.ying) &&
         (mob.par === 'P' || mob.par === 'B') && C.vuoto(arr) &&
         // EURUSD 11/03/2022 (Edu): se il giorno clasha la PARTENZA la linea non si muove affatto
         // ("cannot move because of the clash") e niente va nel vuoto: quella resta se' stessa.
@@ -2151,7 +2456,9 @@ function creaMotore(LYM) {
       if (d1b) return fine(d1b, 'la sede resta ' + PAR_IT[parQuesta], 'T2 si occupa di sé');
     }
 
-    if (!mobileAnnullata && !off('MLNUTRITA') && R.mutante.casoMut === 1 && !passoNullo) {
+    // Col futuro comune l'arrivo della mobile puo' cambiare: il 回頭生 si ricalcola sull'arrivo vero
+    // (USDJPY 05/12/2022, Edu: "L1: moves to generate back" — 寅 -> 子 col futuro comune, non 巳).
+    if (!mobileAnnullata && !off('MLNUTRITA') && (R.mutante.casoMut === 1 || (arr !== R.mutante.ramoArr && arrEl && GEN[arrEl] === depEl)) && !passoNullo) {
       racconto.push('l\'arrivo ' + arr + ' ' + EL_IT[arrEl] + ' torna indietro e nutre la partenza ' +
         dep + ' ' + EL_IT[depEl] + ': la mobile si occupa di sé stessa e non può fare altro — resta ' +
         PAR_IT[mob.par] + ', rinforzata');
@@ -2166,6 +2473,9 @@ function creaMotore(LYM) {
       if (dN) return fine(dN, 'l\'arrivo nutre la partenza: la mobile resta sé stessa e parla da ' + PAR_IT[mob.par],
                           'T2b nutrita dall\'arrivo');
       racconto.push('ma il carattere è C: tace');
+      // "non puo' fare altro": la mobile nutrita non va a cercare con l'arrivo (niente porte).
+      // Con lo stato del movimento acceso (dottrina del 16/09) vale anche per le porte.
+      if (!off('MLSTATOMOV')) mobileNutrita = true;
     }
 
     // Edu, 09/09/2026: l'arrivo non resta da solo, cerca qualcosa da fare. Se quello
@@ -2475,7 +2785,7 @@ function creaMotore(LYM) {
       racconto.push('la mobile si ritira e non è di stagione: perdendo energia non ha la forza di ' +
         'combinarsi con niente');
     }
-    if (!mobileAnnullata && !off('MLPORTE') && arrEl && !passoNullo && !ritirataSenzaForza) {
+    if (!mobileAnnullata && !mobileNutrita && !off('MLPORTE') && arrEl && !passoNullo && !ritirataSenzaForza) {
       var ferme = R.linee.filter(function (L) {
         if (L.pos === pos || annullate[L.pos]) return false;
         if (!off('MLROTTA') && rottaL(L, R, C)) return false;
