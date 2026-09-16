@@ -451,7 +451,7 @@ function analizzaCrossPerReport(r, utcMs, dateStr) {
         var lyDir = (t && t.dir) || null;
         out.lyDir = lyDir;
         out.lySez = (t && t.sezione) || null;
-        // MOTORE DI LETTURA (S47): voce mostrata nel report, non contata nella scala.
+        // MOTORE DI LETTURA (S47): dal 16/09/2026 (S48) conta nella scala come livello D, col DLR.
         var lett = letturaMotore(ly, dateStr, yearBranch, chart.monthBranch, chart.dayStem || null, chart.dayBranch, oraB0);
         out.lettDir = lett.dir; out.lettGradino = lett.gradino; out.lettPerche = lett.perche; out.lettRacconto = lett.racconto;
         // --- TRE SISTEMI (Edu, 03/09/2026 S36): oltre a PB e LY si annotano il verdetto del
@@ -891,52 +891,39 @@ function capolineaDelFlusso(chart) {
   } catch (e) { return null; }
 }
 
-/* ---------------- TRE SISTEMI A SCALARE (Edu, 03/09/2026, sessione S36) ----------------
- * Livello A: Plum Blossom, Liu Yao e Da Liu Ren concordano                 (559 carte · 69,59%)
- * Livello B: sistema attuale (PB+LY+rafforzativi) e Da Liu Ren concordano (512 · 65,23%)
- * Livello C: Plum Blossom e Liu Yao concordano e il Da Liu Ren TACE       (403 · 63,52%)
- * Altrimenti fermo. Scala misurata al 05/09/2026 (S38): 1.474 carte · 66,42% · z 12,61
- * · +34.409 pip · 23,3 pip a trade · vecchio 66,92% / recente 66,23% (pb_stress.js TRESIST=1).
- * Se il Da Liu Ren contrasta due sistemi concordi e' una moneta (491 · 51,53%, vec 55,56 /
- * rec 47,86): fermo. Questa regola era gia' qui e si e' rivelata giusta: il 05/09/2026
- * e' stato pb_stress.js ad essere allineato all'app, non il contrario.
+/* ---------------- LA SCALA A/B/C/D (Edu, 03/09/2026 S36 · 05/09 S38 · 16/09/2026 S48) ----------------
+ * Il Plum Blossom e' verifica e conferma; i veri attori della decisione sono il Da Liu Ren e il
+ * Liu Yao (Edu, 16/09/2026). La scala a voci di S41 (U6/U5/U4/M1/M2) e' stata tolta il 16/09/2026:
+ * sui sei anni faceva 2.719 carte al 61,5% con il periodo recente al 59,3%.
+ * Livello A: Plum Blossom, Liu Yao e Da Liu Ren concordano                   820 carte · 70,9%
+ * Livello B: sistema attuale (PB+LY+rafforzativi) e Da Liu Ren concordano   759 · 64,8%
+ * Livello C: Plum Blossom e Liu Yao concordano e il Da Liu Ren TACE          93 · 69,9%
+ * Livello D (S48): su tutte le altre carte, Da Liu Ren e Lettura S47 concordi 653 · 57,6% (dal 2024: 62,5%)
+ * Altrimenti fermo. Scala misurata il 16/09/2026 (S48) su 3.180 carte dei sei anni, soglia 20 pip:
+ * A+B+C 1.672 carte · 68,1% · +38.481 pip; A+B+C+D 2.325 carte · 65,1% · +44.201 pip (pb_stress.js TRESIST=1).
+ * La Lettura S47 al POSTO del Liu Yao fa peggio (livello A da 70,9% a 68,0%): il motore nuovo
+ * legge ancora peggio della catena; da solo, sulle ferme, sta al 53%. Col DLR d'accordo tiene.
  */
 function livelloTreSistemi(e) {
-  // S41 (07/09/2026) — LA SCALA RISCRITTA SUL CONSIGLIO DELLE VOCI.
-  // Non piu' livelli fissi. Si contano le voci che parlano e si guarda se qualcuna dissente.
-  // La misura ha mostrato che non conta quante sono d'accordo, conta che nessuna sia contraria:
-  // con una sola voce contraria si scende al 59% qualunque sia il numero delle concordi.
-  //   unanimi 6 voci  46 carte 82,61%   ·  unanimi 5  211  75,36%
-  //   unanimi 4      350        73,14%   ·  unanimi 3   41  63,41%
-  //   una contraria 1153        59,32%   ·  due o piu' 631  56,42%
   var pb = e.pbDir || null, ly = e.lyDir || null, at = e.attuale || null, dlr = e.dlrDir || null;
-  var sp = e.spirito || null, st = e.steloVoce || null;
+  var lett = e.lettDir || null;
   var voci = 'PB ' + (pb || '—') + ' · LY ' + (ly || 'tace') + ' · attuale ' + (at || '—') +
-             ' · DLR ' + (dlr || 'tace') + ' · Spirito ' + (sp || 'tace') + ' · stelo ' + (st || 'tace') +
-             ' · <b>Lettura S47 ' + (e.lettDir || 'tace') + '</b>' + (e.lettGradino ? ' (' + e.lettGradino + ')' : '');
-  // NB: la voce "Lettura S47" e' mostrata ma NON conta nei livelli finche' non e' misurata nella scala.
-  var tutte = [pb, ly, at, dlr, sp, st].filter(function (v) { return !!v; });
-  if (!tutte.length) return { liv: null, dir: null, perche: 'nessuna voce parla', voci: voci };
-  var nL = 0, nS = 0, k;
-  for (k = 0; k < tutte.length; k++) { if (tutte[k] === 'LONG') nL++; else nS++; }
-  if (nL === nS) return { liv: null, dir: null, perche: 'le voci si dividono a meta: fermo', voci: voci };
-  var dir = nL > nS ? 'LONG' : 'SHORT';
-  var contrarie = Math.min(nL, nS);
-  var liv, perche;
-  if (contrarie === 0) {
-    // S41: sotto le quattro voci l'unanimita' non vale. U3 faceva 41 carte al 63,41% con il
-    // periodo recente al 55,56%; troppo poche voci perche' l'accordo dica qualcosa. Fermo.
-    if (tutte.length < 4)
-      return { liv: null, dir: null, perche: 'parlano solo ' + tutte.length +
-               ' voci: troppo poche perche l accordo conti, fermo', voci: voci };
-    liv = 'U' + tutte.length;
-    perche = 'tutte e ' + tutte.length + ' le voci che parlano dicono ' + dir + ', nessuna contraria';
-  } else if (contrarie === 1) {
-    liv = 'M1'; perche = 'una voce sola contraria su ' + tutte.length;
-  } else {
-    liv = 'M2'; perche = contrarie + ' voci contrarie su ' + tutte.length;
-  }
-  return { liv: liv, dir: dir, perche: perche, voci: voci };
+             ' · DLR ' + (dlr || 'tace') + ' · Lettura S47 ' + (lett || 'tace') + (e.lettGradino ? ' (' + e.lettGradino + ')' : '') +
+             ' · Spirito ' + (e.spirito || 'tace') + ' · stelo ' + (e.steloVoce || 'tace');
+  // Lo Spirito e lo stelo del giorno restano mostrati ma dal 16/09/2026 non contano piu' nella scala.
+  if (!pb) return { liv: null, dir: null, perche: 'carta non leggibile', voci: voci };
+  if (ly && dlr && pb === ly && ly === dlr)
+    return { liv: 'A', dir: pb, perche: 'Plum Blossom, Liu Yao e Da Liu Ren concordano', voci: voci };
+  if (dlr && at && at === dlr)
+    return { liv: 'B', dir: dlr, perche: 'sistema attuale e Da Liu Ren concordano', voci: voci };
+  if (ly && pb === ly && !dlr)
+    return { liv: 'C', dir: pb, perche: 'Plum Blossom e Liu Yao concordano, il Da Liu Ren tace', voci: voci };
+  if (dlr && lett && dlr === lett)
+    return { liv: 'D', dir: dlr, perche: 'Da Liu Ren e Lettura S47 concordano', voci: voci };
+  var perche = !dlr ? 'il Da Liu Ren tace e Plum Blossom e Liu Yao non concordano'
+             : (ly && pb === ly) ? 'il Da Liu Ren contrasta Plum Blossom e Liu Yao concordi'
+             : lett ? 'la Lettura S47 contrasta il Da Liu Ren' : 'nessun accordo fra le voci';
+  return { liv: null, dir: null, perche: perche + ': fermo', voci: voci };
 }
 
 function renderReportTreSistemi() {
@@ -959,7 +946,7 @@ function renderReportTreSistemi() {
     return e;
   });
   var tradabili = esiti.filter(function (e) { return e.livello && (e.signal === 'LONG' || e.signal === 'SHORT'); });
-  var ordine = { U6: 0, U5: 1, U4: 2, U3: 3, U2: 4, M1: 5, M2: 6 };
+  var ordine = { A: 0, B: 1, C: 2, D: 3 };
   tradabili.sort(function (a, b) { return ordine[a.livello] - ordine[b.livello]; });
   var esclusi = esiti.filter(function (e) { return tradabili.indexOf(e) < 0; });
 
@@ -977,8 +964,7 @@ function renderReportTreSistemi() {
       'font-weight:800;font-size:13px;letter-spacing:.4px;color:#0e1022;background:' + col + '">' + sig + '</span>';
   }
   function livBadge(l) {
-    var col = (l === 'U6' || l === 'U5') ? '#3fb950' : (l === 'U4' || l === 'U3' || l === 'U2') ? '#e3b341' :
-              l === 'M1' ? '#58a6ff' : '#8b949e';
+    var col = l === 'A' ? '#3fb950' : l === 'B' ? '#e3b341' : l === 'C' ? '#58a6ff' : '#8b949e';
     return '<span style="display:inline-block;min-width:26px;text-align:center;padding:3px 8px;border-radius:6px;' +
       'font-weight:900;font-size:13px;color:#0e1022;background:' + col + '" title="livello ' + l + '">' + l + '</span>';
   }
@@ -988,15 +974,14 @@ function renderReportTreSistemi() {
       '<span style="font-size:12px;opacity:.9">' + (e.segue ? 'segue il trend' : 'non segue il trend') + '</span>' +
       '<span style="' + css.note + '">' + e.voci + (e.dlrVia ? ' · via DLR: ' + e.dlrVia : '') +
       (e.avviso ? ' · <b style="color:#e3b341">' + e.avviso + '</b>' : '') + '</span></div>';
-  }).join('') || '<div style="padding:8px 0;opacity:.7">Nessun cross da tradare oggi: nessun livello A, B o C.</div>';
+  }).join('') || '<div style="padding:8px 0;opacity:.7">Nessun cross da tradare oggi: nessun livello A, B, C o D.</div>';
   var righeNo = esclusi.map(function (e) {
     return '<div style="' + css.row + '">' +
       '<span style="' + css.name + ';opacity:.75">' + e.cross + '</span>' + badge('NO TRADE') +
       '<span style="' + css.note + '">' + e.motivo + (e.lettDir ? ' · <b>Lettura S47 ' + e.lettDir + '</b>' : '') + '</span></div>';
   }).join('') || '<div style="padding:8px 0;opacity:.7">Nessun cross fermo.</div>';
   var cont = function (L) { return tradabili.filter(function (e) { return e.livello === L; }).length; };
-  var nU = cont('U6') + cont('U5') + cont('U4') + cont('U3') + cont('U2');
-  var nM1 = cont('M1'), nM2 = cont('M2');
+  var nA = cont('A'), nB = cont('B'), nC = cont('C'), nD = cont('D');
   var nL = tradabili.filter(function (e) { return e.signal === 'LONG'; }).length;
   var nS = tradabili.filter(function (e) { return e.signal === 'SHORT'; }).length;
 
@@ -1004,9 +989,9 @@ function renderReportTreSistemi() {
 
   var spente = Object.keys(lyToggles).filter(function (k) { return lyToggles[k] === false; }).length;
   var nota = '<div style="padding:6px 14px;font-size:12px;background:rgba(227,179,65,.08);border-bottom:1px solid rgba(255,255,255,.08)">' +
-    'Scala <b>A → B → C</b>: <b>A</b> = Plum Blossom, Liu Yao e Da Liu Ren concordano (68%) · ' +
-    '<b>B</b> = sistema attuale e Da Liu Ren concordano (66%) · <b>C</b> = Plum Blossom e Liu Yao concordano e il Da Liu Ren tace (62%). ' +
-    'Se il Da Liu Ren contrasta due sistemi concordi: fermo. Termometro canonico, tutte le vie accese.' +
+    'Scala <b>A → B → C → D</b> (16/09/2026): <b>A</b> = Plum Blossom, Liu Yao e Da Liu Ren concordano (71%) · ' +
+    '<b>B</b> = sistema attuale e Da Liu Ren concordano (65%) · <b>C</b> = Plum Blossom e Liu Yao concordano e il Da Liu Ren tace (70%) · ' +
+    '<b>D</b> = su tutte le altre carte, Da Liu Ren e Lettura S47 concordano (58%, dal 2024 62%). Altrimenti fermo. Termometro canonico, tutte le vie accese.' +
     (spente ? ' <b style="color:#e3b341">Nota: a schermo hai ' + spente + ' via' + (spente > 1 ? ' spente' : ' spenta') +
       ' — il report le ignora e le usa comunque accese.</b>' : '') + '</div>';
 
@@ -1016,10 +1001,10 @@ function renderReportTreSistemi() {
       '<div style="' + css.head + '">' +
         '<b style="font-size:16px">Report tre sistemi · ' + forexData.date + ' 00:00 GMT</b>' +
         '<span style="font-size:12px;opacity:.8">' + tradabili.length + ' da tradare (' + nL + ' long, ' + nS + ' short) · ' +
-        'unanimi ' + nU + ' · una contraria ' + nM1 + ' · due o piu ' + nM2 + ' · ' + esclusi.length + ' fermi</span>' +
+        'A ' + nA + ' · B ' + nB + ' · C ' + nC + ' · D ' + nD + ' · ' + esclusi.length + ' fermi</span>' +
       '</div>' + nota +
       '<div style="' + css.sect + '">' +
-        '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">DA TRADARE · livello A, B o C</div>' + righeOk +
+        '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">DA TRADARE · livello A, B, C o D</div>' + righeOk +
       '</div>' +
       '<div style="' + css.sect + ';background:rgba(248,81,73,.05);border-top:1px solid rgba(255,255,255,.10)">' +
         '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">FERMI</div>' + righeNo +
