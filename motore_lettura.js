@@ -2324,6 +2324,101 @@ function creaMotore(LYM) {
       // provata e misurata, fa 28,6% su 28 carte: un G o una W che avanza non fa
       // vincere la propria sede, e finche' non c'e' una carta che spieghi perche',
       // resta fuori.
+      // Edu, 16/09/2026 (S49, USDJPY 02/07/2026 seme 162): "il trigono di fuoco che si forma
+      // sulla Y (con l'aiuto di y mobile) va a generare S che vince". La W mobile L2 卯 retrocede
+      // in 寅; l'arrivo chiude col 午 di mese e anno e col 戌 della Ying il trigono di Fuoco, di
+      // stagione: la ritirata non porta via il vantaggio, il trigono si forma sulla sede e genera
+      // l'altra sede, che vince (Fuoco -> Shi 丑 Terra, SHORT). Perimetro stretto, quello della
+      // carta: G/W che retrocede, non sede; l'arrivo non vuoto chiude un trigono intero con il
+      // ramo di UNA sede (non vuota) e un terzo membro fra rami della data o linee non vuote;
+      // elemento del trigono di stagione; il trigono GENERA l'elemento dell'altra sede.
+      // Se non genera, la regola non dice niente e si prosegue come prima. MLRITIROTRIG=off.
+      // Edu, 16/09/2026 (S49, NZDUSD 05/06/2026 seme 58): "Non c'e' bisogno del trigono. Y e' vuoto
+      // e non c'e' niente che lo salvi. L2 arriva sul vuoto e si puo' cancellare l'importanza
+      // dell'intera linea. [...] Comunque quello che decide e' Y vuoto." Sul mese Gui Si che cade su
+      // L2: "Gui acqua da' un po' di energia al legno e Si usa il legno per generare Shi. Vince."
+      // E' la regola di Edu del 29/08/2026 ("se Shi o Ying sono vuoti [...] fa perdere
+      // immediatamente la parte vuota"), qui nel perimetro della carta: G/W mobile non sede che
+      // retrocede in un arrivo nel vuoto; una sede vuota senza bestie che la salvino (vuotaL),
+      // l'altra piena -> vince la sede piena. MLRITIROVUOTASEDE=off spegne.
+      // Edu, 16/09/2026 (S49, EURJPY 29/07/2026 seme 186): "Hai considerato gli steli? La terra nella
+      // data e' cosi' forte che basterebbe anche uno stelo metallo a far vincere. E' cio' che succede
+      // con L5 Zi. Long." Confermata da Edu la spiegazione: gli steli 甲乙 -> 丙 -> 己 e i rami 辰未 (Terra)
+      // e 午巳 (Fuoco) vanno tutti verso la Terra, mese di Terra; la Terra passa nel Metallo della
+      // bestia su L5 (白虎, l'elemento della bestia della linea, regola di NZDUSD 17/06/2025) e il
+      // Metallo genera il 子 della W di L5: vince l'alto. Viene prima della Ying vuota.
+      // Perimetro della carta: G/W mobile non sede che retrocede; ogni stelo e ogni ramo della data e'
+      // l'elemento E o lo precede nella catena di generazione verso E; E e' fra gli steli ed e'
+      // l'elemento del mese; una linea G/W non vuota con la bestia dell'elemento generato da E e il
+      // ramo dell'elemento generato da quello -> vince la sua squadra. MLDATAPASSA=off spegne.
+      if (beneficio && indietro && !off('MLDATAPASSA') && pos !== R.shi && pos !== R.ying &&
+          C.pil.length === 4 && R.monthBranch) {
+        var BEL = { '青龍':'Wood', '朱雀':'Fire', '勾陳':'Earth', '螣蛇':'Earth', '白虎':'Metal', '玄武':'Water' };
+        var eD = WX[R.monthBranch];
+        var elData = C.pil.map(function (P) { return STEM_EL[P.stelo]; }).concat(C.pil.map(function (P) { return WX[P.ramo]; }));
+        // "verso E" = E stesso o i due elementi che lo precedono (non gli elementi che E genera)
+        var precede = function (el) { return el === eD || GEN[el] === eD || GEN[GEN[el]] === eD; };
+        if (eD && C.pil.some(function (P) { return STEM_EL[P.stelo] === eD; }) && elData.every(precede)) {
+          var ePassa = GEN[eD], eArriva = GEN[ePassa];
+          var Lp = R.linee.filter(function (L) {
+            return (L.par === 'G' || L.par === 'W') && L.bestia && BEL[L.bestia.cn] === ePassa &&
+                   L.el === eArriva && !vuotaL(L, C, R);
+          });
+          if (Lp.length === 1) {
+            racconto.push('gli steli e i rami della data vanno tutti verso la ' + EL_IT[eD] + ', che è anche il mese: ' +
+              'la ' + EL_IT[eD] + ' passa nel ' + EL_IT[ePassa] + ' della bestia su L' + Lp[0].pos + ', che genera il ' +
+              Lp[0].ramo + ' ' + EL_IT[eArriva] + ' della ' + PAR_IT[Lp[0].par] + ': vince la sua squadra, prima della ritirata e dei vuoti');
+            return fine(sede(Lp[0].pos), 'la data passa per la bestia e genera una ' + PAR_IT[Lp[0].par],
+              'T1a la data passa per la bestia');
+          }
+        }
+      }
+      if (beneficio && indietro && !off('MLRITIROVUOTASEDE') && arr && C.vuoto(arr) &&
+          pos !== R.shi && pos !== R.ying) {
+        var LsV = R.linee[R.shi - 1], LyV = R.linee[R.ying - 1];
+        var sV = LsV && vuotaL(LsV, C, R), yV = LyV && vuotaL(LyV, C, R);
+        if (LsV && LyV && sV !== yV) {
+          var piena = sV ? LyV : LsV, vuota = sV ? LsV : LyV;
+          racconto.push('la mobile è ' + PAR_IT[mob.par] + ' e retrocede in ' + arr + ', che è nel vuoto: la linea si ' +
+            'cancella. Decide la ' + (vuota.pos === R.shi ? 'Shi' : 'Ying') + ' vuota, che nessuna bestia salva: vince la ' +
+            (piena.pos === R.shi ? 'Shi' : 'Ying'));
+          return fine(sede(piena.pos), 'la mobile si ritira nel vuoto e decide la sede vuota: vince l\'altra',
+            'T1a la ritirata nel vuoto: decide la sede vuota');
+        }
+      }
+      if (beneficio && indietro && !off('MLRITIROTRIG') && arr && !C.vuoto(arr) &&
+          pos !== R.shi && pos !== R.ying) {
+        var triR = TRIGONI.filter(function (g) { return g.indexOf(arr) >= 0; })[0];
+        if (triR) {
+          var elTri = WX[triR[1]];   // l'elemento del trigono e' quello del ramo centrale (子卯午酉)
+          var sediT = [R.shi, R.ying];
+          for (var sx = 0; sx < 2; sx++) {
+            var Ls = R.linee[sediT[sx] - 1], Lo = R.linee[sediT[1 - sx] - 1];
+            // S49, EURJPY 17/06/2026 seme 186 (Edu: "La bestia non arriva su Shi, la genera e la fa
+            // uscire dal vuoto?"): il vuoto delle sedi si legge con vuotaL (la bestia che arriva e
+            // aiuta la linea la toglie dal vuoto); la sede generata deve essere piena. La Ying puo'
+            // portare lo stesso ramo dell'arrivo: la mobile che arriva li' la aiuta.
+            if (!Ls || !Lo || vuotaL(Ls, C, R) || vuotaL(Lo, C, R) || triR.indexOf(Ls.ramo) < 0) continue;
+            var mancanti = triR.filter(function (r) { return r !== arr && r !== Ls.ramo; });
+            var dove = mancanti.map(function (t) {
+              if (C.ramiData.indexOf(t) >= 0 && !C.vuoto(t)) return 'la data';
+              if (R.linee.some(function (L) { return L.pos !== pos && L.pos !== Ls.pos && L.ramo === t && !vuotaL(L, C, R); }))
+                return 'una linea';
+              return null;
+            });
+            if (dove.indexOf(null) >= 0 || !C.timely(elTri) || GEN[elTri] !== Lo.el) continue;
+            var terzo = mancanti.join(' e '), terzoDove = dove.join(', ');
+            racconto.push('la mobile è ' + PAR_IT[mob.par] + ' e retrocede in ' + arr + ', ma l\'arrivo chiude ' +
+              'con ' + Ls.ramo + ' della ' + (Ls.pos === R.shi ? 'Shi' : 'Ying') + ' e ' + terzo + ' (' + terzoDove +
+              ') il trigono di ' + EL_IT[elTri] + ', di stagione: la ritirata non porta via niente. Il trigono ' +
+              'si forma sulla ' + (Ls.pos === R.shi ? 'Shi' : 'Ying') + ' e genera la ' +
+              (Lo.pos === R.shi ? 'Shi' : 'Ying') + ' (' + EL_IT[Lo.el] + '), che vince');
+            return fine(sede(Lo.pos),
+              'il trigono chiuso dalla ritirata si forma su una sede e genera l\'altra, che vince',
+              'T1a il trigono della ritirata genera l\'altra sede');
+          }
+        }
+      }
       if (beneficio) {
         racconto.push('la mobile è ' + PAR_IT[mob.par] + ', che è un vantaggio per la propria ' +
           'squadra, e ' + (indietro ? 'RETROCEDE (退神): si ritira e porta via il vantaggio, la sua sede perde'

@@ -1596,6 +1596,40 @@
       return dir;
     }});
 
+  // S49 (Edu, 16/09/2026, EURJPY 29/07/2026 seme 186): "Hai considerato gli steli? La terra nella data
+  // e' cosi' forte che basterebbe anche uno stelo metallo a far vincere. E' cio' che succede con L5 Zi.
+  // Long." Stessa regola e stesso perimetro di MLDATAPASSA nel motore di lettura. Messa prima della via
+  // della ritirata; sulla carta la ritirata nel vuoto e' nulla e la catena arrivava a §114. DATAPASSA=off.
+  LY_VIE.push({ id:'R5_datapassa', sezione:'—', cablata:'2026-09-16',
+    nome:'The date flows through the beast into a G/W line',
+    dottrina:'Edu (16/09/2026, EURJPY 29/07/2026 seme 186). A G/W mobile (not Shi/Ying) retreats. Every stem and branch of the four pillars is the month element E or one of the two elements that precede it in generation, and E is among the stems: the date is all E. E passes into the element it generates when a line carries the beast of that element (the beast of the line counts, not its branch: NZDUSD 17/06/2025): if exactly one non-void G/W line carries that beast and its branch is the element the beast generates, its side wins. On the card: stems 甲乙丙己, branches 辰未午巳, month 未 -> Earth; the White Tiger (Metal) on L5 generates 子, the W of L5 -> LONG (+73). DATAPASSA=off to disable.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.DATAPASSA==='off') return null;
+      if (R.mutante.progressione !== 'retrocedente') return null;
+      var mob = R.linee[R.mutante.pos-1];
+      if (!mob || (mob.par!=='G' && mob.par!=='W') || mob.pos===R.shi || mob.pos===R.ying) return null;
+      var ys=ctx&&ctx.yearStem, ms=ctx&&ctx.monthStem, hs=ctx&&ctx.hourStem, ds=R.dayStem;
+      var yb=(ctx&&ctx.yearBranch)||R.yearBranch, mb=R.monthBranch, db=R.dayBranch, hb=R.oraBranch||(ctx&&ctx.oraBranch);
+      if (!ys||!ms||!hs||!ds||!yb||!mb||!db||!hb) return null;
+      var SE={'甲':'Wood','乙':'Wood','丙':'Fire','丁':'Fire','戊':'Earth','己':'Earth','庚':'Metal','辛':'Metal','壬':'Water','癸':'Water'};
+      var BDI={'甲':'青龍','乙':'青龍','丙':'朱雀','丁':'朱雀','戊':'勾陳','己':'螣蛇','庚':'白虎','辛':'白虎','壬':'玄武','癸':'玄武'};
+      var BEL={'青龍':'Wood','朱雀':'Fire','勾陳':'Earth','螣蛇':'Earth','白虎':'Metal','玄武':'Water'};
+      var eD = WX[mb]; if (!eD) return null;
+      var stems=[ys,ms,ds,hs], rami=[yb,mb,db,hb];
+      var precede=function(el){ return el===eD || GEN[el]===eD || GEN[GEN[el]]===eD; };
+      if (stems.map(function(x){return SE[x];}).indexOf(eD)<0) return null;
+      if (!stems.map(function(x){return SE[x];}).concat(rami.map(function(x){return WX[x];})).every(precede)) return null;
+      var ePassa=GEN[eD], eArriva=GEN[ePassa];
+      var pil=[[ys,yb],[ms,mb],[ds,db],[hs,hb]];
+      var piena=function(l){ if ((R.vuoti||[]).indexOf(l.ramo)<0) return true;
+        return pil.some(function(p){ return l.bestia && l.bestia.cn===BDI[p[0]] && (WX[p[1]]===l.el || GEN[WX[p[1]]]===l.el); }); };
+      var cand=R.linee.filter(function(l){ return (l.par==='G'||l.par==='W') && l.bestia && BEL[l.bestia.cn]===ePassa && l.el===eArriva && piena(l); });
+      if (cand.length!==1) return null;
+      var L=cand[0];
+      state.why='All stems and branches of the date flow toward <b>'+eD+'</b> (the month): it passes into the '+ePassa+' beast '+L.bestia.cn+' on L'+L.pos+', which generates the <b>'+L.par+' '+L.ramo+'</b>: its side wins.';
+      return L.pos<=3 ? 'SHORT' : 'LONG';
+    }});
+
   LY_VIE.push({ id:'R5', sezione:'—', nome:'Retreating mobile',
     dottrina:'The mobile retreats (same element, counter-clockwise branch): its direction holds if the year clash hits it, otherwise read the opposite.',
     test: function (R, ctx, state) {
@@ -1606,6 +1640,35 @@
       if (R.mutante.movimentoNullo && !(typeof process!=='undefined' && process.env && process.env.RETRONULLO==='off')) return null;
       var mob = R.linee[R.mutante.pos-1], dep = R.mutante.ramoDep;
       var suo = mob.pos<=3 ? 'SHORT' : 'LONG';
+      // Edu, 16/09/2026 (S49, USDJPY 02/07/2026 seme 162): "il trigono di fuoco che si forma
+      // sulla Y (con l'aiuto di y mobile) va a generare S che vince". Stessa regola e stesso
+      // perimetro stretto di MLRITIROTRIG nel motore di lettura: G/W mobile non sede che
+      // retrocede; l'arrivo non vuoto chiude un trigono intero col ramo di una sede non vuota e
+      // un terzo membro non vuoto (rami della data o linee); trigono di stagione che GENERA
+      // l'elemento dell'altra sede -> vince l'altra sede. RITIROTRIG=off spegne.
+      var ENVr = (typeof process!=='undefined' && process.env) ? process.env : {};
+      var arrR = R.mutante.ramoArr;
+      if (ENVr.RITIROTRIG !== 'off' && (mob.par==='G' || mob.par==='W') && mob.pos!==R.shi && mob.pos!==R.ying &&
+          arrR && R.vuoti.indexOf(arrR)<0) {
+        var TRI_R = [['申','子','辰'],['亥','卯','未'],['寅','午','戌'],['巳','酉','丑']];
+        var triR = TRI_R.filter(function (g) { return g.indexOf(arrR)>=0; })[0];
+        var ramiR = [c.Y, c.Mo, c.D, ctx && ctx.oraBranch].filter(function (x) { return !!x; });
+        if (triR) {
+          var elT = WX[triR[1]], sedi = [R.shi, R.ying];
+          for (var sx = 0; sx < 2; sx++) {
+            var Ls = R.linee[sedi[sx]-1], Lo = R.linee[sedi[1-sx]-1];
+            if (!Ls || !Lo || R.vuoti.indexOf(Ls.ramo)>=0 || Ls.ramo===arrR || triR.indexOf(Ls.ramo)<0) continue;
+            var terzo = triR.filter(function (r) { return r!==arrR && r!==Ls.ramo; })[0];
+            var ok3 = (ramiR.indexOf(terzo)>=0 && R.vuoti.indexOf(terzo)<0) ||
+                      R.linee.some(function (l) { return l.pos!==mob.pos && l.pos!==Ls.pos && l.ramo===terzo && R.vuoti.indexOf(l.ramo)<0; });
+            if (!ok3 || !c.timely(elT) || GEN[elT]!==Lo.el) continue;
+            state.why = 'The mobile L'+mob.pos+' <b>'+mob.par+'</b> retreats '+dep+' → '+arrR+', but the arrival closes the timely <b>'+elT+
+              ' trine</b> with '+Ls.ramo+' of the '+(Ls.pos===R.shi?'Shi':'Ying')+': the trine forms on that seat and generates the '+
+              (Lo.pos===R.shi?'Shi':'Ying')+', which wins.';
+            return Lo.pos<=3 ? 'SHORT' : 'LONG';
+          }
+        }
+      }
       var hitY = CLASH[c.Y]===dep;
       state.why = 'The mobile L'+mob.pos+' <b>'+mob.par+'</b> retreats '+dep+' → '+R.mutante.ramoArr+'. '+(hitY?'The <b>Tai Sui '+c.Y+'</b> clashes it: its direction holds.':'No year clash: read the opposite of its seat.');
       return hitY ? suo : (suo==='LONG' ? 'SHORT' : 'LONG');
