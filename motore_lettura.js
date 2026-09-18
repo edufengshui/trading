@@ -308,6 +308,10 @@ function creaMotore(LYM) {
       });
       var modoF = ENV.FUTURO || 'insieme';
       var giraSup = 0, giraInf = 0;
+      // 17/09/2026: qui avevo cablato per sbaglio una lettura mia — l'incompatibile fuori dal
+      // trigramma della mobile che non fa girare il proprio trigramma. Non serviva: la regola
+      // di Edu ("si muove ma non fa niente") e' quella del vuoto, che il motore gia' applicava
+      // (L4 丑→午 va nel vuoto e l'intera linea e' invalidata). Tolta.
       var tutteMobili = ferme.concat(modoF === 'sola' ? [] : [R.linee[R.mutante.pos - 1]]);
       if (modoF !== 'sola') tutteMobili.forEach(function (L) {
         if (L.pos <= 3) giraInf ^= (1 << (3 - L.pos)); else giraSup ^= (1 << (6 - L.pos));
@@ -960,8 +964,11 @@ function creaMotore(LYM) {
     // invalidata; la Ying P 寅, piena e Tai Sui, combinata alla partenza dal giorno 亥 -> non
     // parte e non si usa; resta in piedi solo lo Shi -> LONG. Gemella 22/06/2023: la Ying era
     // VUOTA -> non parte ma si usa (T0a, la sede in ritardo) -> SHORT.
-    // MISURA (16/09): mazzo da 53,45% a 53,31% (-3.463 pip), e OTTO carte di riferimento lette da Edu
-    // cambiano verdetto: SPENTO in attesa di Edu (MLSTATOMOV=on accende).
+    // MISURA al cablaggio (16/09): mazzo da 53,45% a 53,31% (-3.463 pip), e otto carte di
+    // riferimento lette da Edu cambiavano verdetto. VERIFICATO IL 17/09/2026: il gradino e'
+    // ACCESO di default (off() scatta solo con MLSTATOMOV=off) e col motore di oggi le 66 carte
+    // di riferimento restano tutte giuste; il commento "SPENTO in attesa di Edu" era rimasto
+    // dietro a una condizione poi cambiata ed era falso. MLSTATOMOV=off per spegnerlo.
     var statoMob = 'muove';   // muove | invalidata | fermaAttiva | fermaInusabile | arrivoAnnullato
     if (!off('MLSTATOMOV')) {
       // Edu, 16/09/2026 (USDCHF 28/02/2022 seme 92): "se la linea e' super-timely e avanza lo fa
@@ -1275,6 +1282,29 @@ function creaMotore(LYM) {
     // e parla col proprio carattere: G in alto -> l'alto vince. Perimetro: la ferma svegliata
     // da una bestia, G, arrivo che genera la partenza. MLSVEGLIAAVANZA=off;
     // MLSVEGLIAAVANZA=gw anche per la W (estensione).
+    // LA FERMA CLASHATA DAL GIORNO SI MUOVE E RETROCEDE — Edu, 17/09/2026 (S50), USDCHF
+    // 07/08/2024 seme 85: "quando una linea statica e' clashata dal giorno si muove alla riga
+    // successiva senza mutare... L3 retrocede e fa perdere". Il clash del giorno la fa MUOVERE
+    // (暗動): passa al ramo precedente senza cambiare polarita' (酉 -> 申) e, se e' un G/W,
+    // porta via il vantaggio come ogni ritirata: la sua sede perde. Diverso dal clash della
+    // BESTIA, che la fa avanzare (酉 -> 戌, gradino qui sotto). MLSVEGLIARETRO=off.
+    if (!off('MLSVEGLIARETRO')) {
+      var RETROB = { '子':'亥','丑':'子','寅':'丑','卯':'寅','辰':'卯','巳':'辰','午':'巳','未':'午','申':'未','酉':'申','戌':'酉','亥':'戌' };
+      var svR = R.linee.filter(function (L) {
+        if (L.isMobile || L.pos === pos || annullate[L.pos]) return false;
+        if ((C.seconde || []).some(function (X) { return X.L.pos === L.pos; })) return false;
+        if (!C.D || CLASH[C.D] !== L.ramo) return false;
+        if (L.par !== 'G' && L.par !== 'W') return false;
+        return WX[RETROB[L.ramo]] === L.el;   // ritirata vera: stesso elemento, un passo indietro
+      })[0];
+      if (svR) {
+        racconto.push('L' + svR.pos + ' ' + PAR_IT[svR.par] + ' ' + svR.ramo + ' è ferma ma il giorno ' + C.D +
+          ' la clasha: si muove senza mutare e retrocede in ' + RETROB[svR.ramo] + ', quindi porta via il vantaggio e la sua sede perde');
+        return fine(opposto(sede(svR.pos)), 'la ferma clashata dal giorno retrocede: il ' + PAR_IT[svR.par] + ' porta via il vantaggio',
+                    'T0m la ferma clashata retrocede');
+      }
+    }
+
     if (!off('MLSVEGLIAAVANZA')) {
       var AV = { '子':'丑','丑':'寅','寅':'卯','卯':'辰','辰':'巳','巳':'午','午':'未','未':'申','申':'酉','酉':'戌','戌':'亥','亥':'子' };
       var svegl = R.linee.filter(function (L) {
@@ -2318,6 +2348,23 @@ function creaMotore(LYM) {
           'il giorno impiglia la partenza: il ' + PAR_IT[mob.par] + ' non si ritira',
           'T1a il malus impigliato');
       }
+      // LA MOBILE CLASHATA ALLA PARTENZA NON SI RITIRA — Edu, 17/09/2026 (S50), carta USDCHF
+      // 07/08/2024 seme 85: "L5 non retrocede perche' quando una linea e' mobile ma viene
+      // clashata alla partenza non puo' piu' muoversi... L5 non retrocede e fa vincere."
+      // Se la mobile e' clashata alla partenza dal giorno ma resta in piedi (il mese la genera,
+      // o una bestia compatibile), non si muove affatto: nessuna ritirata, nessuna avanzata.
+      // Resta dov'e' col proprio carattere: G/W fanno vincere la propria sede, P/B la fanno
+      // perdere. MLCLASHNORITIRO=off torna a leggerla come una ritirata.
+      if (!off('MLCLASHNORITIRO') && !incomp && C.D && CLASH[C.D] === dep &&
+          (statoMob === 'fermaAttiva' || statoMob === 'fermaInusabile')) {
+        var vinceQui = (mob.par === 'G' || mob.par === 'W');
+        racconto.push('L' + pos + ' e\' clashata alla partenza dal giorno ' + C.D + ': essendo gia\' mobile non ' +
+          'puo\' piu\' muoversi, quindi non si ritira. Resta dov\'e\' col suo ' + PAR_IT[mob.par] +
+          ', che fa ' + (vinceQui ? 'vincere' : 'perdere') + ' la propria squadra');
+        return fine(vinceQui ? sede(pos) : opposto(sede(pos)),
+          'la mobile clashata alla partenza non si ritira: parla il suo ' + PAR_IT[mob.par],
+          'T1a la mobile clashata non si ritira');
+      }
       var indietro = R.mutante.progressione === 'retrocedente';
       // Solo la RITIRATA, non l'avanzata: la ritirata e' quella che la carta autorizza
       // (EURGBP 18/03/2020) e misura 56,3% su 71 carte. La simmetria sull'avanzata,
@@ -2481,6 +2528,41 @@ function creaMotore(LYM) {
             ': vince la sua squadra');
           return fine(sede(pf1.L.pos), 'il malus si ritira, ma la più forte è un ' + PAR_IT[pf1.L.par] + ' dall\'altra parte',
                       'T1a la ritirata e la più forte');
+        }
+      }
+      // LA RITIRATA CHE SI COMBINA E SOPPRIME — Edu, 17/09/2026 (S50), carta USDCHF 16/09/2026
+      // seme 81 (livello B SHORT, esito LONG -67): "L3 retrocede e si combina con L1 Zi. La B
+      // arriva su W e la sopprime. Contemporaneamente L4 e' eccitata dal Clash del giorno. Long".
+      // Il B che si ritira non porta via il danno se il suo ARRIVO combina una linea G/W: ci
+      // arriva sopra e la sopprime. Se dall'altra parte resta un G/W sveglio — clashato dal
+      // giorno (暗動) — vince quella squadra. MLRITIROSOPPRIME=off.
+      if (indietro && (mob.par === 'B' || mob.par === 'P') && arr && !off('MLRITIROSOPPRIME')) {
+        // PERIMETRO (restrizione di Claude, da validare): la gemella USDJPY 13/12/2023 seme 145
+        // ha lo stesso esagramma e la stessa mobile, ma li' il 子 di L1 e' il ramo del MESE e
+        // dell'ORA: un G/W che siede su un ramo della data non si lascia sopprimere da una Terra
+        // che si ritira, e la carta resta alla ritirata semplice (SHORT, esito -240). Quindi il
+        // G/W soppresso non deve portare nessuno dei quattro rami della data.
+        // MLRITIROSOPPRIME=largo toglie la restrizione.
+        var soppressa = R.linee.filter(function (L) {
+          if (L.pos === pos || annullate[L.pos] || COMBINA[arr] !== L.ramo) return false;
+          if (L.par !== 'G' && L.par !== 'W') return false;
+          if (ENV.MLRITIROSOPPRIME !== 'largo' &&
+              (C.ramiData || []).indexOf(L.ramo) >= 0) return false;
+          return true;
+        })[0];
+        if (soppressa) {
+          var sveglia = R.linee.filter(function (L) {
+            return L.pos !== pos && L.pos !== soppressa.pos && !annullate[L.pos] &&
+                   (L.par === 'G' || L.par === 'W') && C.D && CLASH[C.D] === L.ramo;
+          })[0];
+          if (sveglia) {
+            racconto.push('la mobile ' + PAR_IT[mob.par] + ' retrocede in ' + arr + ', che combina L' +
+              soppressa.pos + ' ' + PAR_IT[soppressa.par] + ' ' + soppressa.ramo + ': il malus le arriva sopra e la sopprime');
+            racconto.push('dall\'altra parte L' + sveglia.pos + ' ' + PAR_IT[sveglia.par] + ' ' + sveglia.ramo +
+              ' è eccitata dal clash del giorno ' + C.D + ': resta lei in piedi e vince la sua squadra');
+            return fine(sede(sveglia.pos), 'la ritirata combina e sopprime un ' + PAR_IT[soppressa.par] +
+              ', resta sveglio il ' + PAR_IT[sveglia.par] + ' di L' + sveglia.pos, 'T1a la ritirata che sopprime');
+          }
         }
       }
       racconto.push('la mobile è ' + PAR_IT[mob.par] + ', che è un danno per la propria squadra, e ' +

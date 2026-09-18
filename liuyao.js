@@ -1753,8 +1753,21 @@
     nome:'Arrival in the void: whoever does not win, loses (the departing character remains)',
     dottrina:'Edu (certificata 29/08/2026; meccanica di lettura del 24/08/2026 promossa a via). L\'ARRIVO cade nel VUOTO: il movimento non produce effetto, la mobile NON muta e RESTA il carattere di partenza. G/W reggono e fanno VINCERE la propria sede; B/P fanno PERDERE la propria sede (verso opposto); C tace. Se la mobile e\' Shi o Ying si legge il confronto Shi<->Ying, che fa da override: chi controlla l\'altro vince; senza controllo decide il carattere. Vale anche quando il giorno sospende E l\'arrivo e\' vuoto (arrivo mascherato). PRECEDENZA: se c\'e\' un trigono completo (linee + 伏神 non vuoti + ramo del giorno) comanda quello e la via TACE. Collocata ULTIMA nel termometro, dopo §110: parla solo sul residuo muto, che e\' il perimetro misurato. Misura al cablaggio: 79 carte mute · 64.6% · z 2.59 · +1434 pip · vecchio 76% (34) · recente 59% (41). Certificata dottrinalmente. ARRIVOVUOTO=off per disattivarla.',
     test: function (R, ctx, state) {
+      // PERIMETRO RIFATTO il 17/09/2026 (S50). Edu l'aveva cancellata dopo USDCAD 16/09/2026
+      // seme 139 ("La linea e' inservibile, cabla, registra, fissa, cancella la #114"): li' la
+      // mobile B 午, vuota, si autocombina con l'arrivo 未, vuoto anche lui, e resta nel vuoto.
+      // Poi, sulle due guide cadute (USDJPY 31/07/2024 seme 152, EURGBP 18/11/2021 seme 83):
+      // "La linea e' mobile, quindi non e' vuota, ma bloccata dal giorno. Non parte ma il
+      // movimento la fa uscire dal vuoto ed e' quindi funzionale." Quindi la via parla SOLO
+      // quando il movimento e' sospeso DAL GIORNO: li' la linea non parte, il moto la tira
+      // fuori dal vuoto e il carattere di partenza regge. Quando il movimento muore da se'
+      // (autocombinazione con l'arrivo) la linea entra nel vuoto ed e' inservibile: tace.
+      // ARRIVOVUOTO=off la spegne tutta, ARRIVOVUOTO=tutti torna al perimetro largo.
       if (typeof process!=='undefined' && process.env && process.env.ARRIVOVUOTO==='off') return null;
       var M=R.mutante; if (!M || !M.movimentoNullo) return null;
+      if (!(typeof process!=='undefined' && process.env && process.env.ARRIVOVUOTO==='tutti')) {
+        if (!/suspended by the day/.test(M.motivoNullo||'')) return null;
+      }
       var arrVoid = /arrival void/.test(M.motivoNullo||'') || (R.vuoti||[]).indexOf(M.ramoArr)>=0;
       if (!arrVoid) return null;
       var mob=R.linee[M.pos-1]; if(!mob) return null;
@@ -2551,6 +2564,77 @@
       return null;
     }});
 
+  // ORDINE (17/09/2026): la §129 sta PRIMA della §99 — un pilastro intero che arriva su una
+  // linea vale "sopra ogni altra lettura" (Edu, 30/08/2026); senza questo, tolta la guardia
+  // delle bestie, la mobile le passerebbe davanti e si romperebbe la guida AUDUSD 18/04/2022.
+  LY_VIE.push({ id:'R68_129', sezione:'§129', coda:true, cablata:'2026-08-30',
+    nome:'A complete pillar lands on a line: that line becomes dominant and its side wins',
+    dottrina:'Edu (30/08/2026, guida AUDUSD 18/04/2022, seme 73). Primo grado della dottrina delle Sei Bestie portato a via: quando un PILASTRO della data arriva COMPLETO su una linea — il RAMO del pilastro e\' il ramo della linea E la bestia dello STELO del pilastro e\' gia\' seduta sopra — quella linea diventa DOMINANTE e la sua squadra vince la propria sede. Sulla guida il Tai Sui 壬寅 arriva intero sulla W L2 (ramo 寅, stelo 壬 -> 玄武): domina, sede bassa, SHORT, esito SHORT +42. Basta solo questo, sopra ogni altra lettura, incluse le incompatibilita\' della Ying. ECCEZIONE (da §127): se il ramo e\' uno dei quattro che si penalizzano da soli (辰午酉亥), l\'arrivo del ramo uguale e\' autopenalita\', non carica: non domina. Il C dominante tace. Se due linee dominanti indicano sedi opposte, tace. Steli di mese e ora derivati coi Cinque Tigri e i Cinque Ratti; stelo d\'anno dal contesto. VIA129=off per disattivarla.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIA129==='off') return null;
+      var ST9=['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+      var BR9=['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+      var BDI9={'甲':'青龍','乙':'青龍','丙':'朱雀','丁':'朱雀','戊':'勾陳','己':'螣蛇','庚':'白虎','辛':'白虎','壬':'玄武','癸':'玄武'};
+      var WUHU9={'甲':'丙','己':'丙','乙':'戊','庚':'戊','丙':'庚','辛':'庚','丁':'壬','壬':'壬','戊':'甲','癸':'甲'};
+      var WUSHU9={'甲':'甲','己':'甲','乙':'丙','庚':'丙','丙':'戊','辛':'戊','丁':'庚','壬':'庚','戊':'壬','癸':'壬'};
+      var AUTO9={'辰':1,'午':1,'酉':1,'亥':1};
+      var ys = ctx && ctx.yearStem;
+      var ms = ctx && ctx.monthStem;
+      if (!ms && ys && R.monthBranch) {
+        var mi = (BR9.indexOf(R.monthBranch) - 2 + 12) % 12;
+        ms = ST9[(ST9.indexOf(WUHU9[ys]) + mi) % 10];
+      }
+      var os = ctx && ctx.hourStem;
+      if (!os && R.dayStem && ctx && ctx.oraBranch) {
+        var hi = BR9.indexOf(ctx.oraBranch);
+        if (hi >= 0) os = ST9[(ST9.indexOf(WUSHU9[R.dayStem]) + hi) % 10];
+      }
+      // Dominano solo i pilastri GRANDI, anno (Tai Sui) e mese: il giorno e l'ora hanno
+      // altri ruoli certificati (§108 il padrone del giorno, §112/§126 l'ora intera) e il
+      // pilastro piccolo completo non basta a fare una dominante — sulla guida del 23/11
+      // l'ora intera su L1 non domina, e decide l'incompatibile attiva. PILDOM=tutti per audit.
+      var pil = (typeof process!=='undefined' && process.env && process.env.PILDOM==='tutti')
+        ? [ [ys, R.yearBranch], [ms, R.monthBranch], [R.dayStem, R.dayBranch], [os, ctx && ctx.oraBranch] ]
+        : [ [ys, R.yearBranch], [ms, R.monthBranch] ];
+      var domini = [];
+      for (var q = 0; q < pil.length; q++) {
+        var stq = pil[q][0], brq = pil[q][1];
+        if (!stq || !brq || AUTO9[brq]) continue;
+        var beq = BDI9[stq];
+        for (var i = 0; i < R.linee.length; i++) {
+          var l = R.linee[i];
+          if (l.ramo === brq && l.bestia && l.bestia.cn === beq) domini.push(l);
+        }
+      }
+      if (!domini.length) return null;
+      var dirs = {};
+      for (var d2 = 0; d2 < domini.length; d2++) {
+        var ld = domini[d2];
+        var sd = ld.pos > 3 ? 'LONG' : 'SHORT';
+        // PRINCIPIO FONDANTE (Edu, 30/08/2026): nell'azione il carattere decide il segno.
+        // G e W fanno VINCERE la propria squadra; P e B la fanno PERDERE; il C fa vincere
+        // se frena una B, perdere se controlla una G, altrimenti tace.
+        if (ld.par === 'B' || ld.par === 'P') sd = (sd === 'LONG') ? 'SHORT' : 'LONG';
+        else if (ld.par === 'C') {
+          var frenaB = false, ctrlG = false;
+          for (var e2 = 0; e2 < R.linee.length; e2++) {
+            var l2 = R.linee[e2];
+            if (l2.pos === ld.pos) continue;
+            if (CTRL[ld.el] === l2.el) { if (l2.par === 'B') frenaB = true; if (l2.par === 'G') ctrlG = true; }
+          }
+          if (frenaB === ctrlG) continue;
+          if (ctrlG) sd = (sd === 'LONG') ? 'SHORT' : 'LONG';
+        }
+        dirs[sd] = ld;
+      }
+      var kk = Object.keys(dirs);
+      if (kk.length !== 1) return null;
+      var vinc = dirs[kk[0]];
+      state.why='A complete date pillar lands on L'+vinc.pos+' ('+vinc.par+' '+vinc.ramo+'): branch on the line and the stem\'s beast already seated. The line is <b>dominant</b> — '+(dirs[kk[0]].par==='B' ? 'but it is a B: full powers bring full harm, its seat falls' : 'its side wins its seat')+' → '+kk[0]+'.';
+      return kk[0];
+    }});
+
+  // §128 — LA SHI O LA YING INCOMPATIBILE PERDE IL DUELLO (Edu, 30/08/2026)
   LY_VIE.push({ id:'R39_99', sezione:'§99', coda:true, cablata:'2026-08-26',
     nome:'Mobile G/W: real movement wins its seat, null movement is a failed action',
     dottrina:'Edu (26/08/2026, da USDCAD 08/03/2023 e USDJPY 02/08/2022): lettura BASE della mobile G o W quando nessun perimetro speciale la cattura. Due rami OPPOSTI, distinti dal fatto che la linea AGISCA o no: (a) MOVIMENTO VERO — la G/W e coinvolta nell azione, fa vincere la propria squadra -> la sua sede (alto LONG, basso SHORT); (b) MOVIMENTO NULLO — non e una linea ferma non coinvolta, e un azione TENTATA E FALLITA: chi non vince perde -> la sede cade (opposto). Il ramo (b) esclude i due casi gia coperti da §52 (回頭剋 e autocombinazione) per non duplicarne il perimetro. Valutata ULTIMA: parla solo dove tutto il resto tace. VIAGW=1 per accendere.',
@@ -2558,27 +2642,21 @@
       if (typeof process!=='undefined' && process.env && process.env.VIAGW==='off') return null;
       var mob = R.linee[R.mutante.pos-1];
       if (mob.par!=='G' && mob.par!=='W') return null;
-      // GUARDIA DEL PESO DELLE BESTIE (Edu, 26/08/2026, da USDCAD 27/01/2026):
-      // "il peso delle bestie cade tutto su L6 che viene penalizzata — la mobile non c'entra
-      // niente". Se la MOBILE ha la bestia SCARICA (0-1 radici nei rami di calendario) e il peso
-      // (>=2 radici) sta sullo SHI o sull'YING, l'attore non e' la mobile: §99 TACE.
-      // Misura: §99 dove decide 52,1%/309; con mobile a peso massimo 56,1%/114 (+1.479);
-      // con mobile scarica e peso su Shi/Ying 42,2%/90 (-1.030).
-      // Audit: G99BESTIE=off disattiva la guardia.
-      if (!(typeof process!=='undefined' && process.env && process.env.G99BESTIE==='off')) {
-        var BEL99 = {'青龍':'Wood','朱雀':'Fire','勾陳':'Earth','螣蛇':'Earth','白虎':'Metal','玄武':'Water'};
-        var cal99 = [R.dayBranch, R.monthBranch, R.yearBranch, ctx && ctx.oraBranch].filter(function(b){return !!b;});
-        var rad99 = function (l) {
-          if (!l || !l.bestia) return 0;
-          var e = BEL99[l.bestia.cn]; if (!e) return 0;
-          var n = 0; for (var i=0;i<cal99.length;i++) if (WX[cal99[i]]===e) n++;
-          return n;
-        };
+      // LA SEQUENZA DI EDU (14/09/2026, ribadita il 17/09/2026): prima si prova a risolvere la
+      // carta con le linee mobili; se il movimento NON produce un risultato si passa alle
+      // bestie, e solo dopo al confronto fra le sedi. Qui prima c'era la GUARDIA DEL PESO DELLE
+      // BESTIE (26/08/2026), che zittiva la mobile quando la sua bestia era scarica e il peso
+      // stava sulle sedi: metteva le bestie PRIMA della mobile. Edu (17/09/2026, su GBPUSD
+      // 16/09/2026 seme 134, livello A perso di 93 pip): "Questo e' un errore, ho gia' chiarito
+      // la sequenza". Tolta. La §99 parla quando il movimento si compie; se e' nullo tace e la
+      // catena prosegue con le vie delle bestie. G99SEQ=off rimette la guardia.
+      var seqOff99 = (typeof process!=='undefined' && process.env && process.env.G99SEQ==='off');
+      if (seqOff99) {
         if (rad99(mob) <= 1) {
           var shi99 = R.linee[R.shi-1], ying99 = R.linee[R.ying-1];
-          if (rad99(shi99) >= 2 || rad99(ying99) >= 2) return null;   // l'attore sta altrove
+          if (rad99(shi99) >= 2 || rad99(ying99) >= 2) return null;
         }
-      }
+      } else if (R.mutante.movimentoNullo) return null;
       var sede = mob.pos<=3 ? 'SHORT' : 'LONG';
       var opp  = sede==='LONG' ? 'SHORT' : 'LONG';
       if (!R.mutante.movimentoNullo) {
@@ -2726,74 +2804,6 @@
     }});
 
   // §129 — IL PILASTRO COMPLETO RENDE LA LINEA DOMINANTE (Edu, 30/08/2026)
-  LY_VIE.push({ id:'R68_129', sezione:'§129', coda:true, cablata:'2026-08-30',
-    nome:'A complete pillar lands on a line: that line becomes dominant and its side wins',
-    dottrina:'Edu (30/08/2026, guida AUDUSD 18/04/2022, seme 73). Primo grado della dottrina delle Sei Bestie portato a via: quando un PILASTRO della data arriva COMPLETO su una linea — il RAMO del pilastro e\' il ramo della linea E la bestia dello STELO del pilastro e\' gia\' seduta sopra — quella linea diventa DOMINANTE e la sua squadra vince la propria sede. Sulla guida il Tai Sui 壬寅 arriva intero sulla W L2 (ramo 寅, stelo 壬 -> 玄武): domina, sede bassa, SHORT, esito SHORT +42. Basta solo questo, sopra ogni altra lettura, incluse le incompatibilita\' della Ying. ECCEZIONE (da §127): se il ramo e\' uno dei quattro che si penalizzano da soli (辰午酉亥), l\'arrivo del ramo uguale e\' autopenalita\', non carica: non domina. Il C dominante tace. Se due linee dominanti indicano sedi opposte, tace. Steli di mese e ora derivati coi Cinque Tigri e i Cinque Ratti; stelo d\'anno dal contesto. VIA129=off per disattivarla.',
-    test: function (R, ctx, state) {
-      if (typeof process!=='undefined' && process.env && process.env.VIA129==='off') return null;
-      var ST9=['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
-      var BR9=['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
-      var BDI9={'甲':'青龍','乙':'青龍','丙':'朱雀','丁':'朱雀','戊':'勾陳','己':'螣蛇','庚':'白虎','辛':'白虎','壬':'玄武','癸':'玄武'};
-      var WUHU9={'甲':'丙','己':'丙','乙':'戊','庚':'戊','丙':'庚','辛':'庚','丁':'壬','壬':'壬','戊':'甲','癸':'甲'};
-      var WUSHU9={'甲':'甲','己':'甲','乙':'丙','庚':'丙','丙':'戊','辛':'戊','丁':'庚','壬':'庚','戊':'壬','癸':'壬'};
-      var AUTO9={'辰':1,'午':1,'酉':1,'亥':1};
-      var ys = ctx && ctx.yearStem;
-      var ms = ctx && ctx.monthStem;
-      if (!ms && ys && R.monthBranch) {
-        var mi = (BR9.indexOf(R.monthBranch) - 2 + 12) % 12;
-        ms = ST9[(ST9.indexOf(WUHU9[ys]) + mi) % 10];
-      }
-      var os = ctx && ctx.hourStem;
-      if (!os && R.dayStem && ctx && ctx.oraBranch) {
-        var hi = BR9.indexOf(ctx.oraBranch);
-        if (hi >= 0) os = ST9[(ST9.indexOf(WUSHU9[R.dayStem]) + hi) % 10];
-      }
-      // Dominano solo i pilastri GRANDI, anno (Tai Sui) e mese: il giorno e l'ora hanno
-      // altri ruoli certificati (§108 il padrone del giorno, §112/§126 l'ora intera) e il
-      // pilastro piccolo completo non basta a fare una dominante — sulla guida del 23/11
-      // l'ora intera su L1 non domina, e decide l'incompatibile attiva. PILDOM=tutti per audit.
-      var pil = (typeof process!=='undefined' && process.env && process.env.PILDOM==='tutti')
-        ? [ [ys, R.yearBranch], [ms, R.monthBranch], [R.dayStem, R.dayBranch], [os, ctx && ctx.oraBranch] ]
-        : [ [ys, R.yearBranch], [ms, R.monthBranch] ];
-      var domini = [];
-      for (var q = 0; q < pil.length; q++) {
-        var stq = pil[q][0], brq = pil[q][1];
-        if (!stq || !brq || AUTO9[brq]) continue;
-        var beq = BDI9[stq];
-        for (var i = 0; i < R.linee.length; i++) {
-          var l = R.linee[i];
-          if (l.ramo === brq && l.bestia && l.bestia.cn === beq) domini.push(l);
-        }
-      }
-      if (!domini.length) return null;
-      var dirs = {};
-      for (var d2 = 0; d2 < domini.length; d2++) {
-        var ld = domini[d2];
-        var sd = ld.pos > 3 ? 'LONG' : 'SHORT';
-        // PRINCIPIO FONDANTE (Edu, 30/08/2026): nell'azione il carattere decide il segno.
-        // G e W fanno VINCERE la propria squadra; P e B la fanno PERDERE; il C fa vincere
-        // se frena una B, perdere se controlla una G, altrimenti tace.
-        if (ld.par === 'B' || ld.par === 'P') sd = (sd === 'LONG') ? 'SHORT' : 'LONG';
-        else if (ld.par === 'C') {
-          var frenaB = false, ctrlG = false;
-          for (var e2 = 0; e2 < R.linee.length; e2++) {
-            var l2 = R.linee[e2];
-            if (l2.pos === ld.pos) continue;
-            if (CTRL[ld.el] === l2.el) { if (l2.par === 'B') frenaB = true; if (l2.par === 'G') ctrlG = true; }
-          }
-          if (frenaB === ctrlG) continue;
-          if (ctrlG) sd = (sd === 'LONG') ? 'SHORT' : 'LONG';
-        }
-        dirs[sd] = ld;
-      }
-      var kk = Object.keys(dirs);
-      if (kk.length !== 1) return null;
-      var vinc = dirs[kk[0]];
-      state.why='A complete date pillar lands on L'+vinc.pos+' ('+vinc.par+' '+vinc.ramo+'): branch on the line and the stem\'s beast already seated. The line is <b>dominant</b> — '+(dirs[kk[0]].par==='B' ? 'but it is a B: full powers bring full harm, its seat falls' : 'its side wins its seat')+' → '+kk[0]+'.';
-      return kk[0];
-    }});
-
-  // §128 — LA SHI O LA YING INCOMPATIBILE PERDE IL DUELLO (Edu, 30/08/2026)
   LY_VIE.push({ id:'R67_128', sezione:'§128', coda:true, cablata:'2026-08-30',
     nome:'An incompatible Shi or Ying cannot hold its seat: the other side wins',
     dottrina:'Edu (30/08/2026, guida AUDUSD 23/11/2022, seme 66). Le cinque coppie incompatibili di §109 (丑∈坤 · 卯∈兌 · 辰∈乾 · 午∈坎 · 申∈艮: il ramo clasha il ramo proprio del trigramma che lo ospita) valgono anche nel DUELLO: una Shi o una Ying incompatibile col proprio trigramma e\' mal seduta e NON puo\' tenere la sede — vince l\'altra parte, la sua sede decide. Se sono incompatibili entrambe o nessuna, tace. Sulla guida la Shi G 卯 siede dentro 兌 (卯 clasha 酉): perde, vince la Ying W 亥 in alto, LONG, esito LONG +84. REGOLA DI CODA, congelata alla nascita. VIA128=off per disattivarla.',
