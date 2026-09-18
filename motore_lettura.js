@@ -970,6 +970,7 @@ function creaMotore(LYM) {
     // di riferimento restano tutte giuste; il commento "SPENTO in attesa di Edu" era rimasto
     // dietro a una condizione poi cambiata ed era falso. MLSTATOMOV=off per spegnerlo.
     var statoMob = 'muove';   // muove | invalidata | fermaAttiva | fermaInusabile | arrivoAnnullato
+    var fermaPerPartenza = false;
     if (!off('MLSTATOMOV')) {
       // Edu, 16/09/2026 (USDCHF 28/02/2022 seme 92): "se la linea e' super-timely e avanza lo fa
       // lo stesso!" -> la linea in stagione, seduta sul ramo del mese o dell'anno, che AVANZA
@@ -1042,7 +1043,14 @@ function creaMotore(LYM) {
           if (bp) { racconto.push('L' + Lpos + ' è ' + (COMBINA[D0] === Ldep ? 'combinata' : 'clashata') + ' alla partenza dal giorno ' + D0 +
             ', ma la bestia del ' + bp.nome + ' ' + bp.stelo + bp.ramo + ' le è compatibile: si muove lo stesso');
             return 'muove'; }
-          return 'fermaInusabile';
+          // CORREZIONE DI EDU (18/09/2026, EURGBP 18/11/2021 seme 83): la vecchia forma del 16/09
+          // ("non parte proprio e non si puo' usare") e' stata cambiata da lui in "la linea resta
+          // dov'e' col proprio carattere": non si muove ma rimane ATTIVA. Il Tai Sui combinato esce
+          // prima (sopra) e resta fuori uso, com'e' nella sua lettura di NZDUSD 15/06/2022.
+          // MLFERMAATTIVA=off torna alla forma vecchia.
+          if (off('MLFERMAATTIVA')) return 'fermaInusabile';
+          if (Lpos === pos) fermaPerPartenza = true;
+          return 'fermaAttiva';
         }
         if (arrTocc) return 'arrivoAnnullato';
         return 'muove';
@@ -1092,6 +1100,31 @@ function creaMotore(LYM) {
       // Shi contro Ying). La prima versione concludeva "resta in piedi solo l'altra sede" e
       // rompeva sette letture di Edu (USDJPY 17/01/2024, USDCAD 16/03/2020, EURUSD 11/03/2022...):
       // ogni carta prosegue per la propria via. MLSTATOMOVFINE=on riaccende quella conclusione.
+      // CORREZIONE DI EDU (18/09/2026, EURGBP 18/11/2021 seme 83): "la linea resta dov'e' col
+      // proprio carattere". Applicata nel suo ordine ("prima le linee mobili, e se il risultato
+      // non esce si passa alle bestie"): la mobile bloccata alla partenza non si muove, resta
+      // dov'e' e PARLA COL PROPRIO CARATTERE — G/W fanno vincere la propria sede, B/P la fanno
+      // perdere, C tace e si cerca un'altra traccia. Prima le bestie se ne impadronivano (T1
+      // sostituzione) e su questa carta la facevano perdere. MLFERMAPARLA=off per spegnerlo.
+      // PERIMETRO, dalla sua regola del 13/09 sulle linee tenute dalla data: combinata o clashata
+      // alla partenza da UN solo ramo della data la linea resta viva e parla; presa da DUE rami
+      // della data e' tenuta ferma davvero e tace (EURJPY 29/09/2022: il giorno 酉 e il mese 酉
+      // combinano insieme la mobile 辰, e la lettura di Edu parte dalla Shi presa dal mese).
+      // Edu, 18/09/2026: "se l'incompatibile e' combinata due volte, il legame e' troppo forte e
+      // rimane ferma". Conta la COMBINAZIONE, non il clash: due rami della data che combinano la
+      // partenza la tengono ferma davvero e il gradino tace.
+      var prese = [C.D, R.monthBranch, R.yearBranch, R.oraBranch].filter(function (b) {
+        return b && COMBINA[b] === dep;
+      }).length;
+      var presaInDue = prese > 1;
+      if (fermaPerPartenza && !presaInDue && !off('MLFERMAPARLA') && !mobileAnnullata) {
+        var dFP = dirDelCarattere(mob.par, pos);
+        if (dFP) {
+          racconto.push('la mobile L' + pos + ' (' + PAR_IT[mob.par] + ' ' + dep + ') non si muove ma resta dov\'è, attiva: parla col proprio carattere');
+          return fine(dFP, 'la mobile bloccata alla partenza resta dov\'è e parla da ' + PAR_IT[mob.par],
+                      'T0m la mobile bloccata parla col proprio carattere');
+        }
+      }
       if (ENV.MLSTATOMOVFINE === 'on' && mobileAnnullata && (pos === R.shi || pos === R.ying) &&
           !(C.seconde || []).some(function (X) { return X.arr && !X.vuota && !annullate[X.L.pos]; })) {
         var altraSt = pos === R.shi ? R.ying : R.shi;
