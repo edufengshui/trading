@@ -778,6 +778,14 @@ function creaMotore(LYM) {
 
   function leggi(R, ctx) {
     if (!R || R.error || !R.mutante) return { dir: null, perche: 'carta non leggibile', gradino: 'tace', racconto: '' };
+    // 21/09/2026: le incompatibili sono ACCESE anche in liuyao.js (la catena). Il motore applica da
+    // se' la dottrina intera (ferma incompatibile che gira, futuro comune, seconde, controllo indietro,
+    // portate): se la carta arriva gia' girata dalla catena, la rilegge "da sola" per non applicare
+    // il futuro comune due volte (USDJPY 06/11/2024, confermata da Edu, tornava storta).
+    if (R.incompatibili && R.incompatibili.length && LYM && LYM.readManual && R.sup && R.inf) {
+      var R0 = LYM.readManual(R.sup, R.inf, R.mutante.pos, R.dayBranch, R.monthBranch, R.yearBranch, R.dayStem, R.oraBranch, { incFuturo: false });
+      if (R0 && !R0.error && R0.mutante) R = R0;
+    }
     var C = contesto(R, ctx);
     var racconto = [];
     var mob = R.linee[R.mutante.pos - 1];

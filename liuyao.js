@@ -212,13 +212,16 @@
     // incompatibili nella catena: solo l'arrivo. MISURA (16/09/2026): S17 da 58,54% a 57,32%
     // (-5.364 pip), carte guida da 78 a 74: SEI letture certificate da Edu cambiano verdetto
     // (NZDUSD 22/06/2023 e 15/06/2022, USDJPY 29/11/2024, 16/10/2024, 06/11/2024 +320, 09/12/2024),
-    // tutte lette da Edu in agosto senza le incompatibili. FERMATO come vuole la regola delle carte
-    // guida: SPENTO finche' Edu non decide. INCFUTURO=1 per accenderlo (anche nell'app: localStorage).
+    // tutte lette da Edu in agosto senza le incompatibili. Tenuto spento dal 16 al 21/09/2026 in
+    // attesa delle sue riletture; il 21/09 Edu ha ordinato di accenderle subito: ACCESE.
     var incompatibili = [];
     (function(){
-      var on = (typeof process !== 'undefined' && process.env && process.env.INCFUTURO === '1') ||
-               (typeof localStorage !== 'undefined' && localStorage && localStorage.getItem('INCFUTURO') === '1');
-      if (!on) return;
+      // ACCESE PER DEFAULT dal 21/09/2026 (Edu, S51: "accendi IMMEDIATAMENTE le linee incompatibili").
+      // INCFUTURO=0 (o localStorage INCFUTURO=0 nell'app) le spegne per la misura.
+      var off = ctx.incFuturo === false ||
+                (typeof process !== 'undefined' && process.env && process.env.INCFUTURO === '0') ||
+                (typeof localStorage !== 'undefined' && localStorage && localStorage.getItem('INCFUTURO') === '0');
+      if (off) return;
       var INC = { '卯':{trig:2,ponte:'Water'}, '午':{trig:6,ponte:'Wood'}, '申':{trig:7,ponte:'Water'},
                   '丑':{trig:8,ponte:null}, '辰':{trig:1,ponte:null}, '亥':{trig:5,ponte:'Wood'} };
       var ramiData = [yearBranch, monthBranch, dayBranch, oraBranch].filter(function(x){ return !!x; });
@@ -795,12 +798,13 @@
       oraBranch: oraDalSeme(seed) });
   }
 
-  function readManual(supNum, infNum, linea, dayBranch, monthBranch, yearBranch, dayStem, oraBranch){
+  function readManual(supNum, infNum, linea, dayBranch, monthBranch, yearBranch, dayStem, oraBranch, opts){
     supNum = parseInt(supNum, 10); infNum = parseInt(infNum, 10); linea = parseInt(linea, 10);
     if (!(supNum >= 1 && supNum <= 8)) return { error: 'superiore non valido' };
     if (!(infNum >= 1 && infNum <= 8)) return { error: 'inferiore non valido' };
     if (!(linea >= 1 && linea <= 6)) return { error: 'linea mutante non valida' };
     return build(supNum, infNum, linea, {
+      incFuturo: (opts && opts.incFuturo === false) ? false : undefined,
       dayBranch: dayBranch || null, monthBranch: monthBranch || null,
       yearBranch: yearBranch || null, dayStem: dayStem || null,
       oraBranch: oraBranch || null });
