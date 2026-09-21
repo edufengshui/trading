@@ -455,6 +455,12 @@ function analizzaCrossPerReport(r, utcMs, dateStr) {
         // MOTORE DI LETTURA (S47): dal 16/09/2026 (S48) conta nella scala come livello D, col DLR.
         var lett = letturaMotore(ly, dateStr, yearBranch, chart.monthBranch, chart.dayStem || null, chart.dayBranch, oraB0);
         out.lettDir = lett.dir; out.lettGradino = lett.gradino; out.lettPerche = lett.perche; out.lettRacconto = lett.racconto;
+        // SISTEMA-TREND (S51, Edu 19-20/09/2026): voce informativa, NON conta nella scala. Legge se il
+        // mercato segue il trend EMA dalla mobile e dal tocco della data (trend_ly.js). Ha bisogno
+        // del giorno che ha iniziato il trend: la corsa della EMA (emaRun del feed) portata indietro
+        // sui giorni di mercato (si saltano i sabati).
+        var st = letturaTrend(ly, dateStr, yearBranch, chart.monthBranch, chart.dayStem || null, chart.dayBranch, oraB0, r, dir);
+        out.stDir = st.dir; out.stPunti = st.punti; out.stVerdetto = st.verdetto; out.stRacconto = st.racconto; out.stInizio = st.inizio;
         // --- TRE SISTEMI (Edu, 03/09/2026 S36): oltre a PB e LY si annotano il verdetto del
         // SISTEMA ATTUALE (PB + LY + rafforzativi, canonico = combinaS9 con tutte le vie accese)
         // e il verdetto del motore DA LIU REN (motore_dlr.js, stessa carta del pannello).
@@ -815,6 +821,44 @@ function generaleSopraOra(chart) {
 // averla misurata dentro la scala. Il file motore_lettura.js e' lo stesso del repo di
 // ricerca (storico-trading), senza modifiche.
 // =============================================================================
+// S51 — il giorno che ha iniziato il trend: la corsa attuale della pendenza della EMA e' lunga emaRun
+// giorni; il suo primo giorno sta emaRun giorni di mercato prima della data del feed.
+// Le giornate di mercato sono quelle con la barra delle 00:00 E quella delle 21:00 GMT: nello
+// storico recente (dal 2025) sono lunedi'-venerdi' (la domenica non ha la barra delle 00); nello
+// storico vecchio mancava anche il venerdi', e il backtest usa il proprio calendario reale. Qui si
+// cammina indietro su lunedi'-venerdi'. Verificato il 20/09/2026 su EURUSD 16/10/2025 (backtest
+// 06/10, app 06/10). Se il Worker calcola emaRun su un altro calendario l'inizio slitta: la data
+// calcolata e' mostrata nel racconto proprio per poterla controllare.
+function trendStartDate(dateStr, emaRun) {
+  if (emaRun == null || !(emaRun > 0)) return null;
+  var p = dateStr.split('-').map(Number);
+  var d = new Date(Date.UTC(p[0], p[1] - 1, p[2]));
+  var n = emaRun;
+  while (n > 0) { d.setUTCDate(d.getUTCDate() - 1); var w = d.getUTCDay(); if (w >= 1 && w <= 5) n--; }
+  return d.toISOString().slice(0, 10);
+}
+
+function letturaTrend(ly, dateStr, yearBranch, monthBranch, dayStem, dayBranch, oraBranch, r, dir) {
+  var out = { dir: null, punti: 0, verdetto: null, racconto: '', inizio: null };
+  try {
+    if (!window.TrendLY || !ly || ly.error) return out;
+    var stD = steliDiData(dateStr, yearBranch, monthBranch, dayStem, oraBranch);
+    var inizio = trendStartDate(dateStr, r.emaRun), inizioBranch = null;
+    if (inizio) {
+      var pi = inizio.split('-').map(Number);
+      var chI = window.XKDGDaLiuRen.buildChartFromForexSeed(Date.UTC(pi[0], pi[1] - 1, pi[2], 0, 0, 0), FOREX_LON, r.branch);
+      if (chI && !chI.error) inizioBranch = chI.dayBranch;
+    }
+    var v = window.TrendLY.leggiTrend(ly, { dayBranch: dayBranch, monthBranch: monthBranch, yearBranch: yearBranch, oraBranch: oraBranch,
+      dayStem: dayStem, yearStem: stD.yearStem, monthStem: stD.monthStem, hourStem: stD.hourStem,
+      emaDir: dir, inizioBranch: inizioBranch });
+    out.dir = v.dir; out.punti = v.punti; out.verdetto = v.verdetto; out.racconto = (v.racconto || []).join(' · ');
+    out.inizio = inizio ? (inizio + (inizioBranch ? ' ' + inizioBranch : '')) : null;
+    if (out.inizio) out.racconto = 'trend iniziato il ' + out.inizio + ' · ' + out.racconto;
+  } catch (e) { out.racconto = 'sistema-trend non disponibile: ' + e.message; }
+  return out;
+}
+
 function letturaMotore(ly, dateStr, yearBranch, monthBranch, dayStem, dayBranch, oraBranch) {
   var out = { dir: null, gradino: null, perche: null, racconto: '' };
   try {
@@ -910,7 +954,8 @@ function livelloTreSistemi(e) {
   var lett = e.lettDir || null;
   var voci = 'PB ' + (pb || '—') + ' · LY ' + (ly || 'tace') + ' · attuale ' + (at || '—') +
              ' · DLR ' + (dlr || 'tace') + ' · Lettura S47 ' + (lett || 'tace') + (e.lettGradino ? ' (' + e.lettGradino + ')' : '') +
-             ' · Spirito ' + (e.spirito || 'tace') + ' · stelo ' + (e.steloVoce || 'tace');
+             ' · Spirito ' + (e.spirito || 'tace') + ' · stelo ' + (e.steloVoce || 'tace') +
+             ' · Sistema-trend ' + (e.stVerdetto ? (e.stVerdetto + ' (' + (e.stPunti > 0 ? '+' : '') + e.stPunti + (e.stDir ? ', ' + e.stDir : '') + ')') : 'tace');
   // Lo Spirito e lo stelo del giorno restano mostrati ma dal 16/09/2026 non contano piu' nella scala.
   if (!pb) return { liv: null, dir: null, perche: 'carta non leggibile', voci: voci };
   if (ly && dlr && pb === ly && ly === dlr)
@@ -979,7 +1024,7 @@ function renderReportTreSistemi() {
   var righeNo = esclusi.map(function (e) {
     return '<div style="' + css.row + '">' +
       '<span style="' + css.name + ';opacity:.75">' + e.cross + '</span>' + badge('NO TRADE') +
-      '<span style="' + css.note + '">' + e.motivo + (e.lettDir ? ' · <b>Lettura S47 ' + e.lettDir + '</b>' : '') + '</span></div>';
+      '<span style="' + css.note + '">' + e.motivo + (e.lettDir ? ' · <b>Lettura S47 ' + e.lettDir + '</b>' : '') + (e.stVerdetto ? ' · Sistema-trend ' + e.stVerdetto + ' (' + (e.stPunti > 0 ? '+' : '') + e.stPunti + ')' : '') + '</span></div>';
   }).join('') || '<div style="padding:8px 0;opacity:.7">Nessun cross fermo.</div>';
   var cont = function (L) { return tradabili.filter(function (e) { return e.livello === L; }).length; };
   var nA = cont('A'), nB = cont('B'), nC = cont('C'), nD = cont('D');
