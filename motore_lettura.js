@@ -1035,6 +1035,18 @@ function creaMotore(LYM) {
           racconto.push('L' + Lpos + ' è spinta dalla linea che arriva sulla sua partenza ' + Ldep + ': effetto scala, prosegue in ' + Larr + ' anche se vuoto');
           return 'muove';
         }
+        // Edu, 22/09/2026 (USDCAD 21/09/2026 seme 139): "l'arrivo della mobile non e' vuoto perche' il
+        // giorno lo clasha, quindi la linea mobile funziona come al solito". Un clash sull'arrivo vuoto
+        // (dal giorno, dal mese, dall'anno o da un'altra linea) lo tira fuori dal vuoto ed e' operativo;
+        // per bloccarlo servono DUE clash. MLVUOTOCLASH=off spegne.
+        if (C.vuoto(Larr) && !off('MLVUOTOCLASH')) {
+          var vistiC = {};
+          [D0, R.monthBranch, R.yearBranch].forEach(function (b) { if (b && CLASH[b] === Larr) vistiC[b] = true; });
+          R.linee.forEach(function (Lq) { if (Lq.pos !== Lpos && CLASH[Lq.ramo] === Larr) vistiC[Lq.ramo] = true; });
+          var nvc = Object.keys(vistiC).length;   // per ramo distinto: il giorno 戌 e una linea 戌 sono lo stesso clash
+          if (nvc === 1) { racconto.push('L' + Lpos + ' arriva in ' + Larr + ', vuoto ma clashato: esce dal vuoto ed è operativo'); return 'muove'; }
+          if (nvc >= 2) { racconto.push('L' + Lpos + ' arriva in ' + Larr + ', vuoto e clashato due volte: l\'arrivo è bloccato'); return 'arrivoAnnullato'; }
+        }
         if (C.vuoto(Larr) && !(depTocc && !isInc && !(taiSui && CLASH[D0] === Ldep))) {
           if (AVANZA[Ldep] === Larr && superTimely(Ldep)) return 'muove';
           var bv = bestiaAiuta(Lpos, Ldep, Larr, true);

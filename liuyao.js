@@ -268,6 +268,28 @@
       else if (RETRO[ramoDep] === ramoArr) progressione = 'retrocedente'; // 退神
     }
     var motivoNullo = null;
+    // IL VUOTO E I CLASH — dottrina dettata da Edu il 22/09/2026 (S51, USDCAD 21/09/2026 seme 139):
+    //  1. una linea vuota esce dal vuoto se clashata;
+    //  2. per far MUOVERE una linea vuota non mobile servono DUE clash (il primo la fa uscire dal
+    //     vuoto, il secondo la muove), e il secondo puo' venire dal mese, dall'anno o da un'altra linea;
+    //  3. la mobile non e' mai vuota alla partenza ma puo' esserlo all'arrivo: se l'arrivo e'
+    //     clashato diventa operativo e NON viene bloccato;
+    //  4. per bloccare l'arrivo che esce dal vuoto con un clash servono DUE clash, come al punto 2.
+    // VUOTOCLASH=0 spegne (misura).
+    var _vuotoClashOn = !(typeof process !== 'undefined' && process.env && process.env.VUOTOCLASH === '0');
+    function clashSuRamo(br, escludiPos) {
+      // i clash si contano per RAMO DISTINTO: il giorno 戌 e una linea 戌 sono lo stesso clash
+      var visti = {};
+      var vedi = function (b) { if (b && CLASH[b] === br) visti[b] = true; };
+      vedi(dayBranch); vedi(monthBranch); vedi(yearBranch);
+      for (var q = 1; q <= 6; q++) { if (q === escludiPos) continue; vedi(ramoAl(q)); }
+      return Object.keys(visti).length;
+    }
+    var _XINGV = {'寅':'巳','巳':'申','申':'寅','丑':'戌','戌':'未','未':'丑','子':'卯','卯':'子','辰':'辰','午':'午','酉':'酉','亥':'亥'};
+    // il giorno che PENALIZZA l'arrivo e' la morte del movimento (Edu, S47): l'arrivo vuoto e
+    // penalizzato non esce dal vuoto con un clash (USDCHF 28/02/2022, "Y cannot advance")
+    var _arrPenalizzato = !!(dayBranch && _XINGV[dayBranch] === ramoArr);
+    var _arrVuotoClash = (_vuotoClashOn && !_arrPenalizzato && vuoti.indexOf(ramoArr) >= 0) ? clashSuRamo(ramoArr, linea) : 0;
     // IL GIORNO LIBERA LA MOBILE (Edu, 26/08/2026, da USDCAD 08/03/2023).
     // NOME CORRETTO (Edu, 26/08/2026): NON e' un "autoclash" — la linea non si clasha da sola:
     // e' il GIORNO che clasha l'ARRIVO. La mobile e' legata al proprio arrivo (自合: la partenza
@@ -281,8 +303,8 @@
         && (COMBINA[ramoDep] === ramoArr) && !!dayBranch && (CLASH[dayBranch] === ramoArr)
         && (vuoti.indexOf(ramoArr) < 0);
     // arrivo vuoto (旬空): movimento nullo (la mobile non e' mai vuota di suo, 動不為空)
-    if (vuoti.indexOf(ramoArr) >= 0) { effEl = null; casoMut = 0;
-      motivoNullo = 'arrival void'; }
+    if (vuoti.indexOf(ramoArr) >= 0 && _arrVuotoClash !== 1) { effEl = null; casoMut = 0;
+      motivoNullo = _arrVuotoClash >= 2 ? 'arrival void, hit by two clashes: blocked' : 'arrival void'; }
     // sospensione dal giorno: il giorno COMBINA (六合) o CLASHA (六冲) partenza o arrivo.
     // FISSATA (Edu, 21/08/2026): se il GIORNO e' legato in 六合 dal MESE, la sua capacita'
     // di combinare/clashare e' gia' impegnata e NON sospende la mobile.
@@ -291,8 +313,9 @@
     var _gioLegatoMese = !_glOff && !!(dayBranch && monthBranch && COMBINA[monthBranch] === dayBranch);
     var _sbOff = (typeof process !== 'undefined' && process.env && process.env.GIORNOSBLOCCO === 'off');
     var _sbloccata = !_sbOff && _sblocco;
+    var _arrLiberato = (_arrVuotoClash === 1) && dayBranch && CLASH[dayBranch] === ramoArr;   // il clash del giorno ha tirato fuori l'arrivo dal vuoto: e' operativo
     if (!_giornoLibera && !_sbloccata && !_gioLegatoMese && dayBranch && (COMBINA[dayBranch] === ramoDep || COMBINA[dayBranch] === ramoArr ||
-        CLASH[dayBranch] === ramoDep || CLASH[dayBranch] === ramoArr)) {
+        CLASH[dayBranch] === ramoDep || (CLASH[dayBranch] === ramoArr && !_arrLiberato))) {
       effEl = null; casoMut = -1;
       motivoNullo = 'suspended by the day (day combines/clashes departure or arrival)'; }
     // TOMBA NEL MESE + PENALITA' DAL GIORNO (Edu, 28/08/2026, guida USDJPY 23/07/2024 seme 156):
@@ -578,11 +601,18 @@
     //   0 clash -> LEGATA (bloccata, fuori dai giochi)
     //   1 clash -> combinazione rotta, il ramo torna libero (non ancora colpito)
     //  >=2 clash -> combinazione rotta E ramo colpito
-    function statoLin(br, isMoving){
+    function statoLin(br, isMoving, pos){
       var st = stagione(WX[br], monthEl);
       var timely = (st === '旺' || st === '相');
       var cl = clashSu(br);
       var nCl = cl.potenza;                            // clash effettivi (col potenziamento del mese)
+      if (_vuotoClashOn && !isMoving && vuoti.indexOf(br) >= 0 && !legataDalGiorno(br)) {
+        // Edu, 22/09/2026: la vuota ferma esce dal vuoto con UN clash (attiva), si MUOVE con DUE
+        var nv = clashSuRamo(br, pos) + (CLASH[ramoArr] === br ? 1 : 0);
+        if (nv === 0) return 'dormiente';
+        if (nv === 1) return 'attiva';
+        return timely ? 'mossa' : 'rotta';
+      }
       if (legataDalGiorno(br)) {
         if (nCl === 0) return 'legata';                // bloccata dalla combinazione
         if (nCl === 1) return isMoving ? (autoComb ? 'autocombinata' : 'in movimento') : 'liberata';
@@ -611,8 +641,8 @@
     // stato ed efficacia di Shi e Ying: una linea legata, rotta, dormiente o eliminata
     // non sopravvive e non puo' reggere la lettura. Se cadono entrambe, la lettura
     // ripiega sul movimento della linea mobile.
-    var shiStato  = statoLin(shiB,  pal.shi  === linea);
-    var yingStato = statoLin(yingB, pal.ying === linea);
+    var shiStato  = statoLin(shiB,  pal.shi  === linea, pal.shi);
+    var yingStato = statoLin(yingB, pal.ying === linea, pal.ying);
     var morta = function (s){ return s === 'legata' || s === 'rotta' ||
                                      s === 'dormiente' || s === 'eliminata' ||
                                      s === 'autocombinata'; };
@@ -701,7 +731,7 @@
         isShi: pos === pal.shi, isYing: pos === pal.ying, isMobile: isMobile,
         isTaiSui: yearBranch != null && ramo === yearBranch,
         vuoto: vuoti.indexOf(ramo) >= 0,
-        stato: statoLin(ramo, isMobile),
+        stato: statoLin(ramo, isMobile, pos),
         forte: fortLinea(ramo),
         fushen: fu ? { b: fu.b, ramoIt: BR_IT[fu.b], el: fu.el, elIt: EL_IT[fu.el],
                        par: fu.par, parCn: PAR[fu.par].cn, parIt: PAR[fu.par].it } : null,
