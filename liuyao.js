@@ -278,10 +278,14 @@
     // VUOTOCLASH=0 spegne (misura).
     var _vuotoClashOn = !(typeof process !== 'undefined' && process.env && process.env.VUOTOCLASH === '0');
     function clashSuRamo(br, escludiPos) {
-      // i clash si contano per RAMO DISTINTO: il giorno 戌 e una linea 戌 sono lo stesso clash
-      var visti = {};
+      // Il PRIMO clash, quello che fa uscire dal vuoto, e' SOLO del giorno (una linea ferma non puo'
+      // clashare nessuna linea; anno e mese non clashano). Il SECONDO, quello che muove o blocca,
+      // puo' venire dal mese, dall'anno o da un'altra linea. Contati per ramo distinto (il giorno
+      // 戌 e una linea 戌 sono lo stesso clash). Senza il clash del giorno il conto e' zero.
+      if (!(dayBranch && CLASH[dayBranch] === br)) return 0;
+      var visti = {}; visti[dayBranch] = true;
       var vedi = function (b) { if (b && CLASH[b] === br) visti[b] = true; };
-      vedi(dayBranch); vedi(monthBranch); vedi(yearBranch);
+      vedi(monthBranch); vedi(yearBranch);
       for (var q = 1; q <= 6; q++) { if (q === escludiPos) continue; vedi(ramoAl(q)); }
       return Object.keys(visti).length;
     }
@@ -608,7 +612,7 @@
       var nCl = cl.potenza;                            // clash effettivi (col potenziamento del mese)
       if (_vuotoClashOn && !isMoving && vuoti.indexOf(br) >= 0 && !legataDalGiorno(br)) {
         // Edu, 22/09/2026: la vuota ferma esce dal vuoto con UN clash (attiva), si MUOVE con DUE
-        var nv = clashSuRamo(br, pos) + (CLASH[ramoArr] === br ? 1 : 0);
+        var nv = clashSuRamo(br, pos); if (nv >= 1 && CLASH[ramoArr] === br && ramoArr !== dayBranch) nv++;   // l'arrivo della mobile conta come secondo clash
         if (nv === 0) return 'dormiente';
         if (nv === 1) return 'attiva';
         return timely ? 'mossa' : 'rotta';

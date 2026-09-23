@@ -359,6 +359,7 @@ function creaMotore(LYM) {
 
     return { sEl: sEl, timely: timely, stagione: stagione, pil: pil, suLinea: suLinea,
              ramiData: ramiData, D: R.dayBranch, incompDi: incompDi, seconde: seconde, mobileArrComune: mobileArrComune,
+             futuroLinee: (RF && RF.linee) ? RF.linee.map(function (L) { return L.ramo; }) : null,
              vuoto: function (ramo) { return (R.vuoti || []).indexOf(ramo) >= 0; },
              R: R,
              futuro: { RF: RF, supF: supF, infF: infF },
@@ -557,7 +558,8 @@ function creaMotore(LYM) {
   }
 
   function guerre(R, C, racconto) {
-    var annullate = {};
+    var annullate = {}, titani = {};
+    annullate.__titani = titani;
     if (off('MLGUERRA')) return annullate;
     for (var pos in C.suLinea) {
       var lista = C.suLinea[pos];
@@ -584,7 +586,11 @@ function creaMotore(LYM) {
             pen = false; cla = false;
           }
           if (pen || cla) {
-            annullate[pos] = true;
+            // Edu, 22/09/2026 (USDJPY 16/10/2024): "si usano le bestie solo dopo che le linee mobili
+            // non hanno piu' nulla da offrire" — la guerra fra titani e' un fatto di bestie: la linea
+            // e' segnata qui ma annullata solo all'ingresso della fase delle bestie (T1), cosi' i
+            // gradini delle mobili (T0*) la leggono ancora. MLTITANIPRIMA=on torna alla forma vecchia.
+            if (ENV.MLTITANIPRIMA === 'on') annullate[pos] = true; else titani[pos] = true;
             racconto.push('su L' + pos + ' cadono due bestie, ' + lista[a].nome + ' ' +
               lista[a].stelo + ra + ' e ' + lista[b].nome + ' ' + lista[b].stelo + rb +
               ', coi rami ' + (pen ? 'in penalità' : 'in clash') +
@@ -886,6 +892,7 @@ function creaMotore(LYM) {
       if (!incomp && (secCombArr || secClashArr)) passoNullo = true;
     }
     var annullate = guerre(R, C, racconto);
+    var titani = annullate.__titani || {}; delete annullate.__titani;
     // --- T0z: LA CONFUSIONE TOTALE DI UN TRIGRAMMA ---------------------------------
     // Edu, 11/09/2026 (USDJPY 13/02/2024 seme 149): "Ying clashato dal giorno diventa mobile
     // e questo trasforma l'intero trigramma inferiore in un total clash. Poiche' sotto e' in
@@ -921,6 +928,23 @@ function creaMotore(LYM) {
       if (ENV.MLCONFUSIONE === 'due') trigConf.push([4, 5, 6]);   // simmetria di Claude, spenta
       for (var tc = 0; tc < trigConf.length; tc++) {
         var tutte3 = trigConf[tc].every(function (p) { return siMuove(R.linee[p - 1]); });
+        // Edu, 22/09/2026 (USDJPY 16/10/2024 seme 149): "il trigramma inferiore e' coinvolto in total
+        // clash, il che lo esclude dalla possibilita' di vincere". Con L2 e L3 girate insieme 巽
+        // diventa 坤 e le tre coppie 丑未, 亥巳, 酉卯 sono tutte in clash: e' il trigramma INTERO,
+        // contro il proprio futuro comune, a essere in 六沖 — anche se una linea (L1) non si muove.
+        // MLCLASHTOTALE=off spegne.
+        // Perimetro dalla sua lettura di EURJPY 28/07/2025 (la Ying mobile si occupa prima di se': il
+        // suo arrivo la controlla indietro e decide): se la mobile e' una sede con controllo indietro
+        // (caso 3 da sola), quella lettura viene prima del clash totale.
+        var sedeIndietro = (pos === R.shi || pos === R.ying) && R.mutante.ramoArr && KE[WX[R.mutante.ramoArr]] === mob.el;
+        if (!tutte3 && !off('MLCLASHTOTALE') && !sedeIndietro && C.futuroLinee && trigConf[tc].some(function (p) { return R.linee[p - 1].pos === pos || C.incompDi(R.linee[p - 1]); })) {
+          var seiChong = trigConf[tc].every(function (p) { return C.futuroLinee[p - 1] && CLASH[R.linee[p - 1].ramo] === C.futuroLinee[p - 1]; });
+          if (seiChong) {
+            tutte3 = true;
+            racconto.push('il trigramma ' + (trigConf[tc][0] === 1 ? 'basso' : 'alto') + ' e il suo futuro comune sono in clash totale (' +
+              trigConf[tc].map(function (p) { return R.linee[p - 1].ramo + C.futuroLinee[p - 1]; }).join(', ') + ')');
+          }
+        }
         if (tutte3) {
           var basso = trigConf[tc][0] === 1;
           racconto.push('tutte e tre le linee del trigramma ' + (basso ? 'basso' : 'alto') +
@@ -1025,6 +1049,12 @@ function creaMotore(LYM) {
         // parte e resta se' stessa, usabile (S47: la penalita' e' la morte del movimento).
         if (D0 && (XING[D0] === Larr || (D0 === Larr && AUTOPEN[Larr])) && !isInc) {
           racconto.push('L' + Lpos + ' vorrebbe andare in ' + Larr + ', ma il giorno ' + D0 + ' penalizza l\'arrivo: il movimento muore, la linea resta ' + Ldep);
+          // Edu, 22/09/2026 (EURUSD 21/09/2026 seme 114): "arrivo di L1 penalizzato ma non influenza
+          // la partenza che rimane Wealth, quindi short" — la linea ferma dalla penalita' parla col
+          // proprio carattere, come quella bloccata alla partenza (18/09). MLPENPARLA=off spegne.
+          // Perimetro: la SEDE (Shi o Ying) che resta G o W; il B/P penalizzato ha le sue letture (USDCHF
+          // 28/02/2022, GBPUSD 02/08/2022) e la W non sede lascia decidere la sede (EURJPY 10/08/2023).
+          if (Lpos === pos && !off('MLPENPARLA') && (pos === R.shi || pos === R.ying) && (mob.par === 'G' || mob.par === 'W')) fermaPerPartenza = true;
           return 'fermaAttiva';
         }
         // USDJPY 02/10/2024 (Edu: "Effetto scala. L3 si muove in G 午, L2 continua il movimento e
@@ -1040,10 +1070,15 @@ function creaMotore(LYM) {
         // (dal giorno, dal mese, dall'anno o da un'altra linea) lo tira fuori dal vuoto ed e' operativo;
         // per bloccarlo servono DUE clash. MLVUOTOCLASH=off spegne.
         if (C.vuoto(Larr) && !off('MLVUOTOCLASH')) {
-          var vistiC = {};
-          [D0, R.monthBranch, R.yearBranch].forEach(function (b) { if (b && CLASH[b] === Larr) vistiC[b] = true; });
-          R.linee.forEach(function (Lq) { if (Lq.pos !== Lpos && CLASH[Lq.ramo] === Larr) vistiC[Lq.ramo] = true; });
-          var nvc = Object.keys(vistiC).length;   // per ramo distinto: il giorno 戌 e una linea 戌 sono lo stesso clash
+          // il primo clash e' SOLO del giorno (una linea ferma non clasha nessuna linea); il secondo
+          // puo' venire dal mese, dall'anno o da un'altra linea; per ramo distinto
+          var nvc = 0;
+          if (D0 && CLASH[D0] === Larr) {
+            var vistiC = {}; vistiC[D0] = true;
+            [R.monthBranch, R.yearBranch].forEach(function (b) { if (b && CLASH[b] === Larr) vistiC[b] = true; });
+            R.linee.forEach(function (Lq) { if (Lq.pos !== Lpos && CLASH[Lq.ramo] === Larr) vistiC[Lq.ramo] = true; });
+            nvc = Object.keys(vistiC).length;
+          }
           if (nvc === 1) { racconto.push('L' + Lpos + ' arriva in ' + Larr + ', vuoto ma clashato: esce dal vuoto ed è operativo'); return 'muove'; }
           if (nvc >= 2) { racconto.push('L' + Lpos + ' arriva in ' + Larr + ', vuoto e clashato due volte: l\'arrivo è bloccato'); return 'arrivoAnnullato'; }
         }
@@ -1057,6 +1092,21 @@ function creaMotore(LYM) {
         }
         if (depTocc) {
           if (isInc) return 'muove';
+          // Edu, 22/09/2026 (USDJPY 29/11/2024 seme 151): "la bestia del giorno lo tira fuori dalla
+          // combinazione" — se lo stesso GIORNO che combina la partenza cade sulla linea col suo
+          // pilastro (bestia compatibile: stesso elemento, drena o genera), la tira fuori dal legame
+          // e la linea si muove: vale anche per il Tai Sui e per la mobile vuota. MLGIORNOTIRA=off.
+          if (COMBINA[D0] === Ldep && !off('MLGIORNOTIRA')) {
+            var bg = (C.suLinea[Lpos] || []).filter(function (Q) { return Q.nome === 'giorno'; })[0];
+            if (bg) {
+              var eb = WX[bg.ramo], el = R.linee[Lpos - 1].el;
+              if (eb === el || GEN[el] === eb || GEN[eb] === el) {
+                racconto.push('L' + Lpos + ' è combinata alla partenza dal giorno ' + D0 + ', ma il pilastro del giorno ' + bg.stelo + bg.ramo +
+                  ' cade su di lei con la sua bestia e la tira fuori dalla combinazione: si muove');
+                return 'muove';
+              }
+            }
+          }
           if (taiSui) return COMBINA[D0] === Ldep ? 'fermaInusabile' : 'muove';
           if (isMobVoid) return 'fermaAttiva';
           var bp = bestiaAiuta(Lpos, Ldep, Larr, false);
@@ -1398,6 +1448,10 @@ function creaMotore(LYM) {
         if (SH.p !== R.shi && SH.p !== R.ying) continue;
         var grad = movH.filter(function (M) { return M.p !== SH.p && M.dep === SH.a; })[0];
         if (!grad) continue;
+        // Edu, 11/09/2026 (USDCAD 13/09/2022): se la sede RETROCEDE sul gradino e l'arrivo del gradino
+        // GENERA il ramo raggiunto, la catena si ferma li' (T0s la scala fermata dalla generazione):
+        // quella lettura viene prima di questa. Emersa il 22/09 quando i titani sono passati dopo.
+        if (RETRO[SH.dep] === SH.a && GEN[WX[grad.a]] === WX[SH.a]) continue;
         var altraH = SH.p === R.shi ? R.ying : R.shi;
         var eAltH = elDopoLeBestie(R.linee[altraH - 1], C);
         var eSedeH = WX[grad.a];
@@ -1899,12 +1953,60 @@ function creaMotore(LYM) {
       });
       if (suSede.length && suSede.every(function (X) { return X.sp === suSede[0].sp; })) {
         var spW = suSede[0].sp;
-        racconto.push(suSede.map(function (X) { return 'L' + X.A.p + ' arriva in ' + X.A.a; }).join(' e ') +
-          ': ' + (suSede.length > 1 ? 'due linee arrivano' : 'il movimento arriva') + ' su ' +
-          (spW === R.shi ? 'lo Shi' : 'la Ying') + ' (' + suSede.map(function (X) { return X.dove; }).join(' e ') +
-          ') — chi arriva su una sede le porta la vittoria');
-        return fine(sede(spW), 'lo scalino porta su ' + (spW === R.shi ? 'lo Shi' : 'la Ying') + ': vince quella sede',
-                    'T0w lo scalino porta su una sede');
+        // Edu, 22/09/2026 (EURJPY 28/04/2022 seme 135, Qian 15 -> Yu 16, palazzo 兌): "L4 P 丑 muta in
+        // G 午 che scende su Y. Questo trasferisce P 丑 su Y" -> la P sulla Ying fa perdere la sua
+        // squadra (LONG +183). Chi arriva su una sede le porta IL PROPRIO CARATTERE (quello di
+        // partenza): G/W la fanno vincere, P/B la fanno perdere. Con caratteri discordi tace.
+        // MLSCALACARATTERE=off torna a "chi arriva porta la vittoria" senza guardare il carattere.
+        var vince = true;
+        if (!off('MLSCALACARATTERE')) {
+          var pars = suSede.map(function (X) { return R.linee[X.A.p - 1].par; });
+          var malus = pars.filter(function (q) { return q === 'P' || q === 'B'; }).length;
+          var bonus = pars.filter(function (q) { return q === 'G' || q === 'W'; }).length;
+          if (malus && bonus) { racconto.push('sulla sede arrivano caratteri discordi (' + pars.join(', ') + '): lo scalino non decide'); vince = null; }
+          else if (malus) vince = false;
+        }
+        // Edu, 22/09/2026 (GBPUSD 17/06/2025 seme 135): "L5 [lo Shi], clashata dal giorno, si muove, fa
+        // effetto scala con L3 e raggiunge W 卯 che fa vincere la propria squadra. Poiche' anche P 丑 su
+        // L4 si muove per raggiungere Y e farebbe perdere, i due effetti si annullano e dobbiamo
+        // chiamare le bestie; le bestie non danno la vittoria a nessuno, quindi Y vs S: Y riceve P 丑
+        // Terra mentre S parte con 亥 Acqua e perde. Short." Cablato: se sulla sede arriva un malus e
+        // l'ALTRA sede, ferma e clashata dal giorno, sale la scala fino a un G/W che sta nel trigramma
+        // della prima, i due effetti si annullano: niente verdetto qui; la sede che ha ricevuto porta
+        // l'elemento ricevuto nel confronto finale (C.ricevuto). MLSCALAANNULLA=off spegne.
+        if (vince === false && !off('MLSCALAANNULLA')) {
+          var altraW = spW === R.shi ? R.ying : R.shi, LA = R.linee[altraW - 1];
+          var candGW = [];
+          if (arr) candGW.push({ p: pos, a: arr });
+          (C.seconde || []).forEach(function (X) { if (X.arr) candGW.push({ p: X.L.pos, a: X.arr }); });
+          var scalaGW = LA && !LA.isMobile && C.D && CLASH[C.D] === LA.ramo &&
+            candGW.some(function (A) { var pA = parDi(WX[A.a], palEl); return A.p !== suSede[0].A.p && (pA === 'G' || pA === 'W') && (A.p <= 3) === (spW <= 3); });
+          if (scalaGW) {
+            racconto.push('su ' + (spW === R.shi ? 'lo Shi' : 'la Ying') + ' arriva un malus, ma ' + (altraW === R.shi ? 'lo Shi' : 'la Ying') +
+              ' L' + altraW + ' ' + LA.ramo + ', clashata dal giorno, si muove e per effetto scala raggiunge un G/W che fa vincere quella squadra: i due effetti si annullano, si chiamano le bestie');
+            C.ricevuto = C.ricevuto || {}; C.ricevuto[spW] = WX[R.linee[suSede[0].A.p - 1].ramo];   // la sede riceve il ramo di chi arriva (P 丑 -> Terra)
+            vince = null;
+            // le mobili hanno finito: bestie, poi Shi contro Ying. Se nessuna bestia possiede una sede,
+            // il confronto e' subito, con l'elemento ricevuto.
+            // Edu: "le bestie non danno la vittoria a nessuno quindi usiamo Y vs S" — le bestie entrano
+            // solo come elemento della sede (elDopoLeBestie), non come verdetto.
+            if (true) {
+              var eSx = spW === R.shi ? C.ricevuto[spW] : elDopoLeBestie(R.linee[R.shi - 1], C);
+              var eYx = spW === R.ying ? C.ricevuto[spW] : elDopoLeBestie(R.linee[R.ying - 1], C);
+              racconto.push('le bestie non danno la vittoria a nessuno: Shi contro Ying, ' + (spW === R.shi ? 'lo Shi' : 'la Ying') + ' con l\'elemento ricevuto ' + C.ricevuto[spW]);
+              var dSx = confrontoDiretto(R, C, eSx, eYx, racconto);
+              if (dSx) return fine(dSx, 'i due effetti della scala si annullano: Shi contro Ying con l\'elemento ricevuto', 'T0w la scala si annulla: Shi contro Ying');
+            }
+          }
+        }
+        if (vince !== null) {
+          racconto.push(suSede.map(function (X) { return 'L' + X.A.p + ' (' + PAR_IT[R.linee[X.A.p - 1].par] + ') arriva in ' + X.A.a; }).join(' e ') +
+            ': ' + (suSede.length > 1 ? 'due linee arrivano' : 'il movimento arriva') + ' su ' +
+            (spW === R.shi ? 'lo Shi' : 'la Ying') + ' (' + suSede.map(function (X) { return X.dove; }).join(' e ') +
+            ') — chi arriva su una sede le porta il proprio carattere: ' + (vince ? 'la fa vincere' : 'la fa perdere'));
+          return fine(vince ? sede(spW) : opposto(sede(spW)), 'lo scalino porta su ' + (spW === R.shi ? 'lo Shi' : 'la Ying') + ': ' + (vince ? 'vince' : 'perde') + ' quella sede',
+                      'T0w lo scalino porta su una sede');
+        }
       }
     }
 
@@ -2626,6 +2728,22 @@ function creaMotore(LYM) {
         'T1a il malus ' + (indietro ? 'retrocede' : 'avanza'));
     }
 
+    // Edu, 22/09/2026 (USDJPY 29/11/2024 seme 151): "L1 moves into a strong C 子. What can this line do?
+    // It clashes L2 to free the hiding wealth, short" — la porta del clash che libera un nascosto e'
+    // un'azione della MOBILE e viene prima delle bestie (la sostituzione T1 la scavalcava).
+    // Perimetro: la mobile si muove davvero e arriva forte (di stagione). MLLIBERANASCOSTO=off.
+    if (!mobileAnnullata && !off('MLLIBERANASCOSTO') && arr && statoMob === 'muove' && C.timely(WX[arr])) {
+      var colpita = R.linee.filter(function (L) { return L.pos !== pos && !annullate[L.pos] && !L.isMobile && CLASH[arr] === L.ramo && L.fushen && L.fushen.par; })[0];
+      if (colpita) {
+        racconto.push('la mobile arriva in ' + arr + ', di stagione, e clasha L' + colpita.pos + ' ' + colpita.ramo + ', che nasconde ' +
+          PAR_IT[colpita.fushen.par] + ' ' + colpita.fushen.ramo + ': il clash libera il nascosto, che parla col proprio carattere');
+        var dLN = dirDelCarattere(colpita.fushen.par, colpita.pos);
+        if (dLN) return fine(dLN, 'la mobile clasha L' + colpita.pos + ' e libera il nascosto ' + PAR_IT[colpita.fushen.par], 'T0x il clash libera il nascosto');
+      }
+    }
+    // FASE DELLE BESTIE: da qui in poi le linee annullate dalla guerra fra titani non agiscono piu'
+    Object.keys(titani).forEach(function (tp) { annullate[tp] = true; });
+    mobileAnnullata = mobileAnnullata || !!annullate[pos];
     var sostituto = null;
     if (!mobileAnnullata && !off('MLSOST') && C.suLinea[pos]) {
       var cand = C.suLinea[pos];
@@ -3034,6 +3152,15 @@ function creaMotore(LYM) {
           if (!stessaSede) continue;
         }
         var T = bers[0];
+        // Edu, 22/09/2026 (USDJPY 29/11/2024 seme 151): "L1 moves into a strong C 子. What can this line
+        // do? It clashes L2 to free the hiding wealth, short" — la porta del CLASH, se la linea colpita
+        // nasconde un 伏神, libera il nascosto: parla lui col suo carattere. MLLIBERANASCOSTO=off.
+        if (porte[k].nome === 'clashare' && !off('MLLIBERANASCOSTO') && T.fushen && T.fushen.par) {
+          racconto.push('la mobile arriva in ' + arr + ' e clasha L' + T.pos + ' ' + T.ramo + ', che nasconde ' + PAR_IT[T.fushen.par] + ' ' + T.fushen.ramo +
+            ': il clash libera il nascosto, che parla col proprio carattere');
+          var d5f = dirDelCarattere(T.fushen.par, T.pos);
+          if (d5f) return fine(d5f, 'la mobile clasha L' + T.pos + ' e libera il nascosto ' + PAR_IT[T.fushen.par], 'T5 il clash libera il nascosto');
+        }
         racconto.push('niente la blocca, quindi la mobile cerca qualcosa da fare: ' + porte[k].nome +
           ' — l\'unica linea disponibile è L' + T.pos + ' ' + PAR_IT[T.par] + ' ' + T.ramo +
           '. Parla chi riceve l\'azione');
@@ -3179,6 +3306,8 @@ function creaMotore(LYM) {
       // linea piu' forte.
       var lS8 = R.linee[R.shi - 1], lY8 = R.linee[R.ying - 1];
       var eS8 = elDopoLeBestie(lS8, C), eY8 = elDopoLeBestie(lY8, C);
+      if (C.ricevuto) { if (C.ricevuto[R.shi]) { eS8 = C.ricevuto[R.shi]; racconto.push('lo Shi porta l\'elemento ricevuto dalla scala: ' + eS8); }
+                        if (C.ricevuto[R.ying]) { eY8 = C.ricevuto[R.ying]; racconto.push('la Ying porta l\'elemento ricevuto dalla scala: ' + eY8); } }
       var st8 = function (L) {
         var t = [];
         if (vuotaL(L, C, R)) t.push('vuota');
