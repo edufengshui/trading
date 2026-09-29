@@ -746,7 +746,10 @@ function htmlRegistro() {
     '<div style="padding:10px 14px;background:rgba(255,255,255,.05);display:flex;flex-wrap:wrap;gap:10px;' +
     'align-items:center;justify-content:space-between">' +
       '<b style="font-size:15px">Registro dei trade · esiti di fine giornata</b>' +
+      '<span style="display:flex;gap:8px;flex-wrap:wrap">' +
       '<button id="copiapersi" class="ghost" style="font-size:12px">Copia i trade perdenti</button>' +
+      '<button id="copiatutto" class="ghost" style="font-size:12px">Copia tutto il registro</button>' +
+      '</span>' +
     '</div>' +
     '<div style="padding:6px 14px 2px;font-size:12px;opacity:.7">' +
     (auto.disponibile
@@ -769,6 +772,15 @@ function wireRegistro(box) {
       var rb = $('regbox');           // ridisegna SOLO il registro: niente rianalisi, niente salto di pagina
       if (rb) { rb.innerHTML = htmlRegistro(); wireRegistro(rb); }
     });
+  });
+  // S52 (29/09/2026, Edu): tutto il registro, vinti compresi, da incollare in chat per la statistica
+  var btnT = box.querySelector('#copiatutto');
+  if (btnT) btnT.addEventListener('click', function () {
+    var testo = 'Registro completo dei trade:\n' + JSON.stringify(leggiRegistro());
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(testo).then(function () { btnT.textContent = 'Copiato ✓'; },
+        function () { window.prompt('Copia a mano:', testo); });
+    } else window.prompt('Copia a mano:', testo);
   });
   var btn = box.querySelector('#copiapersi');
   if (btn) btn.addEventListener('click', function () {
