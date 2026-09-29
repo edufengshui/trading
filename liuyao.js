@@ -1163,6 +1163,52 @@
     }
   });
 
+  // L'EFFETTO SCALA NELLA CATENA CHE DECIDE (S52, 23/09/2026 — regola del 21/09: ogni regola di Edu
+  // entra nel software che decide). Letture di Edu: USDJPY 02/10/2024 seme 143 ("Effetto scala. L3 si
+  // muove in G, L2 continua il movimento e arriva a P... fa perdere la propria squadra. Long");
+  // USDCAD 13/09/2022 seme 129 (la scala fermata dalla generazione indietro); USDJPY 02/08/2022
+  // seme 131 ("S raggiunge 酉. Y e' 卯. Long": la sede sale la scala). Tutte le facce vivono nel
+  // motore di lettura, che segue anche il movimento delle linee incompatibili (la catena ne prende
+  // solo il futuro comune). Qui la catena non le riscrive: chiede la carta al motore di lettura e,
+  // se la sua lettura passa per l'effetto scala, prende quel verdetto. Subito dopo §137 e §130.
+  // MISURA al cablaggio (23/09/2026): 226 carte in cui il motore vede la scala, catena 49,6%,
+  // motore 61,5%. VIASCALA=off spegne.
+  function letturaConScala(R, ctx) {
+    if (!R || R.error || !R.mutante) return null;
+    if (R._scala52 !== undefined) return R._scala52;
+    var cm = null;
+    try {
+      if (typeof creaMotore === 'function') cm = creaMotore;
+      else if (typeof require === 'function') cm = require('./motore_lettura.js').creaMotore;
+    } catch (e) { cm = null; }
+    var out = null;
+    if (cm) {
+      try {
+        var yb = (ctx && ctx.yearBranch) || R.yearBranch, hb = R.oraBranch || (ctx && ctx.oraBranch);
+        var c2 = { yearStem: ctx && ctx.yearStem, monthStem: ctx && ctx.monthStem, hourStem: ctx && ctx.hourStem,
+                   pilastri: [ { nome: 'anno',   stelo: ctx && ctx.yearStem,  ramo: yb },
+                               { nome: 'mese',   stelo: ctx && ctx.monthStem, ramo: R.monthBranch },
+                               { nome: 'giorno', stelo: R.dayStem,            ramo: R.dayBranch },
+                               { nome: 'ora',    stelo: ctx && ctx.hourStem,  ramo: hb } ] };
+        var v = cm(API).leggi(R, c2);
+        if (v && v.dir && /effetto scala/.test(String(v.racconto || ''))) out = { dir: v.dir, perche: v.perche || '' };
+      } catch (e) { out = null; }
+    }
+    try { Object.defineProperty(R, '_scala52', { value: out, enumerable: false, writable: true }); } catch (e) {}
+    return out;
+  }
+  LY_VIE.push({ id:'R77_SCALA', sezione:'scala', cablata:'2026-09-23',
+    nome:'Ladder effect: a moving line lands on the branch another moving line departs from, and the movement carries on',
+    dottrina:'Edu, letture USDJPY 02/10/2024 s143, USDCAD 13/09/2022 s129, USDJPY 02/08/2022 s131, EURJPY 06/02/2025. La catena chiede la lettura al motore di lettura e ne prende il verdetto quando passa per l\'effetto scala. VIASCALA=off per disattivarla.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIASCALA==='off') return null;
+      if (typeof localStorage!=='undefined' && localStorage && localStorage.getItem('VIASCALA')==='off') return null;
+      var s = letturaConScala(R, ctx); if (!s) return null;
+      state.why = 'Ladder effect (reading engine): ' + s.perche + ' → ' + s.dir + '.';
+      return s.dir;
+    }
+  });
+
   // §101 — BLOCCO DELLA MOBILE RICEVENTE UNTIMELY (Edu, 26/08/2026, da EURJPY 27/03/2025).
   //   Nel caso 6 (il giorno libera la mobile: la mobile parte ma l'arrivo e' clashato dal giorno,
   //   quindi si muove senza trasformarsi). Se la mobile e' UNTIMELY e la BESTIA seduta sulla sua
@@ -3228,6 +3274,7 @@
   //  6 duello finale Shi/Ying
   // Attiva con ORDINE=dottrina (o opts.ordine='dottrina'); a parita' di fase resta l'ordine storico.
   var FASE = {
+    R77_SCALA:0,
     R69_130:0, R68_129:0, R55_116:0, R52_112:0, R53_113:0, R57_118:0, R58_119:0, R40_98:0, R48_108:0, R47_107:0,
     B62:1, R51_111:1, R70_131:1, R39_99:1, R39_97:1, R27_63:1, R16_50f:1, R24_56:1,
     R54_114:2, R13_52:2, R59_120:2, R60_121:2, R54_115:2, R37_94:2, R66_127:2, R38_96:2, R26_59:2, R23_55:2,
@@ -3319,7 +3366,7 @@
     if (maxA > minD) throw new Error('GERARCHIA LY VIOLATA: una via d\'azione della mobile sta DOPO un raduno/residuo');
   })();
 
-  return { read: read, readManual: readManual, setSblocco: setSblocco, setCasaAttore: setCasaAttore, TRIGRAM: TRIGRAM,
+  var API = { read: read, readManual: readManual, setSblocco: setSblocco, setCasaAttore: setCasaAttore, TRIGRAM: TRIGRAM,
            PAR: PAR, SEI_BESTIE: SEI_BESTIE, EL_IT: EL_IT, BR_IT: BR_IT,
            oraDalSeme: oraDalSeme,
            LY_VIE: LY_VIE, LY_RAFFORZATIVI: LY_RAFFORZATIVI,
@@ -3328,4 +3375,5 @@
            tiande: tiande, zhide: zhide, STELO_SPIRITI: STELO_SPIRITI,
            EL_EN: EL_EN, STATO_EN: STATO_EN, contestoGiorno: contestoGiorno, wBless: wBless,
            forzaModello: forzaModello, stadioMese: stadioMese, STAGE_EN: STAGE_EN, peso12: peso12, stadio12: stadio12, stadio12Nome: stadio12Nome };
+  return API;
 }));
