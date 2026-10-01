@@ -2467,7 +2467,7 @@ function creaMotore(LYM) {
     var quali = R.linee.filter(function (L) { return C.incompDi(L); })
                        .map(function (L) { return 'L' + L.pos + (L.isMobile ? 'M' : 'F'); });
     var inccard = quali.length ? quali.join(',') : null;
-    if (process.env.LOG2 && C.seconde.length) {
+    if (ENV.LOG2 && C.seconde.length) {   // S52: era process.env, che nel browser non esiste
       var S2 = C.seconde[0], cosa = [];
       if (COMBINA[S2.arr] === dep) cosa.push('combina-partenza');
       if (CLASH[S2.arr] === dep) cosa.push('clasha-partenza');

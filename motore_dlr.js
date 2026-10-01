@@ -1022,7 +1022,7 @@ function viaT_dueTrigoniPerCarattere(c) {
     const TOMBA_EL2 = { 'Legno':'未','Fuoco':'戌','Terra':'戌','Metallo':'丑','Acqua':'辰' };
     if (c.ramoMese && TOMBA_EL2[tG] === c.ramoMese) return { dir: 'SHORT', via: 'due trigoni · W sopra ma in tomba',
       perche: testa + ', la W sta sopra ma il ' + tG + ' e\' in tomba nel mese ' + c.ramoMese + ': che ricchezza puo\' portare, lo host cede' };
-    const P2 = process.env.P2 || 'long';   // 'long' (attuale) · 'short' · 'tace'
+    const P2 = (typeof process !== 'undefined' && process.env && process.env.P2) || 'long';  // S52: protetto, nel browser process non esiste   // 'long' (attuale) · 'short' · 'tace'
     if (P2 === 'tace') return null;
     if (P2 === 'short') return { dir: 'SHORT', via: 'due trigoni · W sopra',
       perche: testa + ', la W sta sopra' };
