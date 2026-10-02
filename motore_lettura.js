@@ -118,6 +118,20 @@ function creaMotore(LYM) {
   var sede = function (pos) { return pos <= 3 ? 'SHORT' : 'LONG'; };
   var opposto = function (d) { return d === 'LONG' ? 'SHORT' : 'LONG'; };
 
+
+  // LA LINEA COMBINATA COL GIORNO E' PROTETTA (Edu, 02/10/2026, EURJPY 01/10/2026 seme 178, validato
+  // con i due perimetri): per clashare una linea gia' combinata col giorno servono due clash, il primo
+  // rompe la combinazione e il secondo colpisce. Il secondo, per ramo distinto, dal mese, dall'anno o
+  // dall'arrivo di un'altra linea che gira insieme alla mobile. Se il clash non passa la mobile resta
+  // col carattere dell'arrivo. Stessa regola di difesoDalGiorno in liuyao.js. MLDIFESA=off spegne.
+  function difesoGiorno(T, arr, C, R) {
+    if (!T || COMBINA[R.dayBranch] !== T.ramo) return false;
+    var cl = {}; if (arr && CLASH[arr] === T.ramo) cl[arr] = 1;
+    [R.monthBranch, R.yearBranch].forEach(function (b) { if (b && CLASH[b] === T.ramo) cl[b] = 1; });
+    (C.seconde || []).forEach(function (s2) { if (s2 && s2.arr && CLASH[s2.arr] === T.ramo) cl[s2.arr] = 1; });
+    return Object.keys(cl).length < 2;
+  }
+
   function parDi(el, palEl) {
     if (!el || !palEl) return null;
     if (el === palEl) return 'B';
@@ -2733,7 +2747,7 @@ function creaMotore(LYM) {
     // un'azione della MOBILE e viene prima delle bestie (la sostituzione T1 la scavalcava).
     // Perimetro: la mobile si muove davvero e arriva forte (di stagione). MLLIBERANASCOSTO=off.
     if (!mobileAnnullata && !off('MLLIBERANASCOSTO') && arr && statoMob === 'muove' && C.timely(WX[arr])) {
-      var colpita = R.linee.filter(function (L) { return L.pos !== pos && !annullate[L.pos] && !L.isMobile && CLASH[arr] === L.ramo && L.fushen && L.fushen.par; })[0];
+      var colpita = R.linee.filter(function (L) { return L.pos !== pos && !annullate[L.pos] && !L.isMobile && CLASH[arr] === L.ramo && L.fushen && L.fushen.par && (off('MLDIFESA') || !difesoGiorno(L, arr, C, R)); })[0];
       if (colpita) {
         racconto.push('la mobile arriva in ' + arr + ', di stagione, e clasha L' + colpita.pos + ' ' + colpita.ramo + ', che nasconde ' +
           PAR_IT[colpita.fushen.par] + ' ' + colpita.fushen.ramo + ': il clash libera il nascosto, che parla col proprio carattere');
@@ -3152,6 +3166,15 @@ function creaMotore(LYM) {
           if (!stessaSede) continue;
         }
         var T = bers[0];
+        if (porte[k].nome === 'clashare' && !off('MLDIFESA') && bers.length === 1 && difesoGiorno(T, arr, C, R)) {
+          var parA = parDi(arrEl, palEl);
+          racconto.push('la mobile diventa ' + PAR_IT[parA] + ' ' + arr + ' per clashare L' + T.pos + ' ' + T.ramo +
+            ', ma L' + T.pos + ' è combinata col giorno ' + R.dayBranch + ': un clash rompe la combinazione, ne serve un secondo per colpire. ' +
+            'Il clash non passa e la mobile resta ' + PAR_IT[parA]);
+          var dDif = dirDelCarattere(parA, pos);
+          if (dDif) return fine(dDif, 'il clash della mobile non passa: L' + T.pos + ' è protetta dal giorno, la mobile resta ' + PAR_IT[parA], 'T5d la linea protetta dal giorno');
+          break;
+        }
         // Edu, 22/09/2026 (USDJPY 29/11/2024 seme 151): "L1 moves into a strong C 子. What can this line
         // do? It clashes L2 to free the hiding wealth, short" — la porta del CLASH, se la linea colpita
         // nasconde un 伏神, libera il nascosto: parla lui col suo carattere. MLLIBERANASCOSTO=off.

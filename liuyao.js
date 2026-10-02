@@ -2328,7 +2328,7 @@
       // agisce altrove: nessun clash suo su una linea distante ha voce.
       // Audit: ARRLIB=off ripristina il comportamento precedente.
       if (R.mutante.casoMut === 1 && !(typeof process !== 'undefined' && process.env && process.env.ARRLIB === 'off')) return null;
-      if (!(CLASH[R.mutante.ramoArr]===ts.ramo && COMBINA[R.dayBranch]!==ts.ramo)) return null;
+      if (!(CLASH[R.mutante.ramoArr]===ts.ramo && !difesoDalGiorno(R, ts, R.mutante.ramoArr))) return null;
       state.why = 'Mobile <b>P</b> L'+mob.pos+' arrives in <b>'+R.mutante.ramoArr+'</b>, which clashes the fixed <b>Tai Sui '+ts.ramo+'</b> on L'+ts.pos+' (not defended by the day '+R.dayBranch+'): the trend of the Tai Sui\'s seat breaks → '+(ts.pos<=3?'below → market rises':'above → market falls')+'.';
       return ts.pos<=3 ? 'LONG' : 'SHORT';
     }});
@@ -2408,7 +2408,7 @@
       var debole = !c.timely(mob.el);
       if (!debole && !raduno) return null;
       var arr = R.mutante.ramoArr;
-      var tgt = R.linee.filter(function(l){ return !l.isMobile && CLASH[arr]===l.ramo; });
+      var tgt = R.linee.filter(function(l){ return !l.isMobile && CLASH[arr]===l.ramo && !difesoDalGiorno(R, l, arr); });
       if (tgt.length !== 1) return null;
       var t = tgt[0];
       var supp = function(el){ return WX[c.D]===el || GEN[WX[c.D]]===el || WX[c.Y]===el || GEN[WX[c.Y]]===el; };
@@ -2524,6 +2524,31 @@
       return 'LONG';
     }});
 
+
+  // LA LINEA COMBINATA COL GIORNO E' PROTETTA (Edu, 02/10/2026, EURJPY 01/10/2026 seme 178:
+  // "quando L5 si muove per diventare B Hai che clasha S non puo' farlo perche' S e' protetto dalla
+  // combinazione col giorno. Per clashare una linea gia' combinata col giorno servono due clash: il
+  // primo per rompere la combinazione e il secondo per fare il clash vero e proprio. Ne avevamo gia'
+  // discusso ma evidentemente non e' stato memorizzato" — era la sua lettura di USDJPY 30/04/2024 al
+  // §66, il 17/08, respinta allora dalla misura e mai cablata).
+  // Ritorna true se la linea T, combinata (六合) dal ramo del giorno, riceve un solo clash: allora il
+  // clash non passa. Il secondo clash, contato per ramo distinto come nelle regole del vuoto, puo'
+  // venire dal mese, dall'anno o dall'arrivo di un'incompatibile che gira insieme alla mobile
+  // (validato da Edu il 02/10). DIFESAGIORNO=off spegne.
+  function difesoDalGiorno(R, T, arr) {
+    if ((typeof process !== 'undefined' && process.env && process.env.DIFESAGIORNO === 'off') ||
+        (typeof localStorage !== 'undefined' && localStorage && localStorage.getItem('DIFESAGIORNO') === 'off')) return false;
+    if (!T || COMBINA[R.dayBranch] !== T.ramo) return false;
+    var cl = {}; if (arr && CLASH[arr] === T.ramo) cl[arr] = 1;
+    [R.monthBranch, R.yearBranch].forEach(function (b) { if (b && CLASH[b] === T.ramo) cl[b] = 1; });
+    (R.incompatibili || []).forEach(function (pp) {
+      if (!R.mutante || R.mutante.trigTrasf == null || ((pp <= 3) !== (R.mutante.pos <= 3))) return;
+      var q = pp <= 3 ? pp : pp - 3, a = (pp <= 3 ? NAJIA_IN : NAJIA_OUT)[R.mutante.trigTrasf][q - 1];
+      if (a && CLASH[a] === T.ramo) cl[a] = 1;
+    });
+    return Object.keys(cl).length < 2;
+  }
+
   LY_VIE.push({ id:'R32_68', sezione:'§68', nome:'Arrival clash read by the Yong Shen (who is hit, who hits)',
     dottrina:'Edu (17/08): "it depends" — the Yong Shen (spirit of the focus) tells how to read. Metaphor: a crowd gathered → you stop there (gathering: the qi stays); a runner crossing the street → you look where he goes (follow the arrival). When the arrival ONLY clashes one full fixed line (no combination): a clashed P gives way → seat OPPOSITE to the clashed line (35 cards, 74% opposite); a clashed G or C holds the blow → seat of the clashed line (G 13 cards 77%, C 25 cards 64%); otherwise, if the mobile is a W, the qi goes where the W goes → seat of the clashed line (33 cards, 61%). B/W clashed by a non-W mobile: no rule. Last in the thermometer.',
     test: function (R, ctx, state) {
@@ -2534,8 +2559,27 @@
       // Audit: ARRLIB=off ripristina il comportamento precedente.
       if (R.mutante.casoMut === 1 && !(typeof process !== 'undefined' && process.env && process.env.ARRLIB === 'off')) return null;
       var mob = R.linee[R.mutante.pos-1], arr = R.mutante.ramoArr;
-      var cT = R.linee.filter(function(l){ return !l.isMobile && CLASH[arr]===l.ramo && !l.vuoto; });
+      var cT = R.linee.filter(function(l){ return !l.isMobile && CLASH[arr]===l.ramo && !l.vuoto && !difesoDalGiorno(R, l, arr); });
       var kT = R.linee.filter(function(l){ return !l.isMobile && COMBINA[arr]===l.ramo && !l.vuoto; });
+      // La mobile il cui unico clash cade su una linea protetta dal giorno: il clash non passa e la
+      // mobile resta col carattere dell'arrivo (Edu, EURJPY 01/10/2026: "L5 si muove per diventare
+      // B Hai che clasha S ... non puo' farlo" -> SHORT). Validato da Edu il 02/10: il
+      // carattere dell'arrivo decide la sede della mobile (G/W la fanno vincere, P/B perdere).
+      if (!cT.length && !kT.length) {
+        var cDif = R.linee.filter(function(l){ return !l.isMobile && CLASH[arr]===l.ramo && !l.vuoto; });
+        if (cDif.length === 1 && difesoDalGiorno(R, cDif[0], arr)) {
+          var aEl = WX[arr], pEl = R.palEl;
+          var pa = aEl===pEl?'B': GEN[aEl]===pEl?'P': GEN[pEl]===aEl?'C': CTRL[aEl]===pEl?'G':'W';
+          var sM = mob.pos<=3 ? 'SHORT' : 'LONG', oM = sM==='LONG' ? 'SHORT' : 'LONG';
+          var dirA = (pa==='G'||pa==='W') ? sM : (pa==='P'||pa==='B') ? oM : null;
+          if (dirA) {
+            state.why = 'The mobile L'+mob.pos+' becomes <b>'+pa+' '+arr+'</b> to clash L'+cDif[0].pos+' <b>'+cDif[0].par+' '+cDif[0].ramo+
+              '</b>, but that line is combined with the day <b>'+R.dayBranch+'</b>: one clash breaks the combination, it takes a second to hit. '+
+              'The clash fails and the mobile stays a <b>'+pa+'</b> → '+dirA+'.';
+            return dirA;
+          }
+        }
+      }
       if (cT.length !== 1 || kT.length) return null;
       var T = cT[0], seatT = T.pos<=3 ? 'SHORT' : 'LONG', opp = seatT==='LONG' ? 'SHORT' : 'LONG';
       var lbl = 'L'+T.pos+' <b>'+T.par+' '+T.ramo+'</b>';
