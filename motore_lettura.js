@@ -802,6 +802,8 @@ function creaMotore(LYM) {
     // se' la dottrina intera (ferma incompatibile che gira, futuro comune, seconde, controllo indietro,
     // portate): se la carta arriva gia' girata dalla catena, la rilegge "da sola" per non applicare
     // il futuro comune due volte (USDJPY 06/11/2024, confermata da Edu, tornava storta).
+    // il movimento nascosto (暗動) va preso dalla carta girata con TUTTE le linee (Edu, 02/10/2026)
+    var anDongPieno = R.anDong;
     if (R.incompatibili && R.incompatibili.length && LYM && LYM.readManual && R.sup && R.inf) {
       var R0 = LYM.readManual(R.sup, R.inf, R.mutante.pos, R.dayBranch, R.monthBranch, R.yearBranch, R.dayStem, R.oraBranch, { incFuturo: false });
       if (R0 && !R0.error && R0.mutante) R = R0;
@@ -1405,20 +1407,30 @@ function creaMotore(LYM) {
     // (暗動): passa al ramo precedente senza cambiare polarita' (酉 -> 申) e, se e' un G/W,
     // porta via il vantaggio come ogni ritirata: la sua sede perde. Diverso dal clash della
     // BESTIA, che la fa avanzare (酉 -> 戌, gradino qui sotto). MLSVEGLIARETRO=off.
+    // CORRETTO il 02/10/2026 (Edu, EURJPY 30/09/2026 seme 178, carta Jie 60 -> Sui 17: "Il giorno clasha
+    // L3 Chou che si muove e arriva a Chen, quindi avanza"): la ferma clashata dal giorno arriva al ramo
+    // che ha nella SUA posizione dell'esagramma trasformato, fatto con tutte le linee che girano
+    // (R.anDong di liuyao.js). Se l'arrivo e' dello stesso elemento: avanza -> il G/W fa vincere la
+    // sua sede; retrocede -> la fa perdere (USDCHF 07/08/2024: 酉 -> 申, "L3 retrocede e fa perdere").
+    // Prima l'arrivo era sempre il ramo precedente: con 丑 non scattava. MLSVEGLIARETRO=off.
     if (!off('MLSVEGLIARETRO')) {
-      var RETROB = { '子':'亥','丑':'子','寅':'丑','卯':'寅','辰':'卯','巳':'辰','午':'巳','未':'午','申':'未','酉':'申','戌':'酉','亥':'戌' };
-      var svR = R.linee.filter(function (L) {
+      var AVZ = { '寅':'卯','巳':'午','申':'酉','亥':'子','丑':'辰','辰':'未','未':'戌','戌':'丑' };
+      var RTZ = {}; Object.keys(AVZ).forEach(function (k) { RTZ[AVZ[k]] = k; });
+      var cand = R.linee.filter(function (L) {
         if (L.isMobile || L.pos === pos || annullate[L.pos]) return false;
         if ((C.seconde || []).some(function (X) { return X.L.pos === L.pos; })) return false;
         if (!C.D || CLASH[C.D] !== L.ramo) return false;
         if (L.par !== 'G' && L.par !== 'W') return false;
-        return WX[RETROB[L.ramo]] === L.el;   // ritirata vera: stesso elemento, un passo indietro
-      })[0];
-      if (svR) {
+        var a = anDongPieno && anDongPieno[L.pos] && anDongPieno[L.pos].arr;
+        return !!a && (AVZ[L.ramo] === a || RTZ[L.ramo] === a);
+      });
+      var dirs = cand.map(function (L) { return AVZ[L.ramo] === anDongPieno[L.pos].arr ? sede(L.pos) : opposto(sede(L.pos)); });
+      if (cand.length && dirs.every(function (d) { return d === dirs[0]; })) {
+        var svR = cand[0], aR = anDongPieno[svR.pos].arr, av = AVZ[svR.ramo] === aR;
         racconto.push('L' + svR.pos + ' ' + PAR_IT[svR.par] + ' ' + svR.ramo + ' è ferma ma il giorno ' + C.D +
-          ' la clasha: si muove senza mutare e retrocede in ' + RETROB[svR.ramo] + ', quindi porta via il vantaggio e la sua sede perde');
-        return fine(opposto(sede(svR.pos)), 'la ferma clashata dal giorno retrocede: il ' + PAR_IT[svR.par] + ' porta via il vantaggio',
-                    'T0m la ferma clashata retrocede');
+          ' la clasha: si muove e arriva in ' + aR + ', ' + (av ? 'quindi avanza e la sua sede vince' : 'quindi retrocede, porta via il vantaggio e la sua sede perde'));
+        return fine(dirs[0], 'la ferma clashata dal giorno ' + (av ? 'avanza: il ' + PAR_IT[svR.par] + ' fa vincere la sua sede' : 'retrocede: il ' + PAR_IT[svR.par] + ' porta via il vantaggio'),
+                    av ? 'T0m la ferma clashata avanza' : 'T0m la ferma clashata retrocede');
       }
     }
 

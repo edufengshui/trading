@@ -236,6 +236,20 @@
       }
     })();
     var trigTrasf = trigFromBits(bb);
+    // L'ESAGRAMMA TRASFORMATO E' UNO SOLO, CON TUTTE LE LINEE CHE GIRANO (Edu, 02/10/2026, EURJPY
+    // 30/09/2026 seme 178, carta Jie 60 -> Sui 17: "Il giorno clasha L3 Chou che si muove e arriva a
+    // Chen, quindi avanza"). Anche l'incompatibile che sta nell'ALTRO trigramma rispetto alla mobile
+    // lo cambia: qui la mobile e' L4 e l'incompatibile L2 trasforma 兌 in 震, e L3 丑 arriva a 辰.
+    // Prima l'altro trigramma restava uguale. ALTROTRIG=off torna indietro.
+    var trigAltro = linea <= 3 ? supNum : infNum, trigAltroTrasf = trigAltro;
+    if (!(typeof process !== 'undefined' && process.env && process.env.ALTROTRIG === 'off')) {
+      var bo = [yangLine(trigAltro,1), yangLine(trigAltro,2), yangLine(trigAltro,3)], cambia = false;
+      incompatibili.forEach(function (pp) {
+        if ((pp <= 3) === (linea <= 3)) return;
+        var q = pp <= 3 ? pp : pp - 3; bo[q-1] = !bo[q-1]; cambia = true;
+      });
+      if (cambia) trigAltroTrasf = trigFromBits(bo);
+    }
     var ramoDep = ramoAl(linea);
     var ramoArr = (linea <= 3 ? NAJIA_IN : NAJIA_OUT)[trigTrasf][pInTrig-1];
     var depEl = WX[ramoDep], arrEl = WX[ramoArr];
@@ -522,9 +536,9 @@
     // Il trigramma trasformato del lato della mutante e' trigTrasf; l'altro lato resta uguale.
     var ramoTrasfA = function (p) {
       if (linea <= 3) {   // muta il trigramma inferiore
-        return p <= 3 ? NAJIA_IN[trigTrasf][p-1] : NAJIA_OUT[supNum][p-4];
+        return p <= 3 ? NAJIA_IN[trigTrasf][p-1] : NAJIA_OUT[trigAltroTrasf][p-4];
       } else {            // muta il trigramma superiore
-        return p <= 3 ? NAJIA_IN[infNum][p-1] : NAJIA_OUT[trigTrasf][p-4];
+        return p <= 3 ? NAJIA_IN[trigAltroTrasf][p-1] : NAJIA_OUT[trigTrasf][p-4];
       }
     };
     // linee in 暗動: piene, non vuote, clashate effettivamente (regola 1: giorno sempre,
@@ -1091,6 +1105,32 @@
     return false;
   }
 
+  // LA MOBILE CHE SI MUOVE NELLA PROPRIA AUTOPUNIZIONE (Edu, 02/10/2026, EURJPY 22/09/2026 seme 180:
+  // "L4 moves into self penalty" -> SHORT; la catena diceva LONG col possesso del §137). L'arrivo della
+  // mobile e' uno dei quattro rami che si puniscono da soli (自刑: 辰午酉亥) e il giorno e' lo stesso
+  // ramo: la mobile entra nella propria punizione e la sua squadra perde. Prima via della catena,
+  // prima del §137 (sulla carta di Edu lo batte). VIAAUTOPENA=off spegne.
+  LY_VIE.push({ id:'R79_AUTOPENA', sezione:'自刑', cablata:'2026-10-02',
+    nome:'The mobile moves into its own self-punishment (arrival = day, 辰午酉亥): the arrival dies, the line speaks with its character',
+    dottrina:'Edu, EURJPY 22/09/2026 s180 (02/10/2026). VIAAUTOPENA=off per disattivarla.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIAAUTOPENA==='off') return null;
+      if (typeof localStorage!=='undefined' && localStorage && localStorage.getItem('VIAAUTOPENA')==='off') return null;
+      var a = R.mutante && R.mutante.ramoArr;
+      if (!a || a !== R.dayBranch || !{'辰':1,'午':1,'酉':1,'亥':1}[a]) return null;
+      // Perimetro (carte di riferimento di Edu): con altre linee che girano decide spesso l'altra linea
+      // (GBPUSD 02/08/2022 "L2 G moves to reach S"; GBPUSD 05/03/2025): qui solo la mobile da sola.
+      if (R.incompatibili && R.incompatibili.length) return null;
+      // L'arrivo muore, la partenza resta viva e parla col suo carattere (Edu 30/08 AUDUSD 23/11/2022,
+      // 22/09 EURUSD 21/09/2026): G/W fa vincere la sua sede, P/B la fa perdere.
+      var mob = R.linee[R.mutante.pos-1], seat = mob.pos <= 3 ? 'SHORT' : 'LONG', opp = seat==='LONG' ? 'SHORT' : 'LONG';
+      var dir = (mob.par==='G'||mob.par==='W') ? seat : (mob.par==='P'||mob.par==='B') ? opp : null;
+      if (!dir) return null;
+      state.why = 'The mobile L'+mob.pos+' <b>'+mob.par+' '+R.mutante.ramoDep+'</b> moves into <b>'+a+'</b>, which is the day: '+a+a+
+        ' punishes itself (自刑). The arrival dies, the line stays <b>'+mob.par+'</b> and speaks with its character → '+dir+'.';
+      return dir;
+    }
+  });
   LY_VIE.push({ id:'R75_137', sezione:'§137', cablata:'2026-09-04',
     nome:'Possession of the Shi or the Ying by the date beasts: the seats duel with their new elements, the nourished one wins',
     dottrina:'Edu (04/09/2026), testo suo: "1. Se due bestie arrivano su una linea qualsiasi prendono possesso. 2. Se la bestia del mese arriva su una linea qualsiasi prende possesso. 3. Se un\'altra bestia arriva su una linea lavora con la linea. 4. Se quanto sopra capita con S e Y questo ha la precedenza su ogni altra cosa inclusa linea mobile." Possesso = la linea diventa i rami dei pilastri caduti (la loro bestia siede sulla linea). Precisazione di Edu (USDJPY 06/05/2026): il mese si impone solo se ha la stessa polarita\' della maggioranza degli altri steli; se e\' l\'unico yin o yang non prende possesso ma lavora soltanto. Dopo il possesso Shi e Ying si confrontano coi nuovi elementi: CHI VIENE GENERATO VINCE (EURJPY 13/06/2023: Shi posseduto dal Legno 寅卯, Ying posseduta dal mese 午 Fuoco, lo Shi genera la Ying -> LONG +120). Esclusioni date da Edu: Shi o Ying vuoti; linea nascosta sotto Shi o Ying; rami dei pilastri che clashano fra loro; penalita\' (刑) su Shi o Ying. Senza generazione: tace (il controllo, provato, peggiora: non si usa). La bestia singola che lavora con la linea NON da\' verso da sola (196 carte 46,9%) e non entra qui. Misura (possesso.js POLARITA=maggioranza, 138 carte): la Ying genera lo Shi -> vince lo Shi 55 carte 65,5% (vec 66,7 / rec 64,7); lo Shi genera la Ying -> vince la Ying 83 carte 54,2%; totale 58,7% (vec 58,5 / rec 58,8). Sostituisce le §135/§136 che contenevano aggiunte mie. VIA137=off per disattivarla.',
@@ -1207,7 +1247,38 @@
       state.why = 'Ladder effect (reading engine): ' + s.perche + ' → ' + s.dir + '.';
       return s.dir;
     }
-  });
+  })
+  // LA FERMA CLASHATA DAL GIORNO SI MUOVE (Edu, 17/09/2026 USDCHF 07/08/2024 seme 85: "quando una linea
+  // statica e' clashata dal giorno si muove alla riga successiva senza mutare... L3 retrocede e fa
+  // perdere"; 02/10/2026 EURJPY 30/09/2026 seme 178: "Qui il clash contro S riesce da L4 ma non serve a
+  // niente perche' L3 clashato da giorno e' una G che avanza. Short" — "Il giorno clasha L3 Chou che si
+  // muove e arriva a Chen, quindi avanza"). L'arrivo e' il ramo nella sua posizione dell'esagramma
+  // trasformato con tutte le linee che girano (R.anDong). G/W che avanza (stesso elemento, passo
+  // avanti) fa vincere la sua sede; che retrocede la fa perdere. Viene prima dell'azione della mobile
+  // ("non serve a niente"). Subito dopo l'effetto scala. VIAANDONG=off spegne.
+  LY_VIE.push({ id:'R78_ANDONG', sezione:'暗動', cablata:'2026-10-02',
+    nome:'A fixed G/W clashed by the day moves: advancing it makes its seat win, retreating it makes it lose',
+    dottrina:'Edu, USDCHF 07/08/2024 s85 (17/09) e EURJPY 30/09/2026 s178 (02/10). VIAANDONG=off per disattivarla.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIAANDONG==='off') return null;
+      if (typeof localStorage!=='undefined' && localStorage && localStorage.getItem('VIAANDONG')==='off') return null;
+      if (!R.anDong) return null;
+      var AVZ = { '寅':'卯','巳':'午','申':'酉','亥':'子','丑':'辰','辰':'未','未':'戌','戌':'丑' };
+      var RTZ = {}; Object.keys(AVZ).forEach(function (k) { RTZ[AVZ[k]] = k; });
+      var dirs = [], txt = [];
+      for (var p in R.anDong) {
+        var l = R.linee[p-1]; if (!l || l.isMobile || l.vuoto) continue;
+        if (CLASH[R.dayBranch] !== l.ramo) continue;
+        if (l.par !== 'G' && l.par !== 'W') continue;
+        var a = R.anDong[p].arr, seat = l.pos <= 3 ? 'SHORT' : 'LONG';
+        if (AVZ[l.ramo] === a) { dirs.push(seat); txt.push('L'+l.pos+' <b>'+l.par+' '+l.ramo+'</b> clashed by the day moves to <b>'+a+'</b> and ADVANCES → its seat wins'); }
+        else if (RTZ[l.ramo] === a) { var o = seat==='LONG'?'SHORT':'LONG'; dirs.push(o); txt.push('L'+l.pos+' <b>'+l.par+' '+l.ramo+'</b> clashed by the day moves to <b>'+a+'</b> and RETREATS → its seat loses'); }
+      }
+      if (!dirs.length || !dirs.every(function (d) { return d === dirs[0]; })) return null;
+      state.why = txt.join('; ') + ' → ' + dirs[0] + '.';
+      return dirs[0];
+    }
+  });;
 
   // §101 — BLOCCO DELLA MOBILE RICEVENTE UNTIMELY (Edu, 26/08/2026, da EURJPY 27/03/2025).
   //   Nel caso 6 (il giorno libera la mobile: la mobile parte ma l'arrivo e' clashato dal giorno,
@@ -3318,7 +3389,9 @@
   //  6 duello finale Shi/Ying
   // Attiva con ORDINE=dottrina (o opts.ordine='dottrina'); a parita' di fase resta l'ordine storico.
   var FASE = {
+    R79_AUTOPENA:0,
     R77_SCALA:0,
+    R78_ANDONG:0,
     R69_130:0, R68_129:0, R55_116:0, R52_112:0, R53_113:0, R57_118:0, R58_119:0, R40_98:0, R48_108:0, R47_107:0,
     B62:1, R51_111:1, R70_131:1, R39_99:1, R39_97:1, R27_63:1, R16_50f:1, R24_56:1,
     R54_114:2, R13_52:2, R59_120:2, R60_121:2, R54_115:2, R37_94:2, R66_127:2, R38_96:2, R26_59:2, R23_55:2,
