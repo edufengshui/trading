@@ -1111,23 +1111,83 @@
   // ramo: la mobile entra nella propria punizione e la sua squadra perde. Prima via della catena,
   // prima del §137 (sulla carta di Edu lo batte). VIAAUTOPENA=off spegne.
   LY_VIE.push({ id:'R79_AUTOPENA', sezione:'自刑', cablata:'2026-10-02',
-    nome:'The mobile moves into its own self-punishment (arrival = day, 辰午酉亥): the arrival dies, the line speaks with its character',
+    nome:'The arrival of the mobile is punished by the day (刑/自刑): the movement dies, the line speaks with its departure character',
     dottrina:'Edu, EURJPY 22/09/2026 s180 (02/10/2026). VIAAUTOPENA=off per disattivarla.',
     test: function (R, ctx, state) {
       if (typeof process!=='undefined' && process.env && process.env.VIAAUTOPENA==='off') return null;
       if (typeof localStorage!=='undefined' && localStorage && localStorage.getItem('VIAAUTOPENA')==='off') return null;
-      var a = R.mutante && R.mutante.ramoArr;
-      if (!a || a !== R.dayBranch || !{'辰':1,'午':1,'酉':1,'亥':1}[a]) return null;
-      // Perimetro (carte di riferimento di Edu): con altre linee che girano decide spesso l'altra linea
-      // (GBPUSD 02/08/2022 "L2 G moves to reach S"; GBPUSD 05/03/2025): qui solo la mobile da sola.
-      if (R.incompatibili && R.incompatibili.length) return null;
-      // L'arrivo muore, la partenza resta viva e parla col suo carattere (Edu 30/08 AUDUSD 23/11/2022,
-      // 22/09 EURUSD 21/09/2026): G/W fa vincere la sua sede, P/B la fa perdere.
+      // L'arrivo penalizzato dal giorno (XING o 自刑) muore e la linea resta col carattere di partenza.
+      // Perimetro dalle letture di Edu: la SEDE (Shi/Ying) che resta G o W fa vincere la sua squadra
+      // (EURUSD 21/09/2026 "arrivo di L1 penalizzato ma non influenza la partenza che rimane Wealth,
+      // quindi short", motore MLPENPARLA); la P resta P e fa perdere la sua squadra (EURJPY 22/09/2026
+      // "L4 moves into self penalty"). Il B penalizzato e la W non sede hanno altre letture (USDCHF
+      // 28/02/2022, GBPUSD 02/08/2022, EURJPY 17/07/2024): qui non si decide.
+      var a = R.mutante && R.mutante.ramoArr, D0 = R.dayBranch;
+      var XG = {'寅':'巳','巳':'申','申':'寅','丑':'戌','戌':'未','未':'丑','子':'卯','卯':'子'};
+      if (!a || !(XG[D0] === a || (D0 === a && {'辰':1,'午':1,'酉':1,'亥':1}[a]))) return null;
       var mob = R.linee[R.mutante.pos-1], seat = mob.pos <= 3 ? 'SHORT' : 'LONG', opp = seat==='LONG' ? 'SHORT' : 'LONG';
-      var dir = (mob.par==='G'||mob.par==='W') ? seat : (mob.par==='P'||mob.par==='B') ? opp : null;
+      var sedeM = (mob.pos === R.shi || mob.pos === R.ying);
+      var dir = (sedeM && (mob.par==='G'||mob.par==='W')) ? seat : (mob.par==='P') ? opp : null;
       if (!dir) return null;
-      state.why = 'The mobile L'+mob.pos+' <b>'+mob.par+' '+R.mutante.ramoDep+'</b> moves into <b>'+a+'</b>, which is the day: '+a+a+
-        ' punishes itself (自刑). The arrival dies, the line stays <b>'+mob.par+'</b> and speaks with its character → '+dir+'.';
+      state.why = 'The mobile L'+mob.pos+' <b>'+mob.par+' '+R.mutante.ramoDep+'</b> wants to reach <b>'+a+'</b>, but the day <b>'+D0+
+        '</b> punishes that arrival: the movement dies, the line stays <b>'+mob.par+'</b> and speaks with its character → '+dir+'.';
+      return dir;
+    }
+  });
+  // LA RITIRATA CHE SOPPRIME (Edu, 17/09/2026, USDCHF 16/09/2026 seme 81: "L3 retrocede e si combina con
+  // L1 Zi. La B arriva su W e la sopprime. Contemporaneamente L4 e' eccitata dal Clash del giorno. Long").
+  // Era cablata solo nel motore di lettura (MLRITIROSOPPRIME): la catena chiede la carta al motore e
+  // prende il suo verdetto quando la lettura chiude con questo gradino. VIARITIRO=off spegne.
+  LY_VIE.push({ id:'R80_RITIRO', sezione:'ritiro', cablata:'2026-10-04',
+    nome:'The retreating malus lands on a G/W and suppresses it (from the reading engine)',
+    dottrina:'Edu, USDCHF 16/09/2026 s81 (17/09/2026). VIARITIRO=off per disattivarla.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIARITIRO==='off') return null;
+      var v = letturaMotore(R, ctx); if (!v || !v.dir || v.gradino !== 'T1a la ritirata che sopprime') return null;
+      state.why = 'Retreat that suppresses (reading engine): ' + (v.perche || '') + ' → ' + v.dir + '.';
+      return v.dir;
+    }
+  });
+  // LA SEDE CHE SI MUOVE PER FARSI CONTROLLARE INDIETRO (Edu, 22/09/2026, USDCAD 21/09/2026 seme 139:
+  // "l'arrivo della mobile non e' vuoto perche' il giorno lo clasha, quindi la linea mobile funziona come
+  // al solito. L3 si muove per essere controllata indietro" -> LONG; la catena diceva SHORT col possesso
+  // del §137). La mobile e' lo Shi o la Ying, G o W, e il suo arrivo operativo la controlla indietro
+  // (回頭剋): la sede perde. Prima del §137, che su questa carta la scavalcava. VIACTRLIND=off spegne.
+  LY_VIE.push({ id:'R81_CTRLIND', sezione:'回頭剋', cablata:'2026-10-04',
+    nome:'The seat (Shi/Ying, G/W) moves to be controlled back by its own arrival: its side loses',
+    dottrina:'Edu, USDCAD 21/09/2026 s139 (22/09/2026). VIACTRLIND=off per disattivarla.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIACTRLIND==='off') return null;
+      var m = R.mutante; if (!m || m.casoMut !== 3 || m.movimentoNullo) return null;
+      var mob = R.linee[m.pos-1]; if (!(mob.pos === R.shi || mob.pos === R.ying)) return null;
+      if (mob.par !== 'G' && mob.par !== 'W') return null;
+      var dir = mob.pos <= 3 ? 'LONG' : 'SHORT';
+      state.why = 'The seat L'+mob.pos+' <b>'+mob.par+' '+m.ramoDep+'</b> moves to <b>'+m.ramoArr+'</b>, which controls it back (回頭剋): the '+mob.par+' is destroyed and its side loses → '+dir+'.';
+      return dir;
+    }
+  });
+  // IL GIORNO FORTE CHE CLASHA LA MOBILE G/W ALLA PARTENZA LA ELIMINA (Edu, 04/10/2026, NZDUSD 01/10/2026
+  // seme 56: "W viene clashato dal giorno = W viene eliminato quindi la propria squadra non puo' vincere";
+  // "il giorno Shen e' molto timely ed elimina W, ma se fosse stata un'altra stagione ... sarebbe rimasta la
+  // regola di prima"). Il giorno e' forte se il suo elemento e' 旺 o 相 rispetto all'elemento del mese o
+  // alla stagione (come timely() del motore di lettura). Solo G/W; P/B e giorno debole: regola di prima.
+  // Misura di Claude prima di cablare: G/W col giorno forte 62,7% su 51 carte. VIADANNOGIORNO=off spegne.
+  LY_VIE.push({ id:'R80_DANNOGIORNO', sezione:'日沖', cablata:'2026-10-04',
+    nome:'A timely day clashing a G/W mobile at its departure eliminates it: its side cannot win',
+    dottrina:'Edu, NZDUSD 01/10/2026 s56 (04/10/2026). VIADANNOGIORNO=off per disattivarla.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIADANNOGIORNO==='off') return null;
+      if (typeof localStorage!=='undefined' && localStorage && localStorage.getItem('VIADANNOGIORNO')==='off') return null;
+      var m = R.mutante; if (!m) return null;
+      if (CLASH[R.dayBranch] !== m.ramoDep) return null;
+      var mob = R.linee[m.pos-1]; if (mob.par !== 'G' && mob.par !== 'W') return null;
+      var dEl = WX[R.dayBranch], mEl = WX[R.monthBranch], sEl = SEASON[R.monthBranch];
+      var forte = function (st) { return st === '旺' || st === '相'; };
+      var earth = dEl === 'Earth' && ['辰','戌','丑','未'].indexOf(R.monthBranch) >= 0;
+      if (!(earth || forte(stagione(dEl, mEl)) || forte(stagione(dEl, sEl)))) return null;
+      var dir = mob.pos <= 3 ? 'LONG' : 'SHORT';
+      state.why = 'The day <b>'+R.dayBranch+'</b>, timely in the month, clashes the mobile L'+mob.pos+' <b>'+mob.par+' '+m.ramoDep+
+        '</b> at its departure: the line is damaged, the '+mob.par+' is eliminated and its side cannot win → '+dir+'.';
       return dir;
     }
   });
@@ -1213,6 +1273,27 @@
   // se la sua lettura passa per l'effetto scala, prende quel verdetto. Subito dopo §137 e §130.
   // MISURA al cablaggio (23/09/2026): 226 carte in cui il motore vede la scala, catena 49,6%,
   // motore 61,5%. VIASCALA=off spegne.
+  // la lettura completa del motore di lettura, una volta per carta (serve alle vie che prendono
+  // dal motore le regole di Edu cablate li': effetto scala, ritirata che sopprime)
+  function letturaMotore(R, ctx) {
+    if (!R || R.error || !R.mutante) return null;
+    if (R._lett52 !== undefined) return R._lett52;
+    var cm = null, v = null;
+    try {
+      if (typeof creaMotore === 'function') cm = creaMotore;
+      else if (typeof require === 'function') cm = require('./motore_lettura.js').creaMotore;
+    } catch (e) { cm = null; }
+    if (cm) {
+      try {
+        var yb = (ctx && ctx.yearBranch) || R.yearBranch, hb = R.oraBranch || (ctx && ctx.oraBranch);
+        v = cm(API).leggi(R, { yearStem: ctx && ctx.yearStem, monthStem: ctx && ctx.monthStem, hourStem: ctx && ctx.hourStem,
+          pilastri: [ { nome: 'anno', stelo: ctx && ctx.yearStem, ramo: yb }, { nome: 'mese', stelo: ctx && ctx.monthStem, ramo: R.monthBranch },
+                      { nome: 'giorno', stelo: R.dayStem, ramo: R.dayBranch }, { nome: 'ora', stelo: ctx && ctx.hourStem, ramo: hb } ] });
+      } catch (e) { v = null; }
+    }
+    try { Object.defineProperty(R, '_lett52', { value: v, enumerable: false, writable: true }); } catch (e) {}
+    return v;
+  }
   function letturaConScala(R, ctx) {
     if (!R || R.error || !R.mutante) return null;
     if (R._scala52 !== undefined) return R._scala52;
@@ -3390,6 +3471,9 @@
   // Attiva con ORDINE=dottrina (o opts.ordine='dottrina'); a parita' di fase resta l'ordine storico.
   var FASE = {
     R79_AUTOPENA:0,
+    R80_DANNOGIORNO:0,
+    R80_RITIRO:0,
+    R81_CTRLIND:0,
     R77_SCALA:0,
     R78_ANDONG:0,
     R69_130:0, R68_129:0, R55_116:0, R52_112:0, R53_113:0, R57_118:0, R58_119:0, R40_98:0, R48_108:0, R47_107:0,

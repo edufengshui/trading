@@ -1203,6 +1203,17 @@ function creaMotore(LYM) {
         return b && COMBINA[b] === dep;
       }).length;
       var presaInDue = prese > 1;
+      // IL GIORNO FORTE CHE CLASHA LA MOBILE G/W ALLA PARTENZA LA ELIMINA (Edu, 04/10/2026, NZDUSD 01/10/2026
+      // seme 56: "W viene clashato dal giorno = W viene eliminato quindi la propria squadra non puo' vincere";
+      // "il giorno Shen e' molto timely ed elimina W, ma se fosse stata un'altra stagione questo non sarebbe
+      // successo e sarebbe rimasta la regola di prima"). Solo G/W e solo col giorno timely nel mese; P/B e
+      // giorno debole: resta la regola di prima. MLDANNOGIORNO=off spegne.
+      if (fermaPerPartenza && !presaInDue && !off('MLDANNOGIORNO') && !mobileAnnullata && C.D && CLASH[C.D] === dep &&
+          (mob.par === 'G' || mob.par === 'W') && C.timely(WX[C.D])) {
+        racconto.push('il giorno ' + C.D + ', forte nel mese, clasha alla partenza la mobile L' + pos + ' ' + PAR_IT[mob.par] + ' ' + dep +
+          ': la linea è danneggiata, il ' + PAR_IT[mob.par] + ' è eliminato e la sua squadra non può vincere');
+        return fine(opposto(sede(pos)), 'il giorno forte elimina il ' + PAR_IT[mob.par] + ' clashato alla partenza', 'T0m il giorno forte elimina la mobile');
+      }
       if (fermaPerPartenza && !presaInDue && !off('MLFERMAPARLA') && !mobileAnnullata) {
         var dFP = dirDelCarattere(mob.par, pos);
         if (dFP) {
@@ -2539,6 +2550,10 @@ function creaMotore(LYM) {
       if (!off('MLCLASHNORITIRO') && !incomp && C.D && CLASH[C.D] === dep &&
           (statoMob === 'fermaAttiva' || statoMob === 'fermaInusabile')) {
         var vinceQui = (mob.par === 'G' || mob.par === 'W');
+        if (vinceQui && !off('MLDANNOGIORNO') && C.timely(WX[C.D])) {   // Edu 04/10/2026: il giorno forte la elimina
+          racconto.push('L' + pos + ' è clashata alla partenza dal giorno ' + C.D + ', forte nel mese: il ' + PAR_IT[mob.par] + ' è eliminato e la sua squadra non può vincere');
+          return fine(opposto(sede(pos)), 'il giorno forte elimina il ' + PAR_IT[mob.par] + ' clashato alla partenza', 'T1a il giorno forte elimina la mobile');
+        }
         racconto.push('L' + pos + ' e\' clashata alla partenza dal giorno ' + C.D + ': essendo gia\' mobile non ' +
           'puo\' piu\' muoversi, quindi non si ritira. Resta dov\'e\' col suo ' + PAR_IT[mob.par] +
           ', che fa ' + (vinceQui ? 'vincere' : 'perdere') + ' la propria squadra');
