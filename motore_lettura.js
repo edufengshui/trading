@@ -1209,7 +1209,7 @@ function creaMotore(LYM) {
       // successo e sarebbe rimasta la regola di prima"). Solo G/W e solo col giorno timely nel mese; P/B e
       // giorno debole: resta la regola di prima. MLDANNOGIORNO=off spegne.
       if (fermaPerPartenza && !presaInDue && !off('MLDANNOGIORNO') && !mobileAnnullata && C.D && CLASH[C.D] === dep &&
-          (mob.par === 'G' || mob.par === 'W') && C.timely(WX[C.D])) {
+          (mob.par === 'G' || mob.par === 'W') && C.timely(WX[C.D]) && !C.timely(WX[dep])) {   // Edu 05/10: la mobile timely non si elimina
         racconto.push('il giorno ' + C.D + ', forte nel mese, clasha alla partenza la mobile L' + pos + ' ' + PAR_IT[mob.par] + ' ' + dep +
           ': la linea è danneggiata, il ' + PAR_IT[mob.par] + ' è eliminato e la sua squadra non può vincere');
         return fine(opposto(sede(pos)), 'il giorno forte elimina il ' + PAR_IT[mob.par] + ' clashato alla partenza', 'T0m il giorno forte elimina la mobile');
@@ -2550,7 +2550,7 @@ function creaMotore(LYM) {
       if (!off('MLCLASHNORITIRO') && !incomp && C.D && CLASH[C.D] === dep &&
           (statoMob === 'fermaAttiva' || statoMob === 'fermaInusabile')) {
         var vinceQui = (mob.par === 'G' || mob.par === 'W');
-        if (vinceQui && !off('MLDANNOGIORNO') && C.timely(WX[C.D])) {   // Edu 04/10/2026: il giorno forte la elimina
+        if (vinceQui && !off('MLDANNOGIORNO') && C.timely(WX[C.D]) && !C.timely(WX[dep])) {   // Edu 05/10: la mobile timely non si elimina   // Edu 04/10/2026: il giorno forte la elimina
           racconto.push('L' + pos + ' è clashata alla partenza dal giorno ' + C.D + ', forte nel mese: il ' + PAR_IT[mob.par] + ' è eliminato e la sua squadra non può vincere');
           return fine(opposto(sede(pos)), 'il giorno forte elimina il ' + PAR_IT[mob.par] + ' clashato alla partenza', 'T1a il giorno forte elimina la mobile');
         }

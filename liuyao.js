@@ -1171,7 +1171,8 @@
   // "il giorno Shen e' molto timely ed elimina W, ma se fosse stata un'altra stagione ... sarebbe rimasta la
   // regola di prima"). Il giorno e' forte se il suo elemento e' 旺 o 相 rispetto all'elemento del mese o
   // alla stagione (come timely() del motore di lettura). Solo G/W; P/B e giorno debole: regola di prima.
-  // Misura di Claude prima di cablare: G/W col giorno forte 62,7% su 51 carte. VIADANNOGIORNO=off spegne.
+  // Misura di Claude prima di cablare: G/W col giorno forte 62,7% su 51 carte; 05/10: solo mobile non timely
+  // (38 carte, 63%), la mobile timely resta (Edu, NZDUSD 16/06/2025). VIADANNOGIORNO=off spegne.
   LY_VIE.push({ id:'R80_DANNOGIORNO', sezione:'日沖', cablata:'2026-10-04',
     nome:'A timely day clashing a G/W mobile at its departure eliminates it: its side cannot win',
     dottrina:'Edu, NZDUSD 01/10/2026 s56 (04/10/2026). VIADANNOGIORNO=off per disattivarla.',
@@ -1185,6 +1186,12 @@
       var forte = function (st) { return st === '旺' || st === '相'; };
       var earth = dEl === 'Earth' && ['辰','戌','丑','未'].indexOf(R.monthBranch) >= 0;
       if (!(earth || forte(stagione(dEl, mEl)) || forte(stagione(dEl, sEl)))) return null;
+      // Edu, 05/10/2026 (NZDUSD 16/06/2025 s60): "Siamo nel mese Wu, il fuoco e' forte e quindi la terra e'
+      // timely. W con Xu e' quindi timely" — la mobile che e' timely lei stessa non viene eliminata: resta la
+      // regola di prima. Si elimina solo la G/W fuori stagione.
+      var lEl = WX[m.ramoDep];
+      var lEarth = lEl === 'Earth' && ['辰','戌','丑','未'].indexOf(R.monthBranch) >= 0;
+      if (lEarth || forte(stagione(lEl, mEl)) || forte(stagione(lEl, sEl))) return null;
       var dir = mob.pos <= 3 ? 'LONG' : 'SHORT';
       state.why = 'The day <b>'+R.dayBranch+'</b>, timely in the month, clashes the mobile L'+mob.pos+' <b>'+mob.par+' '+m.ramoDep+
         '</b> at its departure: the line is damaged, the '+mob.par+' is eliminated and its side cannot win → '+dir+'.';
