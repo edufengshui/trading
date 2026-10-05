@@ -1216,6 +1216,23 @@
       if (!a || !(XG[D0] === a || (D0 === a && {'辰':1,'午':1,'酉':1,'亥':1}[a]))) return null;
       var mob = R.linee[R.mutante.pos-1], seat = mob.pos <= 3 ? 'SHORT' : 'LONG', opp = seat==='LONG' ? 'SHORT' : 'LONG';
       var sedeM = (mob.pos === R.shi || mob.pos === R.ying);
+      // Edu, 05/10/2026 (S53, EURJPY 26/11/2025 s180, gemella della carta d'origine nel mese 亥): "L'arrivo di
+      // L4 e' penalizzato quindi la linea e' inutile per cui rimane lo scontro Y vs S. S e' combinato dal giorno
+      // e non puo' partecipare allo scontro e vince Y" -> LONG (+77). Sulla carta d'origine (mese 酉) la P 申 era
+      // di stagione e restava a parlare; qui e' fuori stagione e la linea e' inutile. Perimetro DI CLAUDE che
+      // tiene insieme le due letture: la P resta a parlare solo se e' timely; altrimenti Shi contro Ying, e se
+      // una sola sede e' combinata dal giorno non partecipa e vince l'altra (altrimenti la catena prosegue).
+      // VIAAUTOPENAINUTILE=off torna alla forma di prima.
+      if (mob.par === 'P' && !timely83(R, mob.el) &&
+          !(typeof process!=='undefined' && process.env && process.env.VIAAUTOPENAINUTILE==='off')) {
+        var S0 = R.linee[R.shi-1], Y0 = R.linee[R.ying-1];
+        var sC = S0 && COMBINA[D0] === S0.ramo, yC = Y0 && COMBINA[D0] === Y0.ramo;
+        if (sC === yC) return null;
+        var vinc = sC ? Y0 : S0, dirU = vinc.pos <= 3 ? 'SHORT' : 'LONG';
+        state.why = 'The mobile L'+mob.pos+' <b>P '+R.mutante.ramoDep+'</b> wants to reach <b>'+a+'</b>, punished by the day <b>'+D0+
+          '</b>: the line is useless. Shi against Ying: the '+(sC?'Shi':'Ying')+' is combined by the day and cannot take part, the '+(sC?'Ying':'Shi')+' wins → '+dirU+'.';
+        return dirU;
+      }
       var dir = (sedeM && (mob.par==='G'||mob.par==='W')) ? seat : (mob.par==='P') ? opp : null;
       if (!dir) return null;
       state.why = 'The mobile L'+mob.pos+' <b>'+mob.par+' '+R.mutante.ramoDep+'</b> wants to reach <b>'+a+'</b>, but the day <b>'+D0+
