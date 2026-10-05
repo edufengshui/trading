@@ -22,7 +22,7 @@
  * principio, non si aggiunge un gradino.
  *
  * ORDINE DELLE TRACCE (ogni gradino e' dietro interruttore, =off lo spegne):
- *   T0   guerra fra titani                MLGUERRA   due pilastri sulla stessa linea in
+ *   T0   guerra fra titani (SPENTA dal 05/10/2026, MLGUERRA=on) due pilastri sulla stessa linea in
  *                                                    clash, o in penalita' se sono solo due
  *   T0b  la bestia clasha la mobile       MLTAISUI   la blocca: resta se' stessa e parla
  *   T0e  la seconda mobile impiglia/blocca DUEMUTPART=on (spento: costa)
@@ -574,7 +574,11 @@ function creaMotore(LYM) {
   function guerre(R, C, racconto) {
     var annullate = {}, titani = {};
     annullate.__titani = titani;
-    if (off('MLGUERRA')) return annullate;
+    // Edu, 05/10/2026 (S53, EURJPY 26/11/2025): "Tenderei a scartare la guerra fra le due bestie. L'idea
+    // piuttosto sarebbe che le bestie si usano per facilitare una soluzione in un senso o in un altro quando
+    // i mezzi d'interpretazione soliti non forniscono un risultato chiaro." La guerra fra titani e' SPENTA
+    // per default; MLGUERRA=on la riaccende.
+    if (ENV.MLGUERRA !== 'on') return annullate;
     for (var pos in C.suLinea) {
       var lista = C.suLinea[pos];
       if (!lista || lista.length < 2) continue;
