@@ -796,6 +796,14 @@ function creaMotore(LYM) {
     return e >= 3 ? 'molta' : e >= 1 ? 'normale' : 'poca';
   }
 
+  // S53: lettura senza la combinazione totale (per il blocco differito) e gradini che NON sono movimento
+  // delle linee (bestie — anche la sede in movimento presa dalle bestie, T0y —, confronto fra le sedi,
+  // linea piu' forte, esagramma futuro, silenzio).
+  var _senzaComb = false;
+  function movimentoNetto(g) {
+    g = String(g || '');
+    return !/^T1 |^T1b|^T4b|^T7|^T8|^T9|^T10|^T0i|^T0y|sostituzione|possesso|bestia|bestie|più forte|tace/.test(g);
+  }
   function leggi(R, ctx) {
     if (!R || R.error || !R.mutante) return { dir: null, perche: 'carta non leggibile', gradino: 'tace', racconto: '' };
     // 21/09/2026: le incompatibili sono ACCESE anche in liuyao.js (la catena). Il motore applica da
@@ -888,7 +896,27 @@ function creaMotore(LYM) {
     // LA COMBINAZIONE TOTALE DEL TRIGRAMMA (Edu, 05/10/2026, USDCAD 14/08/2026 seme 139): le tre coppie
     // linea/arrivo sono tutte 六合 (乾 午申戌 -> 巽 未巳卯) e almeno una linea si muove -> il trigramma e'
     // bloccato e non puo' vincere. Simmetrica del clash totale (T0z).
-    if (!off('MLCOMBTOT') && R.mutante && R.mutante.futuro) {
+    // Edu, 05/10/2026 (S53, USDCAD 18/03/2020 s142): "il blocco del trigramma agisce negativamente solo
+    // quando non ci sono movimenti di linee che sono piu' netti nel fornire una risposta". Il blocco si
+    // applica solo se la lettura SENZA il blocco non conclude col movimento delle linee (cioe' finisce nelle
+    // bestie, nel confronto fra le sedi, nella linea piu' forte o nel silenzio). MLCOMBDIFFERITO=off torna
+    // al blocco immediato.
+    if (!off('MLCOMBTOT') && !_senzaComb && R.mutante && R.mutante.futuro && !off('MLCOMBDIFFERITO')) {
+      var FcD = R.mutante.futuro, mosseD = [pos].concat(R.incompatibili || []), bloccD = 0;
+      [[1,2,3],[4,5,6]].forEach(function (tr) {
+        if (!tr.some(function (q) { return mosseD.indexOf(q) >= 0; })) return;
+        if (tr.every(function (q) { return COMBINA[R.linee[q-1].ramo] === FcD[q-1]; })) bloccD++;
+      });
+      if (bloccD === 1) {
+        _senzaComb = true;
+        var vSenza; try { vSenza = leggi(R, ctx); } finally { _senzaComb = false; }
+        if (vSenza && vSenza.dir && movimentoNetto(vSenza.gradino)) {
+          vSenza.racconto = '0. il trigramma ' + (bloccD ? '' : '') + 'e il suo trasformato sono in combinazione totale, ma il movimento delle linee dà una risposta più netta: il blocco non agisce\n' + vSenza.racconto;
+          return vSenza;
+        }
+      }
+    }
+    if (!off('MLCOMBTOT') && !_senzaComb && R.mutante && R.mutante.futuro) {
       var Fc = R.mutante.futuro, mosseC = [pos].concat(R.incompatibili || []), blocc = [];
       [[1,2,3],[4,5,6]].forEach(function (tr) {
         if (!tr.some(function (q) { return mosseC.indexOf(q) >= 0; })) return;
@@ -1599,6 +1627,30 @@ function creaMotore(LYM) {
       // Edu, 16/09/2026: "Puoi accenderla. E' frequente che in una lettura ci siano piu' motivi
       // attraverso cui si ottiene un risultato positivo" -> basta UNA portata (MLPORTATE=due torna
       // al perimetro stretto della carta).
+      // Edu, 05/10/2026 (S53, USDCAD 18/03/2020 s142): "L3 porta la B su L2, che fa perdere la propria
+      // squadra" — l'incompatibile P/B si muove e il suo arrivo combina con una ferma del proprio trigramma:
+      // le porta il proprio carattere di partenza (come "chi arriva porta il carattere di partenza",
+      // EURJPY 28/04/2022) e quel trigramma perde. Perimetro di Claude: solo P/B, solo dentro il proprio
+      // trigramma, solo se nessuna vincente e' portata, e mai su un bersaglio clashato dal giorno (letture di Edu del 24/08
+      // su GBPUSD 07/04/2025 e AUDUSD 31/01/2024: il bersaglio colpito dal giorno impedisce il salto). MLPORTAMALUS=off spegne.
+      if (!portate.length && !off('MLPORTAMALUS')) {
+        var malus = [];
+        (C.seconde || []).forEach(function (X) {
+          if (!X.arr || X.vuota || annullate[X.L.pos]) return;
+          if (X.L.par !== 'P' && X.L.par !== 'B') return;
+          var tgM = R.linee.filter(function (L) { return L.pos !== X.L.pos && L.pos !== pos && !L.isMobile &&
+            (L.pos <= 3) === (X.L.pos <= 3) && COMBINA[X.arr] === L.ramo &&
+            !(C.D && CLASH[C.D] === L.ramo); })[0];   // il bersaglio clashato dal giorno non si lascia combinare (GBPUSD 07/04/2025, AUDUSD 31/01/2024)
+          if (!tgM) return;
+          racconto.push('L' + X.L.pos + ' è incompatibile e si muove in ' + X.arr + ', che combina con ' + tgM.ramo + ' di L' + tgM.pos +
+            ': porta il ' + PAR_IT[X.L.par] + ' su L' + tgM.pos + ', che fa perdere la propria squadra');
+          malus.push(tgM.pos <= 3 ? 'basso' : 'alto');
+        });
+        if (malus.length && malus.every(function (x) { return x === malus[0]; })) {
+          return fine(malus[0] === 'alto' ? 'SHORT' : 'LONG', 'l\'incompatibile porta il suo malus nel trigramma ' + malus[0] + ', che perde',
+                      'T0x il malus portato');
+        }
+      }
       var minPortate = ENV.MLPORTATE === 'due' ? 2 : 1;
       if (portate.length >= minPortate) {
         var lati = {}; portate.forEach(function (P) { lati[P.pos <= 3 ? 'basso' : 'alto'] = true; });

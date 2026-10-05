@@ -1182,38 +1182,18 @@
     test: function (R, ctx, state) {
       if (typeof process!=='undefined' && process.env && process.env.VIACOMBTOT==='off') return null;
       if (typeof localStorage!=='undefined' && localStorage && localStorage.getItem('VIACOMBTOT')==='off') return null;
+      // S53 (Edu, 05/10/2026, USDCAD 18/03/2020): "il blocco del trigramma agisce negativamente solo quando
+      // non ci sono movimenti di linee che sono piu' netti nel fornire una risposta". La catena prende il
+      // verdetto del motore di lettura solo quando la lettura chiude col blocco (gradino T0b), che li'
+      // e' differito dopo il movimento delle linee e contiene il caso del basso messo peggio
+      // (USDJPY 06/09/2022: decide la linea piu' forte). Altrimenti la catena prosegue.
       var m = R.mutante; if (!m || !m.futuro) return null;
-      var mosse = [m.pos].concat(R.incompatibili || []), bl = [];
-      [[1,2,3],[4,5,6]].forEach(function (tr) {
-        if (!tr.some(function (q) { return mosse.indexOf(q) >= 0; })) return;
-        if (tr.every(function (q) { return COMBINA[R.linee[q-1].ramo] === m.futuro[q-1]; })) bl.push(tr[0]);
-      });
-      if (bl.length !== 1) return null;
-      var alto = bl[0] === 4, dir = alto ? 'SHORT' : 'LONG';
-      var tr = alto ? [4,5,6] : [1,2,3];
-      // Edu, 05/10/2026 (S53, USDJPY 06/09/2022 s140): "Se il trigramma superiore e' completamente legato
-      // quello inferiore dovrebbe vincere ma L3 e' untimely e clashata e Y e' vuoto quindi il trigramma
-      // inferiore sta messo peggio. A questo punto chi decide e' la linea piu' forte dell'esagramma" (L5 G 申
-      // sul mese -> LONG). Perimetro approvato ("Va bene cosi'"): l'inferiore sta peggio se la sua sede e'
-      // vuota oppure se una sua G/W clashata dal giorno e' untimely (G/W: perimetro di Claude da EURJPY 17/07/2024 s172, dove
-      // la linea clashata e' una P e il basso vince per la lettura di Edu). Solo col trigramma ALTO legato (la
-      // carta di Edu). Senza una piu' forte netta resta il blocco. VIACOMBPEGGIO=off spegne.
-      if (alto && !(typeof process!=='undefined' && process.env && process.env.VIACOMBPEGGIO==='off')) {
-        var sedeB = R.shi <= 3 ? R.linee[R.shi-1] : R.linee[R.ying-1];
-        var peggio = (sedeB && vuota83(R, sedeB)) || [1,2,3].some(function (q) {
-          var L = R.linee[q-1]; return CLASH[R.dayBranch] === L.ramo && (L.par === 'G' || L.par === 'W') && !timely83(R, L.el); });
-        var Lf = peggio ? piuForte83(R, ctx) : null;
-        if (Lf) {
-          var dirF = Lf.pos <= 3 ? 'SHORT' : 'LONG';
-          state.why = 'The upper trigram is in TOTAL COMBINATION and blocked, but the lower one is worse off (empty seat or untimely line clashed by the day): the strongest line of the hexagram decides, L'+Lf.pos+' <b>'+Lf.par+' '+Lf.ramo+'</b> → '+dirF+'.';
-          return dirF;
-        }
-      }
-      state.why = 'The '+(alto?'upper':'lower')+' trigram <b>'+tr.map(function(q){return R.linee[q-1].ramo;}).join('')+'</b> and its transformed self <b>'+tr.map(function(q){return m.futuro[q-1];}).join('')+
-        '</b> are in TOTAL COMBINATION (六合 on all three pairs) and a line of it moves: the whole trigram is blocked and cannot win → '+dir+'.';
-      return dir;
+      var v = letturaMotore(R, ctx); if (!v || !v.dir || v.gradino !== 'T0b la combinazione totale') return null;
+      state.why = 'Total combination of a trigram with its transformed self (reading engine): ' + (v.perche || '') + ' → ' + v.dir + '.';
+      return v.dir;
     }
   });
+
   // LA MOBILE CHE SI MUOVE NELLA PROPRIA AUTOPUNIZIONE (Edu, 02/10/2026, EURJPY 22/09/2026 seme 180:
   // "L4 moves into self penalty" -> SHORT; la catena diceva LONG col possesso del §137). L'arrivo della
   // mobile e' uno dei quattro rami che si puniscono da soli (自刑: 辰午酉亥) e il giorno e' lo stesso
