@@ -1100,6 +1100,7 @@ function creaMotore(LYM) {
     // dietro a una condizione poi cambiata ed era falso. MLSTATOMOV=off per spegnerlo.
     var statoMob = 'muove';   // muove | invalidata | fermaAttiva | fermaInusabile | arrivoAnnullato
     var fermaPerPartenza = false;
+    var pInutile = false;   // S53: la P fuori stagione col arrivo punito dal giorno e' inutile
     if (!off('MLSTATOMOV')) {
       // Edu, 16/09/2026 (USDCHF 28/02/2022 seme 92): "se la linea e' super-timely e avanza lo fa
       // lo stesso!" -> la linea in stagione, seduta sul ramo del mese o dell'anno, che AVANZA
@@ -1152,6 +1153,7 @@ function creaMotore(LYM) {
           // Perimetro: la SEDE (Shi o Ying) che resta G o W; il B/P penalizzato ha le sue letture (USDCHF
           // 28/02/2022, GBPUSD 02/08/2022) e la W non sede lascia decidere la sede (EURJPY 10/08/2023).
           if (Lpos === pos && !off('MLPENPARLA') && (pos === R.shi || pos === R.ying) && (mob.par === 'G' || mob.par === 'W')) fermaPerPartenza = true;
+          if (Lpos === pos && mob.par === 'P' && !C.timely(mob.el)) pInutile = true;
           return 'fermaAttiva';
         }
         // USDJPY 02/10/2024 (Edu: "Effetto scala. L3 si muove in G 午, L2 continua il movimento e
@@ -1301,6 +1303,21 @@ function creaMotore(LYM) {
           racconto.push('la mobile L' + pos + ' (' + PAR_IT[mob.par] + ' ' + dep + ') non si muove ma resta dov\'è, attiva: parla col proprio carattere');
           return fine(dFP, 'la mobile bloccata alla partenza resta dov\'è e parla da ' + PAR_IT[mob.par],
                       'T0m la mobile bloccata parla col proprio carattere');
+        }
+      }
+      // Edu, 05/10/2026 (S53, EURJPY 26/11/2025 s180): "L'arrivo di L4 e' penalizzato quindi la linea e' inutile
+      // per cui rimane lo scontro Y vs S. S e' combinato dal giorno e non puo' partecipare allo scontro e vince
+      // Y". Come R79_AUTOPENA nella catena: la P fuori stagione col arrivo punito dal giorno e' inutile; se una
+      // sola sede e' combinata dal giorno non partecipa e vince l'altra (perimetro di Claude: la P di stagione
+      // resta a parlare, EURJPY 22/09/2026). Viene prima delle bestie. MLAUTOPENAINUTILE=off spegne.
+      if (pInutile && !off('MLAUTOPENAINUTILE') && !mobileAnnullata && C.D) {
+        var S9 = R.linee[R.shi - 1], Y9 = R.linee[R.ying - 1];
+        var sC9 = COMBINA[C.D] === S9.ramo, yC9 = COMBINA[C.D] === Y9.ramo;
+        if (sC9 !== yC9) {
+          var vin9 = sC9 ? R.ying : R.shi;
+          racconto.push('la mobile L' + pos + ' (P ' + dep + ', fuori stagione) ha l\'arrivo punito dal giorno: la linea è inutile, resta lo scontro fra Shi e Ying');
+          racconto.push('la ' + (sC9 ? 'Shi' : 'Ying') + ' è combinata dal giorno ' + C.D + ' e non partecipa: vince la ' + (sC9 ? 'Ying' : 'Shi'));
+          return fine(sede(vin9), 'la P inutile lascia lo scontro alle sedi: quella combinata dal giorno non partecipa', 'T0m la P inutile, scontro fra le sedi');
         }
       }
       if (ENV.MLSTATOMOVFINE === 'on' && mobileAnnullata && (pos === R.shi || pos === R.ying) &&
