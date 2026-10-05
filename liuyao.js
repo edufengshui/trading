@@ -1107,6 +1107,69 @@
     return false;
   }
 
+  // Aiuti per R82/R83 (S53): stagione di un elemento come timely() del motore di lettura (mese e stagione,
+  // la Terra e' di stagione nei mesi di Terra), vuoto della linea ferma, linea piu' forte dell'esagramma
+  // (stessi pesi del gradino T9 del motore di lettura: stagione, ramo del mese +2, del giorno +1, dell'anno
+  // +1, +1 per ogni ramo della data che la clasha; serve un massimo netto).
+  var PESO_ST83 = { '旺': 2, '相': 1, '休': 0, '囚': -1, '死': -2 };
+  function stag83(R, el) {
+    if (!el) return null;
+    if (el === 'Earth' && ['辰','戌','丑','未'].indexOf(R.monthBranch) >= 0) return '旺';
+    var a = stagione(el, WX[R.monthBranch]), b = stagione(el, SEASON[R.monthBranch]);
+    return (PESO_ST83[a] || 0) >= (PESO_ST83[b] || 0) ? a : b;
+  }
+  function timely83(R, el) { var s = stag83(R, el); return s === '旺' || s === '相'; }
+  function vuota83(R, L) { return !!L.vuoto && !L.isMobile && (R.incompatibili || []).indexOf(L.pos) < 0; }
+  function piuForte83(R, ctx) {
+    var yb = (ctx && ctx.yearBranch) || R.yearBranch, hb = R.oraBranch || (ctx && ctx.oraBranch);
+    var data = [R.dayBranch, R.monthBranch, yb, hb].filter(Boolean);
+    var punt = function (L) {
+      var f = PESO_ST83[stag83(R, L.el)] || 0;
+      if (L.ramo === R.monthBranch) f += 2;
+      if (L.ramo === R.dayBranch) f += 1;
+      if (yb && L.ramo === yb) f += 1;
+      data.forEach(function (r) { if (CLASH[r] === L.ramo) f += 1; });
+      return f;
+    };
+    var cand = R.linee.filter(function (L) { return !vuota83(R, L); });
+    cand.sort(function (a, b) { return punt(b) - punt(a); });
+    if (cand.length && (cand.length === 1 || punt(cand[0]) > punt(cand[1]))) return cand[0];
+    return null;
+  }
+
+  // LA SEDE FERMA NON TIMELY CLASHATA DAL GIORNO E' ELIMINATA (Edu, 05/10/2026, AUDUSD 30/09/2026 seme 69:
+  // "L4 W non e' timely quindi viene eliminata dal Clash. L3 non e' clashata dall'arrivo perche' questo e'
+  // vuoto. L2 e' ininfluente" -> SHORT). La sede (Shi o Ying) ferma, G o W, non vuota, clashata dal giorno e
+  // non timely nel mese e' danneggiata: la sua squadra non puo' vincere. Se lo sono tutte e due decide la
+  // mobile se e' G/W (perimetro di Claude, da validare). Stessa regola di MLSEDECLASH nel motore di lettura.
+  // Il blocco era nella tabella delle vie ma mancava nel file (ripristinato in S53). VIASEDECLASH=off spegne.
+  LY_VIE.push({ id:'R82_SEDECLASH', sezione:'日沖', cablata:'2026-10-05',
+    nome:'A still seat G/W, not timely and clashed by the day, is eliminated: its side cannot win',
+    dottrina:'Edu, AUDUSD 30/09/2026 s69 (05/10/2026). VIASEDECLASH=off per disattivarla.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIASEDECLASH==='off') return null;
+      if (typeof localStorage!=='undefined' && localStorage && localStorage.getItem('VIASEDECLASH')==='off') return null;
+      if (!R.dayBranch) return null;
+      var elim = [];
+      [R.shi, R.ying].forEach(function (q) {
+        var L = R.linee[q-1]; if (!L || L.isMobile || L.vuoto) return;
+        if (CLASH[R.dayBranch] !== L.ramo || (L.par !== 'G' && L.par !== 'W') || timely83(R, L.el)) return;
+        elim.push(L);
+      });
+      if (!elim.length) return null;
+      var dir;
+      if (elim.length === 1) dir = elim[0].pos <= 3 ? 'LONG' : 'SHORT';
+      else {
+        var m = R.mutante, mob = m && R.linee[m.pos-1];
+        if (!mob || (mob.par !== 'G' && mob.par !== 'W')) return null;
+        dir = mob.pos <= 3 ? 'SHORT' : 'LONG';
+      }
+      state.why = 'The seat '+elim.map(function(L){return 'L'+L.pos+' <b>'+L.par+' '+L.ramo+'</b>';}).join(' and ')+
+        ', not timely, is clashed by the day <b>'+R.dayBranch+'</b>: it is damaged and its side cannot win → '+dir+'.';
+      return dir;
+    }
+  });
+
   // LA COMBINAZIONE TOTALE DEL TRIGRAMMA (Edu, 05/10/2026, USDCAD 14/08/2026 seme 139: "I due trigrammi
   // superiori sono in una combinazione totale. Se questo capita in un trigramma che non ha linee mobili non
   // importa, ma se anche una sola linea si muove e' l'intero trigramma ad essere bloccato e non puo'
@@ -1128,8 +1191,119 @@
       if (bl.length !== 1) return null;
       var alto = bl[0] === 4, dir = alto ? 'SHORT' : 'LONG';
       var tr = alto ? [4,5,6] : [1,2,3];
+      // Edu, 05/10/2026 (S53, USDJPY 06/09/2022 s140): "Se il trigramma superiore e' completamente legato
+      // quello inferiore dovrebbe vincere ma L3 e' untimely e clashata e Y e' vuoto quindi il trigramma
+      // inferiore sta messo peggio. A questo punto chi decide e' la linea piu' forte dell'esagramma" (L5 G 申
+      // sul mese -> LONG). Perimetro approvato ("Va bene cosi'"): l'inferiore sta peggio se la sua sede e'
+      // vuota oppure se una sua G/W clashata dal giorno e' untimely (G/W: perimetro di Claude da EURJPY 17/07/2024 s172, dove
+      // la linea clashata e' una P e il basso vince per la lettura di Edu). Solo col trigramma ALTO legato (la
+      // carta di Edu). Senza una piu' forte netta resta il blocco. VIACOMBPEGGIO=off spegne.
+      if (alto && !(typeof process!=='undefined' && process.env && process.env.VIACOMBPEGGIO==='off')) {
+        var sedeB = R.shi <= 3 ? R.linee[R.shi-1] : R.linee[R.ying-1];
+        var peggio = (sedeB && vuota83(R, sedeB)) || [1,2,3].some(function (q) {
+          var L = R.linee[q-1]; return CLASH[R.dayBranch] === L.ramo && (L.par === 'G' || L.par === 'W') && !timely83(R, L.el); });
+        var Lf = peggio ? piuForte83(R, ctx) : null;
+        if (Lf) {
+          var dirF = Lf.pos <= 3 ? 'SHORT' : 'LONG';
+          state.why = 'The upper trigram is in TOTAL COMBINATION and blocked, but the lower one is worse off (empty seat or untimely line clashed by the day): the strongest line of the hexagram decides, L'+Lf.pos+' <b>'+Lf.par+' '+Lf.ramo+'</b> → '+dirF+'.';
+          return dirF;
+        }
+      }
       state.why = 'The '+(alto?'upper':'lower')+' trigram <b>'+tr.map(function(q){return R.linee[q-1].ramo;}).join('')+'</b> and its transformed self <b>'+tr.map(function(q){return m.futuro[q-1];}).join('')+
         '</b> are in TOTAL COMBINATION (六合 on all three pairs) and a line of it moves: the whole trigram is blocked and cannot win → '+dir+'.';
+      return dir;
+    }
+  });
+  // LA MOBILE CHE SI MUOVE NELLA PROPRIA AUTOPUNIZIONE (Edu, 02/10/2026, EURJPY 22/09/2026 seme 180:
+  // "L4 moves into self penalty" -> SHORT; la catena diceva LONG col possesso del §137). L'arrivo della
+  // mobile e' uno dei quattro rami che si puniscono da soli (自刑: 辰午酉亥) e il giorno e' lo stesso
+  // ramo: la mobile entra nella propria punizione e la sua squadra perde. Prima via della catena,
+  // prima del §137 (sulla carta di Edu lo batte). VIAAUTOPENA=off spegne.
+  LY_VIE.push({ id:'R79_AUTOPENA', sezione:'自刑', cablata:'2026-10-02',
+    nome:'The arrival of the mobile is punished by the day (刑/自刑): the movement dies, the line speaks with its departure character',
+    dottrina:'Edu, EURJPY 22/09/2026 s180 (02/10/2026). VIAAUTOPENA=off per disattivarla.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIAAUTOPENA==='off') return null;
+      if (typeof localStorage!=='undefined' && localStorage && localStorage.getItem('VIAAUTOPENA')==='off') return null;
+      // L'arrivo penalizzato dal giorno (XING o 自刑) muore e la linea resta col carattere di partenza.
+      // Perimetro dalle letture di Edu: la SEDE (Shi/Ying) che resta G o W fa vincere la sua squadra
+      // (EURUSD 21/09/2026 "arrivo di L1 penalizzato ma non influenza la partenza che rimane Wealth,
+      // quindi short", motore MLPENPARLA); la P resta P e fa perdere la sua squadra (EURJPY 22/09/2026
+      // "L4 moves into self penalty"). Il B penalizzato e la W non sede hanno altre letture (USDCHF
+      // 28/02/2022, GBPUSD 02/08/2022, EURJPY 17/07/2024): qui non si decide.
+      var a = R.mutante && R.mutante.ramoArr, D0 = R.dayBranch;
+      var XG = {'寅':'巳','巳':'申','申':'寅','丑':'戌','戌':'未','未':'丑','子':'卯','卯':'子'};
+      if (!a || !(XG[D0] === a || (D0 === a && {'辰':1,'午':1,'酉':1,'亥':1}[a]))) return null;
+      var mob = R.linee[R.mutante.pos-1], seat = mob.pos <= 3 ? 'SHORT' : 'LONG', opp = seat==='LONG' ? 'SHORT' : 'LONG';
+      var sedeM = (mob.pos === R.shi || mob.pos === R.ying);
+      var dir = (sedeM && (mob.par==='G'||mob.par==='W')) ? seat : (mob.par==='P') ? opp : null;
+      if (!dir) return null;
+      state.why = 'The mobile L'+mob.pos+' <b>'+mob.par+' '+R.mutante.ramoDep+'</b> wants to reach <b>'+a+'</b>, but the day <b>'+D0+
+        '</b> punishes that arrival: the movement dies, the line stays <b>'+mob.par+'</b> and speaks with its character → '+dir+'.';
+      return dir;
+    }
+  });
+  // LA RITIRATA CHE SOPPRIME (Edu, 17/09/2026, USDCHF 16/09/2026 seme 81: "L3 retrocede e si combina con
+  // L1 Zi. La B arriva su W e la sopprime. Contemporaneamente L4 e' eccitata dal Clash del giorno. Long").
+  // Era cablata solo nel motore di lettura (MLRITIROSOPPRIME): la catena chiede la carta al motore e
+  // prende il suo verdetto quando la lettura chiude con questo gradino. VIARITIRO=off spegne.
+  LY_VIE.push({ id:'R80_RITIRO', sezione:'ritiro', cablata:'2026-10-04',
+    nome:'The retreating malus lands on a G/W and suppresses it (from the reading engine)',
+    dottrina:'Edu, USDCHF 16/09/2026 s81 (17/09/2026). VIARITIRO=off per disattivarla.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIARITIRO==='off') return null;
+      var v = letturaMotore(R, ctx); if (!v || !v.dir || v.gradino !== 'T1a la ritirata che sopprime') return null;
+      state.why = 'Retreat that suppresses (reading engine): ' + (v.perche || '') + ' → ' + v.dir + '.';
+      return v.dir;
+    }
+  });
+  // LA SEDE CHE SI MUOVE PER FARSI CONTROLLARE INDIETRO (Edu, 22/09/2026, USDCAD 21/09/2026 seme 139:
+  // "l'arrivo della mobile non e' vuoto perche' il giorno lo clasha, quindi la linea mobile funziona come
+  // al solito. L3 si muove per essere controllata indietro" -> LONG; la catena diceva SHORT col possesso
+  // del §137). La mobile e' lo Shi o la Ying, G o W, e il suo arrivo operativo la controlla indietro
+  // (回頭剋): la sede perde. Prima del §137, che su questa carta la scavalcava. VIACTRLIND=off spegne.
+  LY_VIE.push({ id:'R81_CTRLIND', sezione:'回頭剋', cablata:'2026-10-04',
+    nome:'The seat (Shi/Ying, G/W) moves to be controlled back by its own arrival: its side loses',
+    dottrina:'Edu, USDCAD 21/09/2026 s139 (22/09/2026). VIACTRLIND=off per disattivarla.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIACTRLIND==='off') return null;
+      var m = R.mutante; if (!m || m.casoMut !== 3 || m.movimentoNullo) return null;
+      var mob = R.linee[m.pos-1]; if (!(mob.pos === R.shi || mob.pos === R.ying)) return null;
+      if (mob.par !== 'G' && mob.par !== 'W') return null;
+      var dir = mob.pos <= 3 ? 'LONG' : 'SHORT';
+      state.why = 'The seat L'+mob.pos+' <b>'+mob.par+' '+m.ramoDep+'</b> moves to <b>'+m.ramoArr+'</b>, which controls it back (回頭剋): the '+mob.par+' is destroyed and its side loses → '+dir+'.';
+      return dir;
+    }
+  });
+  // IL GIORNO FORTE CHE CLASHA LA MOBILE G/W ALLA PARTENZA LA ELIMINA (Edu, 04/10/2026, NZDUSD 01/10/2026
+  // seme 56: "W viene clashato dal giorno = W viene eliminato quindi la propria squadra non puo' vincere";
+  // "il giorno Shen e' molto timely ed elimina W, ma se fosse stata un'altra stagione ... sarebbe rimasta la
+  // regola di prima"). Il giorno e' forte se il suo elemento e' 旺 o 相 rispetto all'elemento del mese o
+  // alla stagione (come timely() del motore di lettura). Solo G/W; P/B e giorno debole: regola di prima.
+  // Misura di Claude prima di cablare: G/W col giorno forte 62,7% su 51 carte; 05/10: solo mobile non timely
+  // (38 carte, 63%), la mobile timely resta (Edu, NZDUSD 16/06/2025). VIADANNOGIORNO=off spegne.
+  LY_VIE.push({ id:'R80_DANNOGIORNO', sezione:'日沖', cablata:'2026-10-04',
+    nome:'A timely day clashing a G/W mobile at its departure eliminates it: its side cannot win',
+    dottrina:'Edu, NZDUSD 01/10/2026 s56 (04/10/2026). VIADANNOGIORNO=off per disattivarla.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIADANNOGIORNO==='off') return null;
+      if (typeof localStorage!=='undefined' && localStorage && localStorage.getItem('VIADANNOGIORNO')==='off') return null;
+      var m = R.mutante; if (!m) return null;
+      if (CLASH[R.dayBranch] !== m.ramoDep) return null;
+      var mob = R.linee[m.pos-1]; if (mob.par !== 'G' && mob.par !== 'W') return null;
+      var dEl = WX[R.dayBranch], mEl = WX[R.monthBranch], sEl = SEASON[R.monthBranch];
+      var forte = function (st) { return st === '旺' || st === '相'; };
+      var earth = dEl === 'Earth' && ['辰','戌','丑','未'].indexOf(R.monthBranch) >= 0;
+      if (!(earth || forte(stagione(dEl, mEl)) || forte(stagione(dEl, sEl)))) return null;
+      // Edu, 05/10/2026 (NZDUSD 16/06/2025 s60): "Siamo nel mese Wu, il fuoco e' forte e quindi la terra e'
+      // timely. W con Xu e' quindi timely" — la mobile che e' timely lei stessa non viene eliminata: resta la
+      // regola di prima. Si elimina solo la G/W fuori stagione.
+      var lEl = WX[m.ramoDep];
+      var lEarth = lEl === 'Earth' && ['辰','戌','丑','未'].indexOf(R.monthBranch) >= 0;
+      if (lEarth || forte(stagione(lEl, mEl)) || forte(stagione(lEl, sEl))) return null;
+      var dir = mob.pos <= 3 ? 'LONG' : 'SHORT';
+      state.why = 'The day <b>'+R.dayBranch+'</b>, timely in the month, clashes the mobile L'+mob.pos+' <b>'+mob.par+' '+m.ramoDep+
+        '</b> at its departure: the line is damaged, the '+mob.par+' is eliminated and its side cannot win → '+dir+'.';
       return dir;
     }
   });

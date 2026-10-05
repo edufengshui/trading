@@ -896,6 +896,23 @@ function creaMotore(LYM) {
       });
       if (blocc.length === 1) {
         var alto = blocc[0] === 4;
+        // Edu, 05/10/2026 (S53, USDJPY 06/09/2022 s140): "Se il trigramma superiore e' completamente legato
+        // quello inferiore dovrebbe vincere ma L3 e' untimely e clashata e Y e' vuoto quindi il trigramma
+        // inferiore sta messo peggio. A questo punto chi decide e' la linea piu' forte dell'esagramma".
+        // Perimetro approvato: sede del basso vuota oppure una G/W del basso clashata dal giorno e untimely (G/W:
+        // perimetro di Claude da EURJPY 17/07/2024 s172, dove la clashata e' una P).
+        // Solo col trigramma alto legato. MLCOMBPEGGIO=off spegne.
+        if (alto && !off('MLCOMBPEGGIO')) {
+          var sedeBc = R.linee[(R.shi <= 3 ? R.shi : R.ying) - 1];
+          var peggioC = (sedeBc && vuotaL(sedeBc, C, R)) || [1,2,3].some(function (q) {
+            var Lq = R.linee[q-1]; return C.D && CLASH[C.D] === Lq.ramo && (Lq.par === 'G' || Lq.par === 'W') && !C.timely(Lq.el); });
+          var pfC = peggioC ? piuForte(R, C, null, null) : null;
+          if (pfC) {
+            racconto.push('il trigramma alto e il suo trasformato sono in combinazione totale: l\'alto è legato e il basso dovrebbe vincere, ma sta messo peggio (sede vuota o linea untimely clashata dal giorno)');
+            racconto.push('decide la linea più forte dell\'esagramma, L' + pfC.L.pos + ' ' + PAR_IT[pfC.L.par] + ' ' + pfC.L.ramo + ': vince la sua squadra');
+            return fine(sede(pfC.L.pos), 'alto legato ma basso messo peggio: decide la linea più forte, L' + pfC.L.pos, 'T0b la combinazione totale');
+          }
+        }
         racconto.push('il trigramma ' + (alto ? 'alto' : 'basso') + ' e il suo trasformato sono in combinazione totale (六合 su tutte e tre le coppie) e una sua linea si muove: tutto il trigramma è bloccato e non può vincere');
         return fine(alto ? 'SHORT' : 'LONG', 'combinazione totale del trigramma ' + (alto ? 'alto' : 'basso') + ': è bloccato, vince l\'altro', 'T0b la combinazione totale');
       }
