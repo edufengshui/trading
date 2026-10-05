@@ -868,6 +868,38 @@ function creaMotore(LYM) {
                passi: racconto, energia: energia(R, C) };
     };
 
+    // LA SEDE FERMA NON TIMELY CLASHATA DAL GIORNO E' ELIMINATA (Edu, 05/10/2026, AUDUSD 30/09/2026 seme 69:
+    // "L4 W non e' timely quindi viene eliminata dal Clash. L3 non e' clashata dall'arrivo perche' questo e'
+    // vuoto. L2 e' ininfluente" -> SHORT). Stessa regola di R82_SEDECLASH in liuyao.js. MLSEDECLASH=off.
+    if (!off('MLSEDECLASH') && C.D) {
+      var elim = [];
+      [R.shi, R.ying].forEach(function (q) {
+        var Lq = R.linee[q-1]; if (!Lq || Lq.isMobile || Lq.vuoto) return;
+        if (CLASH[C.D] !== Lq.ramo || (Lq.par !== 'G' && Lq.par !== 'W') || C.timely(Lq.el)) return;
+        elim.push(Lq);
+      });
+      if (elim.length) {
+        elim.forEach(function (Lq) { racconto.push('L' + Lq.pos + ' ' + PAR_IT[Lq.par] + ' ' + Lq.ramo + ' (' + (Lq.pos === R.shi ? 'Shi' : 'Ying') +
+          ') non è timely ed è clashata dal giorno ' + C.D + ': è danneggiata, la sua squadra non può vincere'); });
+        if (elim.length === 1) return fine(opposto(sede(elim[0].pos)), 'la sede ' + PAR_IT[elim[0].par] + ' non timely è eliminata dal clash del giorno', 'T0c la sede eliminata dal clash');
+        if (mob.par === 'G' || mob.par === 'W') return fine(sede(pos), 'tutte e due le sedi sono eliminate dal clash del giorno: decide la mobile ' + PAR_IT[mob.par], 'T0c la sede eliminata dal clash');
+      }
+    }
+    // LA COMBINAZIONE TOTALE DEL TRIGRAMMA (Edu, 05/10/2026, USDCAD 14/08/2026 seme 139): le tre coppie
+    // linea/arrivo sono tutte 六合 (乾 午申戌 -> 巽 未巳卯) e almeno una linea si muove -> il trigramma e'
+    // bloccato e non puo' vincere. Simmetrica del clash totale (T0z).
+    if (!off('MLCOMBTOT') && R.mutante && R.mutante.futuro) {
+      var Fc = R.mutante.futuro, mosseC = [pos].concat(R.incompatibili || []), blocc = [];
+      [[1,2,3],[4,5,6]].forEach(function (tr) {
+        if (!tr.some(function (q) { return mosseC.indexOf(q) >= 0; })) return;
+        if (tr.every(function (q) { return COMBINA[R.linee[q-1].ramo] === Fc[q-1]; })) blocc.push(tr[0]);
+      });
+      if (blocc.length === 1) {
+        var alto = blocc[0] === 4;
+        racconto.push('il trigramma ' + (alto ? 'alto' : 'basso') + ' e il suo trasformato sono in combinazione totale (六合 su tutte e tre le coppie) e una sua linea si muove: tutto il trigramma è bloccato e non può vincere');
+        return fine(alto ? 'SHORT' : 'LONG', 'combinazione totale del trigramma ' + (alto ? 'alto' : 'basso') + ': è bloccato, vince l\'altro', 'T0b la combinazione totale');
+      }
+    }
     racconto.push('il protagonista è la linea mobile L' + pos + ', ' + PAR_IT[mob.par] + ' ' +
       dep + ' ' + EL_IT[depEl] + (mob.isShi ? ' (è lo Shi)' : mob.isYing ? ' (è la Ying)' : '') +
       (arr ? ', che va in ' + arr + ' ' + EL_IT[arrEl] : ''));
@@ -3180,6 +3212,15 @@ function creaMotore(LYM) {
         if (!off('MLROTTA') && rottaL(L, R, C)) return false;
         return true;
       });
+      // Edu, 05/10/2026 (USDCAD 14/08/2026): la mobile che si combina col proprio arrivo ha la prima porta
+      // gia' aperta: la combinazione esaurisce la sua azione, non passa a clashare ne' a generare.
+      if (COMBINA[dep] === arr) { racconto.push('la mobile si combina col proprio arrivo (' + dep + arr + '): la combinazione è la sua azione, non passa alle altre porte'); ferme = []; }
+      // L'AUTOCOMBINAZIONE ESAURISCE L'AZIONE (Edu, 05/10/2026, USDCAD 14/08/2026 seme 139, confermato): la
+      // mobile che si combina col proprio arrivo (午 -> 未) ha gia' aperto la prima porta, si ferma li' legata
+      // e non passa a clashare o generare. MLAUTOCOMB=off spegne.
+      if (!off('MLAUTOCOMB') && arr && COMBINA[dep] === arr) {
+        racconto.push('la mobile si combina col proprio arrivo (' + dep + arr + '): la combinazione è la sua azione, resta legata lì e non cerca altro');
+      } else {
       var porte = [
         { nome: 'combinare', trova: function (L) { return COMBINA[arr] === L.ramo; } },
         { nome: 'clashare',  trova: function (L) { return CLASH[arr] === L.ramo; } },
@@ -3217,6 +3258,7 @@ function creaMotore(LYM) {
         var d5 = dirDelCarattere(T.par, T.pos);
         if (d5) return fine(d5, 'la mobile ' + porte[k].nome + ': parla chi riceve, L' + T.pos + ' ' + PAR_IT[T.par],
                             'T5 le tre porte');
+      }
       }
     }
 

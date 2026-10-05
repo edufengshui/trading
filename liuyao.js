@@ -798,7 +798,9 @@
         casoMut: casoMut, casoLabel: CASO_LABEL[casoMut] || '', effEl: effEl,
         progressione: progressione,
         movimentoNullo: movimentoNullo, motivoNullo: motivoNullo,
-        trigBloccato: trigBloccato, trigTrasf: trigTrasf,
+        trigBloccato: trigBloccato, trigTrasf: trigTrasf, trigAltroTrasf: trigAltroTrasf,
+        // S52: i sei rami dell'esagramma trasformato con tutte le linee che girano
+        futuro: [1,2,3,4,5,6].map(ramoTrasfA),
         trigTrasfName: TRIGRAM[trigTrasf].name, trigTrasfPinyin: TRIGRAM[trigTrasf].pinyin,
         atterraggio: atterraggio
       }
@@ -1105,96 +1107,29 @@
     return false;
   }
 
-  // LA MOBILE CHE SI MUOVE NELLA PROPRIA AUTOPUNIZIONE (Edu, 02/10/2026, EURJPY 22/09/2026 seme 180:
-  // "L4 moves into self penalty" -> SHORT; la catena diceva LONG col possesso del §137). L'arrivo della
-  // mobile e' uno dei quattro rami che si puniscono da soli (自刑: 辰午酉亥) e il giorno e' lo stesso
-  // ramo: la mobile entra nella propria punizione e la sua squadra perde. Prima via della catena,
-  // prima del §137 (sulla carta di Edu lo batte). VIAAUTOPENA=off spegne.
-  LY_VIE.push({ id:'R79_AUTOPENA', sezione:'自刑', cablata:'2026-10-02',
-    nome:'The arrival of the mobile is punished by the day (刑/自刑): the movement dies, the line speaks with its departure character',
-    dottrina:'Edu, EURJPY 22/09/2026 s180 (02/10/2026). VIAAUTOPENA=off per disattivarla.',
+  // LA COMBINAZIONE TOTALE DEL TRIGRAMMA (Edu, 05/10/2026, USDCAD 14/08/2026 seme 139: "I due trigrammi
+  // superiori sono in una combinazione totale. Se questo capita in un trigramma che non ha linee mobili non
+  // importa, ma se anche una sola linea si muove e' l'intero trigramma ad essere bloccato e non puo'
+  // vincere"). Le tre coppie linea/arrivo del trigramma col suo trasformato (tutte le linee che girano)
+  // sono tutte 六合: 乾 午申戌 -> 巽 未巳卯 (午未, 申巳, 戌卯). Simmetrica del clash totale del 22/09.
+  // Vale per il basso e per l'alto. VIACOMBTOT=off spegne.
+  LY_VIE.push({ id:'R83_COMBTOT', sezione:'合全', cablata:'2026-10-05',
+    nome:'Total combination: the trigram and its transformed self are 六合 on all three pairs and a line of it moves — the whole trigram is blocked and cannot win',
+    dottrina:'Edu, USDCAD 14/08/2026 s139 (05/10/2026). VIACOMBTOT=off per disattivarla.',
     test: function (R, ctx, state) {
-      if (typeof process!=='undefined' && process.env && process.env.VIAAUTOPENA==='off') return null;
-      if (typeof localStorage!=='undefined' && localStorage && localStorage.getItem('VIAAUTOPENA')==='off') return null;
-      // L'arrivo penalizzato dal giorno (XING o 自刑) muore e la linea resta col carattere di partenza.
-      // Perimetro dalle letture di Edu: la SEDE (Shi/Ying) che resta G o W fa vincere la sua squadra
-      // (EURUSD 21/09/2026 "arrivo di L1 penalizzato ma non influenza la partenza che rimane Wealth,
-      // quindi short", motore MLPENPARLA); la P resta P e fa perdere la sua squadra (EURJPY 22/09/2026
-      // "L4 moves into self penalty"). Il B penalizzato e la W non sede hanno altre letture (USDCHF
-      // 28/02/2022, GBPUSD 02/08/2022, EURJPY 17/07/2024): qui non si decide.
-      var a = R.mutante && R.mutante.ramoArr, D0 = R.dayBranch;
-      var XG = {'寅':'巳','巳':'申','申':'寅','丑':'戌','戌':'未','未':'丑','子':'卯','卯':'子'};
-      if (!a || !(XG[D0] === a || (D0 === a && {'辰':1,'午':1,'酉':1,'亥':1}[a]))) return null;
-      var mob = R.linee[R.mutante.pos-1], seat = mob.pos <= 3 ? 'SHORT' : 'LONG', opp = seat==='LONG' ? 'SHORT' : 'LONG';
-      var sedeM = (mob.pos === R.shi || mob.pos === R.ying);
-      var dir = (sedeM && (mob.par==='G'||mob.par==='W')) ? seat : (mob.par==='P') ? opp : null;
-      if (!dir) return null;
-      state.why = 'The mobile L'+mob.pos+' <b>'+mob.par+' '+R.mutante.ramoDep+'</b> wants to reach <b>'+a+'</b>, but the day <b>'+D0+
-        '</b> punishes that arrival: the movement dies, the line stays <b>'+mob.par+'</b> and speaks with its character → '+dir+'.';
-      return dir;
-    }
-  });
-  // LA RITIRATA CHE SOPPRIME (Edu, 17/09/2026, USDCHF 16/09/2026 seme 81: "L3 retrocede e si combina con
-  // L1 Zi. La B arriva su W e la sopprime. Contemporaneamente L4 e' eccitata dal Clash del giorno. Long").
-  // Era cablata solo nel motore di lettura (MLRITIROSOPPRIME): la catena chiede la carta al motore e
-  // prende il suo verdetto quando la lettura chiude con questo gradino. VIARITIRO=off spegne.
-  LY_VIE.push({ id:'R80_RITIRO', sezione:'ritiro', cablata:'2026-10-04',
-    nome:'The retreating malus lands on a G/W and suppresses it (from the reading engine)',
-    dottrina:'Edu, USDCHF 16/09/2026 s81 (17/09/2026). VIARITIRO=off per disattivarla.',
-    test: function (R, ctx, state) {
-      if (typeof process!=='undefined' && process.env && process.env.VIARITIRO==='off') return null;
-      var v = letturaMotore(R, ctx); if (!v || !v.dir || v.gradino !== 'T1a la ritirata che sopprime') return null;
-      state.why = 'Retreat that suppresses (reading engine): ' + (v.perche || '') + ' → ' + v.dir + '.';
-      return v.dir;
-    }
-  });
-  // LA SEDE CHE SI MUOVE PER FARSI CONTROLLARE INDIETRO (Edu, 22/09/2026, USDCAD 21/09/2026 seme 139:
-  // "l'arrivo della mobile non e' vuoto perche' il giorno lo clasha, quindi la linea mobile funziona come
-  // al solito. L3 si muove per essere controllata indietro" -> LONG; la catena diceva SHORT col possesso
-  // del §137). La mobile e' lo Shi o la Ying, G o W, e il suo arrivo operativo la controlla indietro
-  // (回頭剋): la sede perde. Prima del §137, che su questa carta la scavalcava. VIACTRLIND=off spegne.
-  LY_VIE.push({ id:'R81_CTRLIND', sezione:'回頭剋', cablata:'2026-10-04',
-    nome:'The seat (Shi/Ying, G/W) moves to be controlled back by its own arrival: its side loses',
-    dottrina:'Edu, USDCAD 21/09/2026 s139 (22/09/2026). VIACTRLIND=off per disattivarla.',
-    test: function (R, ctx, state) {
-      if (typeof process!=='undefined' && process.env && process.env.VIACTRLIND==='off') return null;
-      var m = R.mutante; if (!m || m.casoMut !== 3 || m.movimentoNullo) return null;
-      var mob = R.linee[m.pos-1]; if (!(mob.pos === R.shi || mob.pos === R.ying)) return null;
-      if (mob.par !== 'G' && mob.par !== 'W') return null;
-      var dir = mob.pos <= 3 ? 'LONG' : 'SHORT';
-      state.why = 'The seat L'+mob.pos+' <b>'+mob.par+' '+m.ramoDep+'</b> moves to <b>'+m.ramoArr+'</b>, which controls it back (回頭剋): the '+mob.par+' is destroyed and its side loses → '+dir+'.';
-      return dir;
-    }
-  });
-  // IL GIORNO FORTE CHE CLASHA LA MOBILE G/W ALLA PARTENZA LA ELIMINA (Edu, 04/10/2026, NZDUSD 01/10/2026
-  // seme 56: "W viene clashato dal giorno = W viene eliminato quindi la propria squadra non puo' vincere";
-  // "il giorno Shen e' molto timely ed elimina W, ma se fosse stata un'altra stagione ... sarebbe rimasta la
-  // regola di prima"). Il giorno e' forte se il suo elemento e' 旺 o 相 rispetto all'elemento del mese o
-  // alla stagione (come timely() del motore di lettura). Solo G/W; P/B e giorno debole: regola di prima.
-  // Misura di Claude prima di cablare: G/W col giorno forte 62,7% su 51 carte; 05/10: solo mobile non timely
-  // (38 carte, 63%), la mobile timely resta (Edu, NZDUSD 16/06/2025). VIADANNOGIORNO=off spegne.
-  LY_VIE.push({ id:'R80_DANNOGIORNO', sezione:'日沖', cablata:'2026-10-04',
-    nome:'A timely day clashing a G/W mobile at its departure eliminates it: its side cannot win',
-    dottrina:'Edu, NZDUSD 01/10/2026 s56 (04/10/2026). VIADANNOGIORNO=off per disattivarla.',
-    test: function (R, ctx, state) {
-      if (typeof process!=='undefined' && process.env && process.env.VIADANNOGIORNO==='off') return null;
-      if (typeof localStorage!=='undefined' && localStorage && localStorage.getItem('VIADANNOGIORNO')==='off') return null;
-      var m = R.mutante; if (!m) return null;
-      if (CLASH[R.dayBranch] !== m.ramoDep) return null;
-      var mob = R.linee[m.pos-1]; if (mob.par !== 'G' && mob.par !== 'W') return null;
-      var dEl = WX[R.dayBranch], mEl = WX[R.monthBranch], sEl = SEASON[R.monthBranch];
-      var forte = function (st) { return st === '旺' || st === '相'; };
-      var earth = dEl === 'Earth' && ['辰','戌','丑','未'].indexOf(R.monthBranch) >= 0;
-      if (!(earth || forte(stagione(dEl, mEl)) || forte(stagione(dEl, sEl)))) return null;
-      // Edu, 05/10/2026 (NZDUSD 16/06/2025 s60): "Siamo nel mese Wu, il fuoco e' forte e quindi la terra e'
-      // timely. W con Xu e' quindi timely" — la mobile che e' timely lei stessa non viene eliminata: resta la
-      // regola di prima. Si elimina solo la G/W fuori stagione.
-      var lEl = WX[m.ramoDep];
-      var lEarth = lEl === 'Earth' && ['辰','戌','丑','未'].indexOf(R.monthBranch) >= 0;
-      if (lEarth || forte(stagione(lEl, mEl)) || forte(stagione(lEl, sEl))) return null;
-      var dir = mob.pos <= 3 ? 'LONG' : 'SHORT';
-      state.why = 'The day <b>'+R.dayBranch+'</b>, timely in the month, clashes the mobile L'+mob.pos+' <b>'+mob.par+' '+m.ramoDep+
-        '</b> at its departure: the line is damaged, the '+mob.par+' is eliminated and its side cannot win → '+dir+'.';
+      if (typeof process!=='undefined' && process.env && process.env.VIACOMBTOT==='off') return null;
+      if (typeof localStorage!=='undefined' && localStorage && localStorage.getItem('VIACOMBTOT')==='off') return null;
+      var m = R.mutante; if (!m || !m.futuro) return null;
+      var mosse = [m.pos].concat(R.incompatibili || []), bl = [];
+      [[1,2,3],[4,5,6]].forEach(function (tr) {
+        if (!tr.some(function (q) { return mosse.indexOf(q) >= 0; })) return;
+        if (tr.every(function (q) { return COMBINA[R.linee[q-1].ramo] === m.futuro[q-1]; })) bl.push(tr[0]);
+      });
+      if (bl.length !== 1) return null;
+      var alto = bl[0] === 4, dir = alto ? 'SHORT' : 'LONG';
+      var tr = alto ? [4,5,6] : [1,2,3];
+      state.why = 'The '+(alto?'upper':'lower')+' trigram <b>'+tr.map(function(q){return R.linee[q-1].ramo;}).join('')+'</b> and its transformed self <b>'+tr.map(function(q){return m.futuro[q-1];}).join('')+
+        '</b> are in TOTAL COMBINATION (六合 on all three pairs) and a line of it moves: the whole trigram is blocked and cannot win → '+dir+'.';
       return dir;
     }
   });
@@ -2304,6 +2239,7 @@
   LY_VIE.push({ id:'R14_50de', sezione:'§50d/e', nome:'Combination of the target: generative/destructive',
     dottrina:'The mobile\'s arrival combines a fixed, full target. If DESTRUCTIVE (control): only the Tai Sui completes it (opposite of the target\'s seat); two weak ones bind and carry the target\'s seat. If GENERATIVE: the Tai Sui always carries it; otherwise only if the target is timely.',
     test: function (R, ctx, state) {
+      if (!(typeof process!=='undefined' && process.env && process.env.AUTOCOMB==='off') && /self-combination/.test(String(R.mutante.motivoNullo||''))) return null;   // Edu 05/10/2026: la mobile che si combina col proprio arrivo ha gia' agito
       var c = _ctx(R);
       var mob = R.linee[R.mutante.pos-1];
       var arr = R.mutante.ramoArr, part = COMBINA[arr];
@@ -2327,6 +2263,7 @@
   LY_VIE.push({ id:'R16_50f', sezione:'§50f', nome:'Arrival generates a timely/strong W',
     dottrina:'The arrival generates one or more fixed W lines that are timely or strong (backed by day/year): direction of the majority (above/below).',
     test: function (R, ctx, state) {
+      if (!(typeof process!=='undefined' && process.env && process.env.AUTOCOMB==='off') && /self-combination/.test(String(R.mutante.motivoNullo||''))) return null;   // Edu 05/10/2026: la mobile che si combina col proprio arrivo ha gia' agito
       var c = _ctx(R);
       var mob = R.linee[R.mutante.pos-1];
       // Guardia movimento nullo (Edu, 25/08/2026, audit): la via agisce sull'ARRIVO, ma col
@@ -2346,6 +2283,7 @@
   LY_VIE.push({ id:'R17_50g', sezione:'§50g', nome:'Double combination binds below',
     dottrina:'The arrival combines a branch present on two fixed, full lines split above/below: the bond is completed below → SHORT.',
     test: function (R, ctx, state) {
+      if (!(typeof process!=='undefined' && process.env && process.env.AUTOCOMB==='off') && /self-combination/.test(String(R.mutante.motivoNullo||''))) return null;   // Edu 05/10/2026: la mobile che si combina col proprio arrivo ha gia' agito
       var mob = R.linee[R.mutante.pos-1];
       // Guardia movimento nullo (Edu, 25/08/2026, audit): stessa ragione di §50f — l'arrivo non
       // agisce quando il movimento e' nullo (caso -1). G50GC1=off ripristina.
@@ -2363,6 +2301,7 @@
   LY_VIE.push({ id:'R18_50h', sezione:'§50h', nome:'Void hidden line clashed by the arrival',
     dottrina:'The arrival clashes the (void) hidden line of a single fixed line: with ≥2 supports (season + day + year) it leaves the void and acts in its seat; with 0 supports the clash breaks it → opposite.',
     test: function (R, ctx, state) {
+      if (!(typeof process!=='undefined' && process.env && process.env.AUTOCOMB==='off') && /self-combination/.test(String(R.mutante.motivoNullo||''))) return null;   // Edu 05/10/2026: la mobile che si combina col proprio arrivo ha gia' agito
       var c = _ctx(R);
       // PRINCIPIO GENERALE (Edu, 24/08/2026, da EURJPY 12/02/2025): in GENERAZIONE DI
       // RITORNO (回頭生, caso 1) l'arrivo e' tutto preso dal tornare dalla madre e NON
@@ -2711,6 +2650,7 @@
   LY_VIE.push({ id:'R32_68', sezione:'§68', nome:'Arrival clash read by the Yong Shen (who is hit, who hits)',
     dottrina:'Edu (17/08): "it depends" — the Yong Shen (spirit of the focus) tells how to read. Metaphor: a crowd gathered → you stop there (gathering: the qi stays); a runner crossing the street → you look where he goes (follow the arrival). When the arrival ONLY clashes one full fixed line (no combination): a clashed P gives way → seat OPPOSITE to the clashed line (35 cards, 74% opposite); a clashed G or C holds the blow → seat of the clashed line (G 13 cards 77%, C 25 cards 64%); otherwise, if the mobile is a W, the qi goes where the W goes → seat of the clashed line (33 cards, 61%). B/W clashed by a non-W mobile: no rule. Last in the thermometer.',
     test: function (R, ctx, state) {
+      if (!(typeof process!=='undefined' && process.env && process.env.AUTOCOMB==='off') && /self-combination/.test(String(R.mutante.motivoNullo||''))) return null;   // Edu 05/10/2026: la mobile che si combina col proprio arrivo ha gia' agito
       if (R.mutante.movimentoNullo) return null;
       // PRINCIPIO GENERALE (Edu, 24/08/2026, da EURJPY 12/02/2025): in GENERAZIONE DI
       // RITORNO (回頭生, caso 1) l'arrivo e' tutto preso dal tornare dalla madre e NON
@@ -3479,6 +3419,9 @@
   var FASE = {
     R79_AUTOPENA:0,
     R80_DANNOGIORNO:0,
+    R82_SEDECLASH:0,
+    R83_COMBTOT:0,
+    R83_COMBTOT:0,
     R80_RITIRO:0,
     R81_CTRLIND:0,
     R77_SCALA:0,
