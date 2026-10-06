@@ -2451,6 +2451,10 @@
       // Guardia movimento nullo (Edu, 25/08/2026, audit): la via agisce sull'ARRIVO, ma col
       // movimento nullo (caso -1, mobile sospesa dal giorno) l'arrivo non agisce. G50FC1=off ripristina.
       if ((typeof process==='undefined' || !process.env || process.env.G50FC1!=='off') && R.mutante.casoMut===-1) return null;
+      // Edu, 05/10/2026 (S53, EURJPY 13/12/2024 s159): "L4 W comunque viene generato indietro". Nel 回頭生
+      // (caso 1) l'arrivo e' tutto preso dal tornare dalla madre e non nutre altre W (regola del 24/08, la
+      // stessa guardia ARRLIB delle altre vie dell'arrivo). ARRLIB=off ripristina.
+      if (R.mutante.casoMut === 1 && !(typeof process !== 'undefined' && process.env && process.env.ARRLIB === 'off')) return null;
       var arr = R.mutante.ramoArr, aEl = WX[arr];
       var forte = function(el){ return WX[c.D]===el || GEN[WX[c.D]]===el || WX[c.Y]===el || GEN[WX[c.Y]]===el; };
       var tgt = R.linee.filter(function(l){return l.pos!==mob.pos && l.par==='W' && GEN[aEl]===l.el;});
@@ -3051,6 +3055,36 @@
       if (typeof process!=='undefined' && process.env && process.env.VIAGW==='off') return null;
       var mob = R.linee[R.mutante.pos-1];
       if (mob.par!=='G' && mob.par!=='W') return null;
+      // Edu, 05/10/2026 (S53, EURJPY 21/10/2021 s133): "S e Y sono uguali quindi quando le due linee si
+      // muovono in Wu tutti due sono generati e non c'e' un chiaro vantaggio." La mobile sede che si fa
+      // generare, con l'altra sede uguale (carattere ed elemento) generata anch'essa da un arrivo in
+      // movimento: nessun vantaggio, la via tace. Come MLGENPARI nel motore. VIAGENPARI=off spegne.
+      if (!(typeof process!=='undefined' && process.env && process.env.VIAGENPARI==='off') &&
+          (mob.pos===R.shi || mob.pos===R.ying) && R.mutante.futuro && GEN[WX[R.mutante.ramoArr]]===mob.el) {
+        var altra99 = R.linee[(mob.pos===R.shi ? R.ying : R.shi)-1];
+        var mosse99 = (R.incompatibili||[]).filter(function(q){ return q!==mob.pos; });   // un'ALTRA linea che si muove
+        if (altra99 && altra99.par===mob.par && altra99.el===mob.el &&
+            mosse99.some(function(q){ return GEN[WX[R.mutante.futuro[q-1]]]===altra99.el; })) {
+          // Edu, 05/10/2026 (S53): "La Y e' in vantaggio perche' il giorno Ren Yin porta acqua e legno che
+          // va a controllare S". Alla pari decidono le bestie: la sede con la bestia dell'elemento dello
+          // stelo del giorno riceve il pilastro del giorno; se il ramo del giorno controlla l'altra sede,
+          // vince lei. Altrimenti la via tace. VIAGIORNOBESTIA=off spegne.
+          if (!(typeof process!=='undefined' && process.env && process.env.VIAGIORNOBESTIA==='off') && R.dayStem && R.dayBranch) {
+            var BEL99 = { '青龍':'Wood', '朱雀':'Fire', '勾陳':'Earth', '螣蛇':'Earth', '白虎':'Metal', '玄武':'Water' };
+            var SEL99 = { '甲':'Wood','乙':'Wood','丙':'Fire','丁':'Fire','戊':'Earth','己':'Earth','庚':'Metal','辛':'Metal','壬':'Water','癸':'Water' };
+            var sedi99 = [mob, altra99].filter(function(L){ return L.bestia && BEL99[L.bestia.cn]===SEL99[R.dayStem]; });
+            if (sedi99.length===1) {
+              var port99 = sedi99[0], opp99 = port99===mob ? altra99 : mob;
+              if (CTRL[WX[R.dayBranch]]===opp99.el) {
+                var d99 = port99.pos<=3 ? 'SHORT' : 'LONG';
+                state.why = 'Shi and Ying are equal and both generated: no clear advantage from the movement. The beasts decide: L'+port99.pos+' ('+port99.bestia.cn+') receives the day pillar <b>'+R.dayStem+R.dayBranch+'</b>, whose branch controls the other seat L'+opp99.pos+' → '+d99+'.';
+                return d99;
+              }
+            }
+          }
+          return null;
+        }
+      }
       // LA SEQUENZA DI EDU (14/09/2026, ribadita il 17/09/2026): prima si prova a risolvere la
       // carta con le linee mobili; se il movimento NON produce un risultato si passa alle
       // bestie, e solo dopo al confronto fra le sedi. Qui prima c'era la GUARDIA DEL PESO DELLE

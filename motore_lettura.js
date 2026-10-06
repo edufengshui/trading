@@ -1479,6 +1479,7 @@ function creaMotore(LYM) {
     // Perimetro: una sede che si muove (mobile o ferma incompatibile) il cui arrivo GENERA la
     // partenza -> quella sede vince. Viene PRIMA delle regole con le bestie e prima della ferma
     // svegliata. MLGENINDIETRO=off.
+    var genPari = false;   // S53: le due sedi uguali tutte e due generate (EURJPY 21/10/2021)
     if (!off('MLGENINDIETRO')) {
       var movG = [];
       if (arr && !passoNullo && !mobileAnnullata) movG.push({ p: pos, dep: dep, a: arr });
@@ -1495,6 +1496,35 @@ function creaMotore(LYM) {
         if (GEN[WX[M.a]] !== WX[M.dep]) return false;
         return M.p === R.shi || M.p === R.ying;
       })[0];
+      // Edu, 05/10/2026 (S53, EURJPY 21/10/2021 s133): "Il problema qui e' che S e Y sono uguali quindi
+      // quando le due linee si muovono in Wu tutti due sono generati e non c'e' un chiaro vantaggio."
+      // Se l'altra sede ha lo stesso carattere e lo stesso elemento ed e' generata anch'essa da un arrivo
+      // in movimento, la generazione non da' vantaggio: si va avanti (alle bestie). MLGENPARI=off spegne.
+      if (gi && !off('MLGENPARI')) {
+        var altraG = R.linee[(gi.p === R.shi ? R.ying : R.shi) - 1], selfG = R.linee[gi.p - 1];
+        if (altraG && altraG.par === selfG.par && altraG.el === selfG.el &&
+            movG.some(function (M) { return M.p !== gi.p && GEN[WX[M.a]] === altraG.el; })) {   // un'ALTRA linea che si muove (USDCAD 11/05/2023)
+          racconto.push('L' + gi.p + ' si fa generare indietro, ma anche l\'altra sede L' + altraG.pos + ' (' + altraG.par + ' ' + altraG.ramo +
+            ', uguale) è generata da un arrivo: nessun vantaggio chiaro');
+          gi = null; genPari = true;
+          // Edu, 05/10/2026 (S53): "La Y e' in vantaggio perche' il giorno Ren Yin porta acqua e legno che va a
+          // controllare S". Alla pari decidono le bestie: la sede con la bestia dell'elemento dello stelo del
+          // giorno riceve il pilastro del giorno; se il ramo del giorno controlla l'altra sede, vince lei.
+          // MLGIORNOBESTIA=off spegne.
+          if (!off('MLGIORNOBESTIA') && R.dayStem && R.dayBranch) {
+            var BELg = { '青龍':'Wood', '朱雀':'Fire', '勾陳':'Earth', '螣蛇':'Earth', '白虎':'Metal', '玄武':'Water' };
+            var sediG = [selfG, altraG].filter(function (L) { return L.bestia && BELg[L.bestia.cn] === STEM_EL[R.dayStem]; });
+            if (sediG.length === 1) {
+              var portG = sediG[0], oppG = portG === selfG ? altraG : selfG;
+              if (KE[WX[R.dayBranch]] === oppG.el) {
+                racconto.push('decidono le bestie: L' + portG.pos + ' (' + portG.bestia.cn + ') riceve il pilastro del giorno ' + R.dayStem + R.dayBranch +
+                  ', il cui ramo controlla l\'altra sede L' + oppG.pos + ': vince L' + portG.pos);
+                return fine(sede(portG.pos), 'sedi pari: la bestia porta il pilastro del giorno che controlla l\'altra sede', 'T1 il giorno passa per la bestia');
+              }
+            }
+          }
+        }
+      }
       if (gi) {
         var parGi = R.linee[gi.p - 1].par;
         var dGi = parGi === 'C' ? sede(gi.p) : dirDelCarattere(parGi, gi.p);
@@ -2984,10 +3014,11 @@ function creaMotore(LYM) {
           'propria squadra, quindi la sua sede vince');
         return fine(sede(pos), 'il ' + PAR_IT[parArr] + ' che torna entra nella tomba', 'T2b sepolto nella tomba');
       }
-      var dN = dirDelCarattere(mob.par, pos);
+      var dN = genPari ? null : dirDelCarattere(mob.par, pos);   // S53: sedi pari tutte e due nutrite -> nessun vantaggio
+      if (genPari) racconto.push('ma anche l\'altra sede, uguale, è nutrita: nessun vantaggio, si va avanti');
       if (dN) return fine(dN, 'l\'arrivo nutre la partenza: la mobile resta sé stessa e parla da ' + PAR_IT[mob.par],
                           'T2b nutrita dall\'arrivo');
-      racconto.push('ma il carattere è C: tace');
+      if (!genPari) racconto.push('ma il carattere è C: tace');
       // "non puo' fare altro": la mobile nutrita non va a cercare con l'arrivo (niente porte).
       // Con lo stato del movimento acceso (dottrina del 16/09) vale anche per le porte.
       if (!off('MLSTATOMOV')) mobileNutrita = true;
