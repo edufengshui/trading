@@ -1143,6 +1143,32 @@
     return null;
   }
 
+  // LA SEDE SI MUOVE IN G/W E L'ALTRA SEDE E' VUOTA (Edu, 06/10/2026, GBPUSD 18/05/2022 seme 124: "Y si
+  // muove in una W mentre S e' vuoto. E' ovvio che vince lo Short"). Prima del controllo indietro (§52) e
+  // delle bestie. VIASEDEINGWVUOTA=off spegne.
+  LY_VIE.push({ id:'R84_SEDEINGWVUOTA', sezione:'sede', cablata:'2026-10-06',
+    nome:'A seat that moves into a G/W while the other seat is empty: its side wins',
+    dottrina:'Edu, GBPUSD 18/05/2022 s124 (06/10/2026). VIASEDEINGWVUOTA=off per disattivarla.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIASEDEINGWVUOTA==='off') return null;
+      var m = R.mutante; if (!m || !m.ramoArr) return null;
+      var mob = R.linee[m.pos-1]; if (!mob || (m.pos !== R.shi && m.pos !== R.ying)) return null;
+      var pal = R.palEl, ae = WX[m.ramoArr];
+      var parA = ae === pal ? 'B' : GEN[pal] === ae ? 'C' : GEN[ae] === pal ? 'P' : CTRL[pal] === ae ? 'W' : CTRL[ae] === pal ? 'G' : null;
+      if (parA !== 'G' && parA !== 'W') return null;
+      var altra = R.linee[(m.pos === R.shi ? R.ying : R.shi) - 1];
+      if (!altra || !vuota83(R, altra)) return null;
+      // Confini dalle carte guida (06/10/2026): l'arrivo non e' vuoto (NZDUSD 10/07/2024: la Ying va nel vuoto,
+      // resta se' stessa e la controlla lo Shi) e nessuna linea ferma combina l'arrivo (EURJPY 31/12/2020:
+      // l'arrivo 酉 atterra su L2 辰, M1).
+      if ((R.vuoti || []).indexOf(m.ramoArr) >= 0) return null;
+      if (R.linee.some(function (L) { return !L.isMobile && COMBINA[m.ramoArr] === L.ramo; })) return null;
+      var dir = m.pos <= 3 ? 'SHORT' : 'LONG';
+      state.why = 'The '+(m.pos===R.shi?'Shi':'Ying')+' L'+m.pos+' moves into <b>'+m.ramoArr+'</b>, which is '+parA+' in the palace, while the other seat L'+altra.pos+' is empty: its side wins → '+dir+'.';
+      return dir;
+    }
+  });
+
   // LA SEDE FERMA NON TIMELY CLASHATA DAL GIORNO E' ELIMINATA (Edu, 05/10/2026, AUDUSD 30/09/2026 seme 69:
   // "L4 W non e' timely quindi viene eliminata dal Clash. L3 non e' clashata dall'arrivo perche' questo e'
   // vuoto. L2 e' ininfluente" -> SHORT). La sede (Shi o Ying) ferma, G o W, non vuota, clashata dal giorno e

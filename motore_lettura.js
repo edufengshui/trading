@@ -1435,6 +1435,23 @@ function creaMotore(LYM) {
       }
     }
 
+    // --- T0e: LA SEDE SI MUOVE IN G/W E L'ALTRA SEDE E' VUOTA -----------------------
+    // Edu, 06/10/2026 (S53, GBPUSD 18/05/2022 seme 124): "Y si muove in una W mentre S e' vuoto. E'
+    // ovvio che vince lo Short." La sede mobile il cui arrivo e' G o W nel palazzo, con l'altra sede
+    // vuota: vince la sua squadra. Viene prima del controllo indietro e della bestia che penalizza.
+    // Perimetro: la mobile e' una sede, non annullata. MLSEDEINGWVUOTA=off spegne.
+    if (!off('MLSEDEINGWVUOTA') && (pos === R.shi || pos === R.ying) && !mobileAnnullata && arr) {
+      var parArrE = parDi(WX[arr], palEl), altraE = R.linee[(pos === R.shi ? R.ying : R.shi) - 1];
+      // Confini dalle carte guida (06/10/2026): l'arrivo non e' vuoto (NZDUSD 10/07/2024) e nessuna linea ferma
+      // combina l'arrivo (EURJPY 31/12/2020, atterraggio su L2).
+      var arrVuotoE = C.vuoto(arr), atterraE = R.linee.some(function (L) { return !L.isMobile && COMBINA[arr] === L.ramo; });
+      if ((parArrE === 'G' || parArrE === 'W') && altraE && vuotaL(altraE, C, R) && !arrVuotoE && !atterraE) {
+        racconto.push('L' + pos + ' (' + (pos === R.shi ? 'lo Shi' : 'la Ying') + ') si muove in ' + arr + ', che nel palazzo è ' +
+          PAR_IT[parArrE] + ', mentre l\'altra sede L' + altraE.pos + ' è vuota: vince la sua squadra');
+        return fine(sede(pos), 'la sede si muove in ' + PAR_IT[parArrE] + ' e l\'altra sede è vuota', 'T0e la sede in G/W con l\'altra vuota');
+      }
+    }
+
     // --- T0j: LA BESTIA PENALIZZA LA LINEA CHE SI MUOVE ---------------------------
     // Edu, 14/09/2026 (USDCAD 17/03/2020 seme 140): il mese 己卯 cade sulla Ying 子 mobile e
     // la penalizza (子卯刑): "non si muove proprio". Chi riceve la penalita' non fa vincere la
