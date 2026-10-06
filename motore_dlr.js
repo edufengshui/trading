@@ -203,7 +203,9 @@ function via2_pariSuR1(c) {
 const CASELLE_ISOLATE = {
   'genera|C':    'SHORT', 'drena|W':     'LONG',
   'subisce|B':   'SHORT', 'controlla|P': 'SHORT',
-  'controlla|W': 'SHORT', 'drena|B':     'LONG',
+  // 'controlla|W': 'SHORT' SPENTA il 05/10/2026 (S53, decisione di Edu): nella scala 37 trade al 54,1%
+  // per -2 pip; spenta la scala guadagna +380 pip (USDJPY 31/10/2022 era un livello A perso).
+  'drena|B':     'LONG',
   'genera|W':    'LONG'
 };
 function via3_caselleIsolate(c) {
