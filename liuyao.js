@@ -332,7 +332,13 @@
     var _sbOff = (typeof process !== 'undefined' && process.env && process.env.GIORNOSBLOCCO === 'off');
     var _sbloccata = !_sbOff && _sblocco;
     var _arrLiberato = (_arrVuotoClash === 1) && dayBranch && CLASH[dayBranch] === ramoArr;   // il clash del giorno ha tirato fuori l'arrivo dal vuoto: e' operativo
-    if (!_giornoLibera && !_sbloccata && !_gioLegatoMese && dayBranch && (COMBINA[dayBranch] === ramoDep || COMBINA[dayBranch] === ramoArr ||
+    // Edu, 05/10/2026 (S53): "La linea si muove e si ferma sull'arrivo, che parla. Pero' non puo' saltare
+    // altrove. Cabla cosi' per tutto." L'arrivo combinato dal giorno NON sospende piu' il movimento: la
+    // linea arriva e si ferma (arrivoTenuto); i salti dell'arrivo su altre linee sono spenti a valle.
+    // ARRTENUTO=off torna alla sospensione di prima.
+    var _arrTenutoOn = !(typeof process !== 'undefined' && process.env && process.env.ARRTENUTO === 'off');
+    var arrivoTenuto = _arrTenutoOn && !!dayBranch && COMBINA[dayBranch] === ramoArr && !_gioLegatoMese;
+    if (!_giornoLibera && !_sbloccata && !_gioLegatoMese && dayBranch && (COMBINA[dayBranch] === ramoDep || (COMBINA[dayBranch] === ramoArr && !_arrTenutoOn) ||
         CLASH[dayBranch] === ramoDep || (CLASH[dayBranch] === ramoArr && !_arrLiberato))) {
       effEl = null; casoMut = -1;
       motivoNullo = 'suspended by the day (day combines/clashes departure or arrival)'; }
@@ -569,8 +575,8 @@
     // ---- Shi/Ying: validita' e trasformazione dall'arrivo della mutante ----
     var shiB = ramoAl(pal.shi), yingB = ramoAl(pal.ying);
     var shiElE = WX[shiB], yingElE = WX[yingB], shiValido = true, yingValido = true;
-    if (COMBINA[ramoArr] === shiB)  shiElE = depEl;   // riceve la partenza e "diventa" quella linea
-    if (COMBINA[ramoArr] === yingB) yingElE = depEl;
+    if (COMBINA[ramoArr] === shiB && !arrivoTenuto)  shiElE = depEl;   // riceve la partenza e "diventa" quella linea
+    if (COMBINA[ramoArr] === yingB && !arrivoTenuto) yingElE = depEl;
     if (CLASH[ramoArr] === shiB)  shiValido = false;  // invalidato dal clash dell'arrivo
     if (CLASH[ramoArr] === yingB) yingValido = false;
 
@@ -797,7 +803,7 @@
         depElIt: EL_IT[depEl], arrElIt: EL_IT[arrEl],
         casoMut: casoMut, casoLabel: CASO_LABEL[casoMut] || '', effEl: effEl,
         progressione: progressione,
-        movimentoNullo: movimentoNullo, motivoNullo: motivoNullo,
+        movimentoNullo: movimentoNullo, motivoNullo: motivoNullo, arrivoTenuto: arrivoTenuto,
         trigBloccato: trigBloccato, trigTrasf: trigTrasf, trigAltroTrasf: trigAltroTrasf,
         // S52: i sei rami dell'esagramma trasformato con tutte le linee che girano
         futuro: [1,2,3,4,5,6].map(ramoTrasfA),
@@ -1223,6 +1229,11 @@
       // tiene insieme le due letture: la P resta a parlare solo se e' timely; altrimenti Shi contro Ying, e se
       // una sola sede e' combinata dal giorno non partecipa e vince l'altra (altrimenti la catena prosegue).
       // VIAAUTOPENAINUTILE=off torna alla forma di prima.
+      // Edu, 05/10/2026 (S53, USDJPY 31/10/2022 s147, P 酉 -> 申 col giorno 巳): "L5 retrocede quindi non fa
+      // perdere la propria squadra". La P/B che retrocede (退神) non resta a fare danno anche se l'arrivo e'
+      // punito: la via lascia parlare la ritirata del malus. VIAAUTOPENARETRO=off spegne.
+      if ((mob.par === 'P' || mob.par === 'B') && R.mutante.progressione === 'retrocedente' &&
+          !(typeof process!=='undefined' && process.env && process.env.VIAAUTOPENARETRO==='off')) return null;
       if (mob.par === 'P' && !timely83(R, mob.el) &&
           !(typeof process!=='undefined' && process.env && process.env.VIAAUTOPENAINUTILE==='off')) {
         var S0 = R.linee[R.shi-1], Y0 = R.linee[R.ying-1];
@@ -2413,7 +2424,7 @@
       if (!(typeof process!=='undefined' && process.env && process.env.AUTOCOMB==='off') && /self-combination/.test(String(R.mutante.motivoNullo||''))) return null;   // Edu 05/10/2026: la mobile che si combina col proprio arrivo ha gia' agito
       var c = _ctx(R);
       var mob = R.linee[R.mutante.pos-1];
-      var arr = R.mutante.ramoArr, part = COMBINA[arr];
+      var arr = R.mutante.ramoArr, part = COMBINA[arr]; if (R.mutante.arrivoTenuto) return null;   // S53: l'arrivo tenuto dal giorno non salta
       if (!part) return null;
       var tgt = R.linee.filter(function(l){return l.pos!==mob.pos && l.ramo===part;});
       if (tgt.length!==1 || tgt[0].vuoto) return null;
@@ -2459,7 +2470,7 @@
       // Guardia movimento nullo (Edu, 25/08/2026, audit): stessa ragione di §50f — l'arrivo non
       // agisce quando il movimento e' nullo (caso -1). G50GC1=off ripristina.
       if ((typeof process==='undefined' || !process.env || process.env.G50GC1!=='off') && R.mutante.casoMut===-1) return null;
-      var arr = R.mutante.ramoArr, part = COMBINA[arr];
+      var arr = R.mutante.ramoArr, part = COMBINA[arr]; if (R.mutante.arrivoTenuto) return null;   // S53: l'arrivo tenuto dal giorno non salta
       if (!part) return null;
       var tgt = R.linee.filter(function(l){return l.pos!==mob.pos && l.ramo===part && !l.vuoto;});
       if (tgt.length<2) return null;

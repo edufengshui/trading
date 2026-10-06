@@ -825,6 +825,10 @@ function creaMotore(LYM) {
     var mob = R.linee[R.mutante.pos - 1];
     var pos = R.mutante.pos;
     var dep = R.mutante.ramoDep, arr = R.mutante.ramoArr;
+    // Edu, 05/10/2026 (S53): "La linea si muove e si ferma sull'arrivo, che parla. Pero' non puo' saltare
+    // altrove. Cabla cosi' per tutto." arrTenuto: il giorno combina l'arrivo della mobile — nessun salto
+    // dell'arrivo su altre linee (combinare, raggiungere, portare). MLARRTENUTO=off spegne.
+    var arrTenuto = !!(R.dayBranch && arr && COMBINA[R.dayBranch] === arr) && !off('MLARRTENUTO');
     var depEl = R.mutante.depEl, arrEl = R.mutante.arrEl;
     if (C.mobileArrComune && C.mobileArrComune !== arr) {
       racconto.push('con più linee che girano insieme l\'esagramma futuro cambia: la mobile non va più in ' +
@@ -1221,7 +1225,7 @@ function creaMotore(LYM) {
           if (Lpos === pos) fermaPerPartenza = true;
           return 'fermaAttiva';
         }
-        if (arrTocc) return 'arrivoAnnullato';
+        if (arrTocc && !(COMBINA[D0] === Larr && !off('MLARRTENUTO'))) return 'arrivoAnnullato';   // S53: combinato = arriva e si ferma
         return 'muove';
       };
       (C.seconde || []).forEach(function (X) {
@@ -1362,7 +1366,7 @@ function creaMotore(LYM) {
       var preda = R.linee.filter(function (L) {
         if (L.pos === pos || annullate[L.pos] || L.par !== 'W') return false;
         if (!L.isMobile && vuotaL(L, C, R)) return false;
-        return COMBINA[arr] === L.ramo || KE[arrEl] === L.el;
+        return (!arrTenuto && COMBINA[arr] === L.ramo) || KE[arrEl] === L.el;
       })[0];
       if (preda) {
         racconto.push('l\'arrivo ' + arr + ' ' + EL_IT[arrEl] + ' è un B nel palazzo, e il B è il ' +
@@ -1625,7 +1629,7 @@ function creaMotore(LYM) {
         if (!X.arr || X.vuota || annullate[X.L.pos]) return;
         var pA = parDi(WX[X.arr], palEl);
         if (KE[WX[X.arr]] !== WX[X.dep] || (pA !== 'G' && pA !== 'W')) return;
-        var tg = R.linee.filter(function (L) { return L.pos !== X.L.pos && L.pos !== pos && COMBINA[X.arr] === L.ramo; })[0];
+        var tg = R.linee.filter(function (L) { return L.pos !== X.L.pos && L.pos !== pos && COMBINA[X.arr] === L.ramo && !(R.dayBranch && COMBINA[R.dayBranch] === X.arr && !off('MLARRTENUTO')); })[0];
         if (!tg) return;
         racconto.push('L' + X.L.pos + ' è incompatibile e si muove in ' + X.arr + ', che la controlla indietro (' + PAR_IT[pA] +
           ' nel palazzo); non può restare lì e va avanti: ' + X.arr + ' combina con ' + tg.ramo + ' di L' + tg.pos +
@@ -1660,7 +1664,7 @@ function creaMotore(LYM) {
           if (!X.arr || X.vuota || annullate[X.L.pos]) return;
           if (X.L.par !== 'P' && X.L.par !== 'B') return;
           var tgM = R.linee.filter(function (L) { return L.pos !== X.L.pos && L.pos !== pos && !L.isMobile &&
-            (L.pos <= 3) === (X.L.pos <= 3) && COMBINA[X.arr] === L.ramo &&
+            (L.pos <= 3) === (X.L.pos <= 3) && COMBINA[X.arr] === L.ramo && !(R.dayBranch && COMBINA[R.dayBranch] === X.arr && !off('MLARRTENUTO')) &&
             !(C.D && CLASH[C.D] === L.ramo); })[0];   // il bersaglio clashato dal giorno non si lascia combinare (GBPUSD 07/04/2025, AUDUSD 31/01/2024)
           if (!tgM) return;
           racconto.push('L' + X.L.pos + ' è incompatibile e si muove in ' + X.arr + ', che combina con ' + tgM.ramo + ' di L' + tgM.pos +
@@ -2862,7 +2866,7 @@ function creaMotore(LYM) {
         // G/W soppresso non deve portare nessuno dei quattro rami della data.
         // MLRITIROSOPPRIME=largo toglie la restrizione.
         var soppressa = R.linee.filter(function (L) {
-          if (L.pos === pos || annullate[L.pos] || COMBINA[arr] !== L.ramo) return false;
+          if (L.pos === pos || annullate[L.pos] || arrTenuto || COMBINA[arr] !== L.ramo) return false;
           if (L.par !== 'G' && L.par !== 'W') return false;
           if (ENV.MLRITIROSOPPRIME !== 'largo' &&
               (C.ramiData || []).indexOf(L.ramo) >= 0) return false;
@@ -2951,7 +2955,7 @@ function creaMotore(LYM) {
         arr + ' ' + EL_IT[arrEl] + ', forte di stagione, controlla indietro la partenza e la elimina');
       var elQuesta = arrEl, parQuesta = parA;
       var fu = mob.fushen;
-      if (!off('MLFUSHEN') && fu && (COMBINA[arr] === fu.b || GEN[arrEl] === fu.el)) {
+      if (!off('MLFUSHEN') && fu && ((!arrTenuto && COMBINA[arr] === fu.b) || GEN[arrEl] === fu.el)) {
         elQuesta = fu.el; parQuesta = fu.par;
         racconto.push('sotto quella linea c\'era un ' + PAR_IT[fu.par] + ' nascosto, ' + fu.b + ' ' +
           EL_IT[fu.el] + ': l\'arrivo lo ' + (COMBINA[arr] === fu.b ? 'combina' : 'genera') +
@@ -3009,7 +3013,7 @@ function creaMotore(LYM) {
       var legame = R.linee.filter(function (L) {
         // per essere combinata basta che la linea ci sia: non serve che "faccia
         // qualcosa" — quel test serve per i membri di un raduno, non per un bersaglio
-        return L.pos !== pos && !annullate[L.pos] && COMBINA[arr] === L.ramo &&
+        return L.pos !== pos && !annullate[L.pos] && !arrTenuto && COMBINA[arr] === L.ramo &&
                L.ramo !== dep && !vuotaL(L, C, R) &&
                L.stato !== 'eliminata' && !rottaL(L, R, C);
       })[0];
@@ -3041,7 +3045,7 @@ function creaMotore(LYM) {
     // MLNIENTE=carattere (parla il carattere della mobile, per analogia col §114).
     if (!mobileAnnullata && !off('MLNIENTE') && arr && !passoNullo) {
       var nulla = R.linee.filter(function (L) {
-        return L.pos !== pos && !annullate[L.pos] && COMBINA[arr] === L.ramo &&
+        return L.pos !== pos && !annullate[L.pos] && !arrTenuto && COMBINA[arr] === L.ramo &&
                vuotaL(L, C, R) && L.stato === 'dormiente' &&
                (L.par === 'C' || ENV.MLNIENTE === 'tutte');
       })[0];
@@ -3065,7 +3069,7 @@ function creaMotore(LYM) {
     if (!mobileAnnullata && !off('MLCOPIA') && arr && !passoNullo) {
       var copia = R.linee.filter(function (L) {
         return L.pos !== pos && !annullate[L.pos] && L.ramo === dep &&
-               COMBINA[arr] === L.ramo && faQualcosa(L, R, C);
+               !arrTenuto && COMBINA[arr] === L.ramo && faQualcosa(L, R, C);
       })[0];
       if (copia) {
         racconto.push('l\'arrivo ' + arr + ' non resta da solo: cerca qualcosa da fare e trova L' +
@@ -3312,7 +3316,7 @@ function creaMotore(LYM) {
         racconto.push('la mobile si combina col proprio arrivo (' + dep + arr + '): la combinazione è la sua azione, resta legata lì e non cerca altro');
       } else {
       var porte = [
-        { nome: 'combinare', trova: function (L) { return COMBINA[arr] === L.ramo; } },
+        { nome: 'combinare', trova: function (L) { return !arrTenuto && COMBINA[arr] === L.ramo; } },
         { nome: 'clashare',  trova: function (L) { return CLASH[arr] === L.ramo; } },
         { nome: 'generare',  trova: function (L) { return GEN[arrEl] === L.el; } }
       ];
