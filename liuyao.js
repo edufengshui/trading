@@ -1163,8 +1163,11 @@
       // Edu, 08/10/2026 (USDCHF 28/09/2022 s99): "muove in una incompatibile che deve andare via da li', va quindi
       // su Y (che e' lo stesso ramo Chou) e fa vincere lo short": prima la linea con lo stesso ramo dell'arrivo,
       // che riceve il carattere di partenza (la G/W fa vincere il trigramma su cui arriva).
-      var tests = [['lands on', function (L) { return L.ramo === a && (L.pos === R.shi || L.pos === R.ying); }],   // solo su una sede: perimetro DI CLAUDE (EURUSD 05/10/2026: L4 C 申 non e' sede, l'arrivo va a combinare L2)
-                   ['combines', function (L) { return COMBINA[a] === L.ramo; }],
+      // Ordine (Edu, 08/10/2026): "La combinazione ha sempre la precedenza. In USDCHF 28/09/2022 Chou non trova
+      // nessuna Zi da combinare quindi naturalmente va su Y (non perche' e' Y)": prima combinare, poi la linea con lo
+      // stesso ramo (qualunque, le porta il carattere di partenza), poi clashare, poi generare.
+      var tests = [['combines', function (L) { return COMBINA[a] === L.ramo; }],
+                   ['lands on', function (L) { return L.ramo === a; }],
                    ['clashes', function (L) { return CLASH[a] === L.ramo; }],
                    ['generates', function (L) { return GENW[WX[a]] === WX[L.ramo]; }]];
       var b = null, az = null;

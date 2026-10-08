@@ -1360,13 +1360,15 @@ function creaMotore(LYM) {
     if (!mobileAnnullata && !off('MLINCFUORI') && (mob.par === 'G' || mob.par === 'W') && arr &&
         R.mutante.casoMut === -5 && !autoPenaArrCA) {
       var bersCA = null, azCA = null;
-      // Edu, 08/10/2026 (USDCHF 28/09/2022 s99): prima va sulla linea con lo stesso ramo e le porta il
-      // carattere di partenza ("va quindi su Y che e' lo stesso ramo Chou e fa vincere lo short").
-      [['portarsi su', function (L) { return L.ramo === arr && (L.pos === R.shi || L.pos === R.ying); }],   // solo una sede: perimetro DI CLAUDE
-       ['combinarsi', function (L) { return COMBINA[arr] === L.ramo; }],
+      // Ordine (Edu, 08/10/2026): "La combinazione ha sempre la precedenza ... Chou non trova nessuna Zi da
+      // combinare quindi naturalmente va su Y (non perche' e' Y)": combinare, poi lo stesso ramo, poi clash, poi generare.
+      [['combinarsi', function (L) { return COMBINA[arr] === L.ramo; }],
+       ['portarsi su', function (L) { return L.ramo === arr; }],
        ['clashare', function (L) { return CLASH[arr] === L.ramo; }],
        ['generare', function (L) { return GEN[WX[arr]] === WX[L.ramo]; }]].some(function (az) {
-        var t = R.linee.filter(function (L) { return L.pos !== pos && !L.vuoto && az[1](L); })[0];
+        // perimetro DI CLAUDE da validare (EURJPY 28/07/2025): la linea legata dal giorno non riceve (MLINCLEGATA=off)
+        var t = R.linee.filter(function (L) { return L.pos !== pos && !L.vuoto && az[1](L) &&
+          (off('MLINCLEGATA') || COMBINA[R.dayBranch] !== L.ramo); })[0];
         if (t) { bersCA = t; azCA = az[0]; return true; } return false;
       });
       if (bersCA) {
