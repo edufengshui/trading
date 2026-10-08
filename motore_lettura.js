@@ -188,6 +188,9 @@ function creaMotore(LYM) {
     for (var i = 0; i < pil.length; i++) {
       var b = STEM_BESTIA[pil[i].stelo];
       if (!b) continue;
+      // LE BESTIE COI RAMI VUOTI NON POSSONO AGIRE (Edu, 08/10/2026, EURJPY 28/04/2022 s135: "Sulle bestie dobbiamo
+      // modificare: le bestie con i rami vuoti non possono agire"). MLBESTIAVUOTA=off torna a prima.
+      if (!off('MLBESTIAVUOTA') && (R.vuoti || []).indexOf(pil[i].ramo) >= 0) continue;
       for (var z = 0; z < R.linee.length; z++) {
         var L = R.linee[z];
         if (L.bestia && L.bestia.cn === b) {
@@ -1347,41 +1350,99 @@ function creaMotore(LYM) {
       mobileAnnullata = true;
     }
 
-    // L'ARRIVO INCOMPATIBILE AGISCE FUORI, NON SULLA PARTENZA (Edu, 08/10/2026, EURUSD 05/10/2026 seme 112:
-    // "L'arrivo di L3 (Shen) non puo' controllare la partenza G Mao perche' il trigramma in cui cade e' Gen
-    // che lo spinge in avanti a combinarsi con L2. G rimane in controllo e fa vincere la propria squadra" e
-    // poi: "Gen rende Shen incompatibile! ... se l'arrivo cade all'interno di un trigramma che rende la linea
-    // incompatibile la sua azione non puo' essere esercitata sulla partenza ma la linea deve essere diretta
-    // fuori, o a combinarsi o a clashare o a generare un'altra linea"). Arrivo incompatibile col trigramma
-    // trasformato (caso -5, senza ponte, non per autopunizione): niente azione sulla partenza; se l'arrivo
-    // combina, clasha o genera un'altra linea (non vuota), la G/W resta in controllo e fa vincere la sua
-    // squadra. Verdetto solo per G/W (perimetro della carta). Prima delle bestie. MLINCFUORI=off spegne.
+    // L'ARRIVO INCOMPATIBILE AGISCE FUORI, NON SULLA PARTENZA (Edu, 08/10/2026). Parole di Edu:
+    //  EURUSD 05/10/2026 s112: "Gen rende Shen incompatibile! ... se l'arrivo cade all'interno di un trigramma che
+    //    rende la linea incompatibile la sua azione non puo' essere esercitata sulla partenza ma la linea deve essere
+    //    diretta fuori, o a combinarsi o a clashare o a generare un'altra linea"; "G rimane in controllo e fa vincere".
+    //  USDCHF 28/09/2022 s99: "La combinazione ha sempre la precedenza ... Chou non trova nessuna Zi da combinare
+    //    quindi naturalmente va su Y (non perche' e' Y)".
+    //  EURJPY 28/07/2025 s173: "L3 non puo' arrivare quindi rimane G you ... fa vincere la propria squadra".
+    //  USDJPY 02/10/2024 s143: "L2 si muove per diventare vuoto quindi l'intera linea e' scartata. L3 non puo' andare su
+    //    un L2 inservibile e quindi va su L4 e fa vincere il Long. Ricorda che solo la combinazione puo' trasportare la
+    //    partenza sopra un'altra linea. Se l'arrivo non combina con niente il movimento della linea e' una semplice
+    //    linea di partenza che si trasforma nella linea di arrivo".
+    // Quindi: l'arrivo che COMBINA porta la PARTENZA sulla linea combinata; l'arrivo che va sulla linea col suo stesso
+    // ramo vi porta il carattere dell'ARRIVO; senza nessuno sbocco la linea non arriva e resta se' stessa.
+    // Perimetri DI CLAUDE da validare: la linea legata dal giorno non riceve (MLINCLEGATA=off); clash/generazione
+    // senza combinazione ne' stesso ramo: nessun verdetto qui. MLINCFUORI=off spegne tutto.
+    var parArrCA = function (b) { return parDi(WX[b], R.palEl); };
+    // di stagione sul ramo del mese (stesso elemento o generato dal mese): EURJPY 28/04/2022, 午 nel mese 辰 e' untimely
+    var tmCA = function (el) { var mE = WX[R.monthBranch]; return el === mE || GEN[mE] === el; };
+    var sboccoCA = function (b, escl, test) {
+      return R.linee.filter(function (L) { return escl.indexOf(L.pos) < 0 && !L.vuoto && test(L) &&
+        (off('MLINCLEGATA') || COMBINA[R.dayBranch] !== L.ramo); })[0] || null;
+    };
+    var GDINC = 'T0k0 l\'arrivo incompatibile agisce fuori';
     var autoPenaArrCA = R.dayBranch === arr && AUTOPEN[arr];
+    var arrVuotoCA = !!arr && (R.vuoti || []).indexOf(arr) >= 0 && CLASH[R.dayBranch] !== arr;
     if (!mobileAnnullata && !off('MLINCFUORI') && (mob.par === 'G' || mob.par === 'W') && arr &&
-        R.mutante.casoMut === -5 && !autoPenaArrCA) {
-      var bersCA = null, azCA = null;
-      // Ordine (Edu, 08/10/2026): "La combinazione ha sempre la precedenza ... Chou non trova nessuna Zi da
-      // combinare quindi naturalmente va su Y (non perche' e' Y)": combinare, poi lo stesso ramo, poi clash, poi generare.
-      [['combinarsi', function (L) { return COMBINA[arr] === L.ramo; }],
-       ['portarsi su', function (L) { return L.ramo === arr; }],
-       ['clashare', function (L) { return CLASH[arr] === L.ramo; }],
-       ['generare', function (L) { return GEN[WX[arr]] === WX[L.ramo]; }]].some(function (az) {
-        // perimetro DI CLAUDE da validare (EURJPY 28/07/2025): la linea legata dal giorno non riceve (MLINCLEGATA=off)
-        var t = R.linee.filter(function (L) { return L.pos !== pos && !L.vuoto && az[1](L) &&
-          (off('MLINCLEGATA') || COMBINA[R.dayBranch] !== L.ramo); })[0];
-        if (t) { bersCA = t; azCA = az[0]; return true; } return false;
-      });
-      if (bersCA) {
-        racconto.push('l\'arrivo ' + arr + ' è incompatibile col trigramma in cui cade: non può agire sulla partenza ' + dep +
-          ' e va fuori, a ' + azCA + ' L' + bersCA.pos + ' ' + bersCA.par + ' ' + bersCA.ramo +
-          '; la ' + mob.par + ' resta in controllo e fa vincere la sua squadra');
-        if (azCA === 'portarsi su') {
-          racconto.push('la ' + mob.par + ' arriva su L' + bersCA.pos + ' e le porta il proprio carattere');
-          return fine(dirDelCarattere(mob.par, bersCA.pos), 'arrivo incompatibile: la ' + mob.par + ' va su L' + bersCA.pos +
-            ' (stesso ramo ' + arr + ')', 'T0k0 l\'arrivo incompatibile agisce fuori');
+        R.mutante.casoMut === -5 && !autoPenaArrCA && !arrVuotoCA) {
+      var cCA = sboccoCA(arr, [pos], function (L) { return COMBINA[arr] === L.ramo; });
+      if (cCA) {
+        racconto.push('l\'arrivo ' + arr + ' è incompatibile: non agisce sulla partenza ' + dep + ', va a combinarsi con L' +
+          cCA.pos + ' ' + cCA.par + ' ' + cCA.ramo + ' e ci porta la partenza ' + mob.par + ' ' + dep);
+        var dC = dirDelCarattere(mob.par, cCA.pos);
+        if (dC) return fine(dC, 'arrivo incompatibile che combina L' + cCA.pos + ': porta la ' + mob.par, GDINC);
+      }
+      var sCA = cCA ? null : sboccoCA(arr, [pos], function (L) { return L.ramo === arr; });
+      if (sCA) {
+        var pA = parArrCA(arr);
+        // Edu, 08/10/2026 (EURJPY 28/04/2022): la linea d'arrivo "e' ancora untimely e la nascosta dietro di lui e'
+        // vuota": non vince. Qui il gradino non conclude e la lettura prosegue (sedi, poi bestie). MLINCDEBOLE=off spegne.
+        var debCA = function (L, pA2) { return !off('MLINCDEBOLE') && (pA2 === 'G' || pA2 === 'W') && !tmCA(WX[L.ramo]) &&
+          L.fushen && (R.vuoti || []).indexOf(L.fushen.b) >= 0; };
+        racconto.push('l\'arrivo ' + arr + ' è incompatibile e non combina niente: la linea diventa ' + pA + ' ' + arr +
+          ' e va su L' + sCA.pos + ', che ha lo stesso ramo');
+        var dS = debCA(sCA, pA) ? null : dirDelCarattere(pA, sCA.pos);
+        if (!dS) racconto.push('ma L' + sCA.pos + ' ' + sCA.ramo + ' non è di stagione e la nascosta dietro di lei è vuota: non vince');
+        if (dS) return fine(dS, 'arrivo incompatibile: ' + pA + ' ' + arr + ' va su L' + sCA.pos, GDINC);
+      }
+      var altroCA = cCA || sCA || sboccoCA(arr, [pos], function (L) { return CLASH[arr] === L.ramo || GEN[WX[arr]] === WX[L.ramo]; });
+      if (!altroCA && !off('MLINCRESTA')) {
+        racconto.push('l\'arrivo ' + arr + ' è incompatibile e non trova dove andare: la linea non può arrivare e resta ' +
+          mob.par + ' ' + dep + ', che fa vincere la sua squadra');
+        return fine(dirDelCarattere(mob.par, pos), 'arrivo incompatibile senza sbocco: resta la ' + mob.par, GDINC);
+      }
+    }
+    // La mobile che va nel vuoto e' scartata per intero; allora parlano le incompatibili che girano con lei, con la
+    // stessa regola (USDJPY 02/10/2024). MLINCSCARTA=off spegne.
+    if (!mobileAnnullata && !off('MLINCFUORI') && !off('MLINCSCARTA') && arrVuotoCA && (C.seconde || []).length) {
+      for (var qi = 0; qi < C.seconde.length; qi++) {
+        var Lq = C.seconde[qi].L, q = Lq && Lq.pos, aq = C.seconde[qi].arr;
+        if (!Lq || !aq || q === pos) continue;
+        var cq = sboccoCA(aq, [pos, q], function (L) { return COMBINA[aq] === L.ramo; });
+        var sq = cq ? null : sboccoCA(aq, [pos, q], function (L) { return L.ramo === aq; });
+        var dq = cq ? dirDelCarattere(Lq.par, cq.pos) : sq ? dirDelCarattere(parArrCA(aq), sq.pos) : null;
+        if (sq && !cq && !off('MLINCDEBOLE') && !tmCA(WX[sq.ramo]) && sq.fushen && (R.vuoti || []).indexOf(sq.fushen.b) >= 0 &&
+            (parArrCA(aq) === 'G' || parArrCA(aq) === 'W')) {
+          racconto.push('L' + pos + ' va nel vuoto ed è scartata; L' + q + ' (incompatibile) non può generare indietro e arriva su L' +
+            sq.pos + ' ' + sq.ramo + ', che però non è di stagione e ha la nascosta vuota: non vince nessuno qui');
+          dq = null;
+          // Edu, 08/10/2026 (EURJPY 28/04/2022): "S vincerebbe il confronto con Y ma e' untimely e penalizzata dal giorno.
+          // Poiche' non c'e' nessun vincitore si devono usare le bestie. L'unica bestia che puo' fare qualcosa e' il mese
+          // Jia Chen: arriva su L3 e genera B Shen che fa perdere la propria squadra". MLINCBESTIE=off spegne.
+          var altraS = R.linee[((sq.pos === R.shi) ? R.ying : R.shi) - 1];
+          var punita = function (L) { return XING[R.dayBranch] === L.ramo || XING[L.ramo] === R.dayBranch ||
+            (R.dayBranch === L.ramo && AUTOPEN[L.ramo]); };
+          if (!off('MLINCBESTIE') && altraS && !tmCA(WX[altraS.ramo]) && punita(altraS)) {
+            var gen = [];
+            Object.keys(C.suLinea).forEach(function (pz) { (C.suLinea[pz] || []).forEach(function (Q) {
+              var LL = R.linee[+pz - 1]; if (LL && GEN[WX[Q.ramo]] === WX[LL.ramo]) gen.push({ Q: Q, L: LL }); }); });
+            if (gen.length === 1) {
+              var dB = dirDelCarattere(gen[0].L.par, gen[0].L.pos);
+              racconto.push('anche ' + (altraS.pos === R.shi ? 'lo Shi' : 'la Ying') + ' L' + altraS.pos + ' è fuori stagione e punita dal giorno: ' +
+                'nessun vincitore, si usano le bestie. L\'unica che può fare qualcosa è il ' + gen[0].Q.nome + ' ' + gen[0].Q.stelo +
+                gen[0].Q.ramo + ': arriva su L' + gen[0].L.pos + ' e genera ' + gen[0].L.par + ' ' + gen[0].L.ramo);
+              if (dB) return fine(dB, 'nessun vincitore: la bestia del ' + gen[0].Q.nome + ' genera L' + gen[0].L.pos, GDINC);
+            }
+          }
         }
-        return fine(dirDelCarattere(mob.par, pos), 'arrivo incompatibile: va a ' + azCA + ' L' + bersCA.pos +
-          ', la ' + mob.par + ' resta', 'T0k0 l\'arrivo incompatibile agisce fuori');
+        if (dq) {
+          racconto.push('L' + pos + ' si muove nel vuoto ' + arr + ': l\'intera linea è scartata. L' + q + ' (incompatibile) ' +
+            (cq ? 'combina con L' + cq.pos + ' e le porta ' + Lq.par + ' ' + Lq.ramo
+                : 'diventa ' + parArrCA(aq) + ' ' + aq + ' e va su L' + sq.pos + ', che ha lo stesso ramo'));
+          return fine(dq, 'mobile scartata nel vuoto: parla L' + q, GDINC);
+        }
       }
     }
 
@@ -2208,7 +2269,11 @@ function creaMotore(LYM) {
         // MLSCALACARATTERE=off torna a "chi arriva porta la vittoria" senza guardare il carattere.
         var vince = true;
         if (!off('MLSCALACARATTERE')) {
-          var pars = suSede.map(function (X) { return R.linee[X.A.p - 1].par; });
+          // Edu, 08/10/2026 ("Ricorda che solo la combinazione puo' trasportare la partenza sopra un'altra linea. Se
+          // l'arrivo non combina con niente il movimento della linea e' una semplice linea di partenza che si trasforma
+          // nella linea di arrivo"; "Correggi anche li'"): chi arriva su una sede per stesso ramo le porta il carattere
+          // dell'ARRIVO, non quello di partenza. MLSCALACARATTERE=partenza torna alla forma del 22/09.
+          var pars = suSede.map(function (X) { return ENV.MLSCALACARATTERE === 'partenza' ? R.linee[X.A.p - 1].par : parDi(WX[X.A.a], palEl); });
           var malus = pars.filter(function (q) { return q === 'P' || q === 'B'; }).length;
           var bonus = pars.filter(function (q) { return q === 'G' || q === 'W'; }).length;
           if (malus && bonus) { racconto.push('sulla sede arrivano caratteri discordi (' + pars.join(', ') + '): lo scalino non decide'); vince = null; }

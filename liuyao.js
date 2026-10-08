@@ -1151,35 +1151,13 @@
   // che combina/clasha/genera un'altra linea non vuota: la G/W resta e fa vincere la sua sede. Solo G/W
   // (perimetro della carta). Stessa regola di MLINCFUORI nel motore di lettura. VIAINCFUORI=off spegne.
   LY_VIE.push({ id:'R85_INCFUORI', sezione:'incompatibile', cablata:'2026-10-08',
-    nome:'An incompatible arrival acts outward, not on the departure: the G/W stays and its side wins',
-    dottrina:'Edu, EURUSD 05/10/2026 s112 (08/10/2026). VIAINCFUORI=off per disattivarla.',
+    nome:'An incompatible arrival acts outward, not on the departure (from the reading engine, step T0k0)',
+    dottrina:'Edu, EURUSD 05/10/2026 s112, USDCHF 28/09/2022 s99, EURJPY 28/07/2025 s173, USDJPY 02/10/2024 s143 (08/10/2026): solo la combinazione porta la partenza su un\'altra linea; lo stesso ramo riceve l\'arrivo; senza sbocco la linea resta. Stessa regola del motore di lettura (MLINCFUORI), letta da li\'. VIAINCFUORI=off per disattivarla.',
     test: function (R, ctx, state) {
       if (typeof process!=='undefined' && process.env && process.env.VIAINCFUORI==='off') return null;
-      var m = R.mutante; if (!m || !m.ramoArr || m.casoMut !== -5) return null;
-      var a = m.ramoArr;
-      if (R.dayBranch === a && (a==='辰'||a==='午'||a==='酉'||a==='亥')) return null;
-      var mob = R.linee[m.pos-1]; if (mob.par !== 'G' && mob.par !== 'W') return null;
-      var GENW = { Wood:'Fire', Fire:'Earth', Earth:'Metal', Metal:'Water', Water:'Wood' };
-      // Edu, 08/10/2026 (USDCHF 28/09/2022 s99): "muove in una incompatibile che deve andare via da li', va quindi
-      // su Y (che e' lo stesso ramo Chou) e fa vincere lo short": prima la linea con lo stesso ramo dell'arrivo,
-      // che riceve il carattere di partenza (la G/W fa vincere il trigramma su cui arriva).
-      // Ordine (Edu, 08/10/2026): "La combinazione ha sempre la precedenza. In USDCHF 28/09/2022 Chou non trova
-      // nessuna Zi da combinare quindi naturalmente va su Y (non perche' e' Y)": prima combinare, poi la linea con lo
-      // stesso ramo (qualunque, le porta il carattere di partenza), poi clashare, poi generare.
-      var tests = [['combines', function (L) { return COMBINA[a] === L.ramo; }],
-                   ['lands on', function (L) { return L.ramo === a; }],
-                   ['clashes', function (L) { return CLASH[a] === L.ramo; }],
-                   ['generates', function (L) { return GENW[WX[a]] === WX[L.ramo]; }]];
-      var b = null, az = null;
-      for (var i = 0; i < tests.length && !b; i++) {
-        b = R.linee.filter(function (L) { return L.pos !== m.pos && !L.vuoto && tests[i][1](L); })[0] || null;
-        if (b) az = tests[i][0];
-      }
-      if (!b) return null;
-      var dove = az === 'lands on' ? b.pos : m.pos;
-      var dir = dove <= 3 ? 'SHORT' : 'LONG';
-      state.why = 'L'+m.pos+' <b>'+mob.par+' '+m.ramoDep+'</b>: the arrival <b>'+a+'</b> is incompatible with its trigram, cannot act on the departure and '+az+' L'+b.pos+' '+b.ramo+'; the '+mob.par+' stays in control and its side wins → '+dir+'.';
-      return dir;
+      var v = letturaMotore(R, ctx); if (!v || !v.dir || v.gradino !== "T0k0 l'arrivo incompatibile agisce fuori") return null;
+      state.why = 'Incompatible arrival (reading engine): ' + (v.perche || '') + ' → ' + v.dir + '.';
+      return v.dir;
     }
   });
 
@@ -1445,6 +1423,7 @@
       if (!ms && ys) { var mi=(BR0.indexOf(R.monthBranch)-2+12)%12; ms=ST0[(ST0.indexOf(WUHU0[ys])+mi)%10]; }
       if (!ms || !R.dayStem) return null;
       if (BDI0[ms]!==cand.bestia.cn || BDI0[R.dayStem]!==cand.bestia.cn) return null;   // servono ENTRAMBE le bestie
+      if ((typeof process==='undefined'||!process.env||process.env.VIABESTIAVUOTA!=='off') && ((R.vuoti||[]).indexOf(R.monthBranch)>=0 || (R.vuoti||[]).indexOf(R.dayBranch)>=0)) return null;   // Edu 08/10/2026: le bestie coi rami vuoti non possono agire (VIABESTIAVUOTA=off)
       var par=cand.fushen.par, sede=cand.pos>3?'LONG':'SHORT';
       var dir = (par==='G'||par==='W') ? sede : (par==='P'||par==='B') ? (sede==='LONG'?'SHORT':'LONG') : null;
       if (!dir) return null;                                    // C tace
@@ -1943,6 +1922,7 @@
         if (!l.fushen) continue;
         if (GEN[l.fushen.el] !== l.el) continue;                      // the hidden spirit beneath generates the line
         if (!l.bestia || BEL[l.bestia.cn] !== yEl) continue;          // the year branch is of the beast's element → the whole year pillar lands here
+        if ((typeof process==='undefined'||!process.env||process.env.VIABESTIAVUOTA!=='off') && (R.vuoti||[]).indexOf(R.yearBranch)>=0) continue;   // Edu 08/10/2026: le bestie coi rami vuoti non possono agire (VIABESTIAVUOTA=off)
         var legata = false;
         for (var j=0;j<R.linee.length;j++){ var q = R.linee[j];
           if (q.pos === l.pos) continue;
@@ -2048,7 +2028,8 @@
       var ePassa=GEN[eD], eArriva=GEN[ePassa];
       var pil=[[ys,yb],[ms,mb],[ds,db],[hs,hb]];
       var piena=function(l){ if ((R.vuoti||[]).indexOf(l.ramo)<0) return true;
-        return pil.some(function(p){ return l.bestia && l.bestia.cn===BDI[p[0]] && (WX[p[1]]===l.el || GEN[WX[p[1]]]===l.el); }); };
+        return pil.some(function(p){ return l.bestia && l.bestia.cn===BDI[p[0]] && (WX[p[1]]===l.el || GEN[WX[p[1]]]===l.el) &&
+          !((typeof process==='undefined'||!process.env||process.env.VIABESTIAVUOTA!=='off') && (R.vuoti||[]).indexOf(p[1])>=0); }); };   // Edu 08/10/2026: le bestie coi rami vuoti non possono agire (VIABESTIAVUOTA=off)
       var cand=R.linee.filter(function(l){ return (l.par==='G'||l.par==='W') && l.bestia && BEL[l.bestia.cn]===ePassa && l.el===eArriva && piena(l); });
       if (cand.length!==1) return null;
       var L=cand[0];
@@ -2157,6 +2138,7 @@
       var ys=ctx&&ctx.yearStem, ms=ctx&&ctx.monthStem; if (!ys||!ms) return null;
       var BDI={'甲':'青龍','乙':'青龍','丙':'朱雀','丁':'朱雀','戊':'勾陳','己':'螣蛇','庚':'白虎','辛':'白虎','壬':'玄武','癸':'玄武'};
       if (!mob.bestia || mob.bestia.cn!==BDI[ms]) return null;                      // la bestia del mese sulla B
+      if ((typeof process==='undefined'||!process.env||process.env.VIABESTIAVUOTA!=='off') && ((R.vuoti||[]).indexOf(R.monthBranch)>=0 || (R.vuoti||[]).indexOf(R.yearBranch)>=0)) return null;   // Edu 08/10/2026: le bestie coi rami vuoti non possono agire (VIABESTIAVUOTA=off)
       var cLine=null, i, l;
       for (i=0;i<R.linee.length;i++){ l=R.linee[i]; if (l.par==='C' && l.bestia && l.bestia.cn===BDI[ys] && !(l.vuoto&&!l.isMobile)) { cLine=l; break; } }
       if (!cLine) return null;                                                          // il C con la bestia dell'anno
@@ -2464,6 +2446,7 @@
         if (l.isMobile || l.vuoto) continue;
         if (CLASH[R.monthBranch] !== l.ramo) continue;                  // the month branch clashes this line
         if (!l.bestia || BEL[l.bestia.cn] !== SEs[mStem]) continue;     // month stem = element of the line's beast → the clash operates
+        if ((typeof process==='undefined'||!process.env||process.env.VIABESTIAVUOTA!=='off') && (R.vuoti||[]).indexOf(R.monthBranch)>=0) continue;   // Edu 08/10/2026: le bestie coi rami vuoti non possono agire (VIABESTIAVUOTA=off)
         var hit = null;
         for (var k=0;k<TRI.length;k++){ var t = TRI[k];
           if (t.indexOf(l.ramo) < 0) continue;
@@ -3079,6 +3062,7 @@
       for (var q = 0; q < pil.length; q++) {
         var stq = pil[q][0], brq = pil[q][1];
         if (!stq || !brq || AUTO9[brq]) continue;
+        if ((typeof process==='undefined'||!process.env||process.env.VIABESTIAVUOTA!=='off') && (R.vuoti||[]).indexOf(brq)>=0) continue;   // Edu 08/10/2026: le bestie coi rami vuoti non possono agire (VIABESTIAVUOTA=off)
         var beq = BDI9[stq];
         for (var i = 0; i < R.linee.length; i++) {
           var l = R.linee[i];
