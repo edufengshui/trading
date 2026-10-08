@@ -1347,6 +1347,42 @@ function creaMotore(LYM) {
       mobileAnnullata = true;
     }
 
+    // L'ARRIVO INCOMPATIBILE AGISCE FUORI, NON SULLA PARTENZA (Edu, 08/10/2026, EURUSD 05/10/2026 seme 112:
+    // "L'arrivo di L3 (Shen) non puo' controllare la partenza G Mao perche' il trigramma in cui cade e' Gen
+    // che lo spinge in avanti a combinarsi con L2. G rimane in controllo e fa vincere la propria squadra" e
+    // poi: "Gen rende Shen incompatibile! ... se l'arrivo cade all'interno di un trigramma che rende la linea
+    // incompatibile la sua azione non puo' essere esercitata sulla partenza ma la linea deve essere diretta
+    // fuori, o a combinarsi o a clashare o a generare un'altra linea"). Arrivo incompatibile col trigramma
+    // trasformato (caso -5, senza ponte, non per autopunizione): niente azione sulla partenza; se l'arrivo
+    // combina, clasha o genera un'altra linea (non vuota), la G/W resta in controllo e fa vincere la sua
+    // squadra. Verdetto solo per G/W (perimetro della carta). Prima delle bestie. MLINCFUORI=off spegne.
+    var autoPenaArrCA = R.dayBranch === arr && AUTOPEN[arr];
+    if (!mobileAnnullata && !off('MLINCFUORI') && (mob.par === 'G' || mob.par === 'W') && arr &&
+        R.mutante.casoMut === -5 && !autoPenaArrCA) {
+      var bersCA = null, azCA = null;
+      // Edu, 08/10/2026 (USDCHF 28/09/2022 s99): prima va sulla linea con lo stesso ramo e le porta il
+      // carattere di partenza ("va quindi su Y che e' lo stesso ramo Chou e fa vincere lo short").
+      [['portarsi su', function (L) { return L.ramo === arr && (L.pos === R.shi || L.pos === R.ying); }],   // solo una sede: perimetro DI CLAUDE
+       ['combinarsi', function (L) { return COMBINA[arr] === L.ramo; }],
+       ['clashare', function (L) { return CLASH[arr] === L.ramo; }],
+       ['generare', function (L) { return GEN[WX[arr]] === WX[L.ramo]; }]].some(function (az) {
+        var t = R.linee.filter(function (L) { return L.pos !== pos && !L.vuoto && az[1](L); })[0];
+        if (t) { bersCA = t; azCA = az[0]; return true; } return false;
+      });
+      if (bersCA) {
+        racconto.push('l\'arrivo ' + arr + ' è incompatibile col trigramma in cui cade: non può agire sulla partenza ' + dep +
+          ' e va fuori, a ' + azCA + ' L' + bersCA.pos + ' ' + bersCA.par + ' ' + bersCA.ramo +
+          '; la ' + mob.par + ' resta in controllo e fa vincere la sua squadra');
+        if (azCA === 'portarsi su') {
+          racconto.push('la ' + mob.par + ' arriva su L' + bersCA.pos + ' e le porta il proprio carattere');
+          return fine(dirDelCarattere(mob.par, bersCA.pos), 'arrivo incompatibile: la ' + mob.par + ' va su L' + bersCA.pos +
+            ' (stesso ramo ' + arr + ')', 'T0k0 l\'arrivo incompatibile agisce fuori');
+        }
+        return fine(dirDelCarattere(mob.par, pos), 'arrivo incompatibile: va a ' + azCA + ' L' + bersCA.pos +
+          ', la ' + mob.par + ' resta', 'T0k0 l\'arrivo incompatibile agisce fuori');
+      }
+    }
+
     if (!mobileAnnullata && !off('MLTAISUI')) {
       var capo = (C.suLinea[pos] || [])[0];
       if (capo && CLASH[capo.ramo] === dep) {

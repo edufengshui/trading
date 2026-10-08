@@ -1143,6 +1143,43 @@
     return null;
   }
 
+  // L'ARRIVO INCOMPATIBILE AGISCE FUORI, NON SULLA PARTENZA (Edu, 08/10/2026, EURUSD 05/10/2026 seme 112;
+  // la catena diceva LONG col §62): "Gen rende Shen incompatibile! ... se l'arrivo cade all'interno di un
+  // trigramma che rende la linea incompatibile la sua azione non puo' essere esercitata sulla partenza ma la
+  // linea deve essere diretta fuori, o a combinarsi o a clashare o a generare un'altra linea" e "G rimane in
+  // controllo e fa vincere la propria squadra". Caso -5 per incompatibilita' (non per autopunizione), arrivo
+  // che combina/clasha/genera un'altra linea non vuota: la G/W resta e fa vincere la sua sede. Solo G/W
+  // (perimetro della carta). Stessa regola di MLINCFUORI nel motore di lettura. VIAINCFUORI=off spegne.
+  LY_VIE.push({ id:'R85_INCFUORI', sezione:'incompatibile', cablata:'2026-10-08',
+    nome:'An incompatible arrival acts outward, not on the departure: the G/W stays and its side wins',
+    dottrina:'Edu, EURUSD 05/10/2026 s112 (08/10/2026). VIAINCFUORI=off per disattivarla.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIAINCFUORI==='off') return null;
+      var m = R.mutante; if (!m || !m.ramoArr || m.casoMut !== -5) return null;
+      var a = m.ramoArr;
+      if (R.dayBranch === a && (a==='辰'||a==='午'||a==='酉'||a==='亥')) return null;
+      var mob = R.linee[m.pos-1]; if (mob.par !== 'G' && mob.par !== 'W') return null;
+      var GENW = { Wood:'Fire', Fire:'Earth', Earth:'Metal', Metal:'Water', Water:'Wood' };
+      // Edu, 08/10/2026 (USDCHF 28/09/2022 s99): "muove in una incompatibile che deve andare via da li', va quindi
+      // su Y (che e' lo stesso ramo Chou) e fa vincere lo short": prima la linea con lo stesso ramo dell'arrivo,
+      // che riceve il carattere di partenza (la G/W fa vincere il trigramma su cui arriva).
+      var tests = [['lands on', function (L) { return L.ramo === a && (L.pos === R.shi || L.pos === R.ying); }],   // solo su una sede: perimetro DI CLAUDE (EURUSD 05/10/2026: L4 C 申 non e' sede, l'arrivo va a combinare L2)
+                   ['combines', function (L) { return COMBINA[a] === L.ramo; }],
+                   ['clashes', function (L) { return CLASH[a] === L.ramo; }],
+                   ['generates', function (L) { return GENW[WX[a]] === WX[L.ramo]; }]];
+      var b = null, az = null;
+      for (var i = 0; i < tests.length && !b; i++) {
+        b = R.linee.filter(function (L) { return L.pos !== m.pos && !L.vuoto && tests[i][1](L); })[0] || null;
+        if (b) az = tests[i][0];
+      }
+      if (!b) return null;
+      var dove = az === 'lands on' ? b.pos : m.pos;
+      var dir = dove <= 3 ? 'SHORT' : 'LONG';
+      state.why = 'L'+m.pos+' <b>'+mob.par+' '+m.ramoDep+'</b>: the arrival <b>'+a+'</b> is incompatible with its trigram, cannot act on the departure and '+az+' L'+b.pos+' '+b.ramo+'; the '+mob.par+' stays in control and its side wins → '+dir+'.';
+      return dir;
+    }
+  });
+
   // LA SEDE SI MUOVE IN G/W E L'ALTRA SEDE E' VUOTA (Edu, 06/10/2026, GBPUSD 18/05/2022 seme 124: "Y si
   // muove in una W mentre S e' vuoto. E' ovvio che vince lo Short"). Prima del controllo indietro (§52) e
   // delle bestie. VIASEDEINGWVUOTA=off spegne.
