@@ -1377,14 +1377,15 @@ function creaMotore(LYM) {
     var arrVuotoCA = !!arr && (R.vuoti || []).indexOf(arr) >= 0 && CLASH[R.dayBranch] !== arr;
     if (!mobileAnnullata && !off('MLINCFUORI') && (mob.par === 'G' || mob.par === 'W') && arr &&
         R.mutante.casoMut === -5 && !autoPenaArrCA && !arrVuotoCA) {
-      var cCA = sboccoCA(arr, [pos], function (L) { return COMBINA[arr] === L.ramo; });
+      var bloccaM = (C.suLinea[pos] || []).filter(function (Q) { return CLASH[Q.ramo] === arr; })[0];   // la bestia che intralcia (Edu 14/09)
+      var cCA = bloccaM ? null : sboccoCA(arr, [pos], function (L) { return COMBINA[arr] === L.ramo; });
       if (cCA) {
         racconto.push('l\'arrivo ' + arr + ' è incompatibile: non agisce sulla partenza ' + dep + ', va a combinarsi con L' +
           cCA.pos + ' ' + cCA.par + ' ' + cCA.ramo + ' e ci porta la partenza ' + mob.par + ' ' + dep);
         var dC = dirDelCarattere(mob.par, cCA.pos);
         if (dC) return fine(dC, 'arrivo incompatibile che combina L' + cCA.pos + ': porta la ' + mob.par, GDINC);
       }
-      var sCA = cCA ? null : sboccoCA(arr, [pos], function (L) { return L.ramo === arr; });
+      var sCA = (cCA || bloccaM) ? null : sboccoCA(arr, [pos], function (L) { return L.ramo === arr; });
       if (sCA) {
         var pA = parArrCA(arr);
         // Edu, 08/10/2026 (EURJPY 28/04/2022): la linea d'arrivo "e' ancora untimely e la nascosta dietro di lui e'
@@ -1397,7 +1398,7 @@ function creaMotore(LYM) {
         if (!dS) racconto.push('ma L' + sCA.pos + ' ' + sCA.ramo + ' non è di stagione e la nascosta dietro di lei è vuota: non vince');
         if (dS) return fine(dS, 'arrivo incompatibile: ' + pA + ' ' + arr + ' va su L' + sCA.pos, GDINC);
       }
-      var altroCA = cCA || sCA || sboccoCA(arr, [pos], function (L) { return CLASH[arr] === L.ramo || GEN[WX[arr]] === WX[L.ramo]; });
+      var altroCA = cCA || sCA || bloccaM || sboccoCA(arr, [pos], function (L) { return CLASH[arr] === L.ramo || GEN[WX[arr]] === WX[L.ramo]; });
       if (!altroCA && !off('MLINCRESTA')) {
         racconto.push('l\'arrivo ' + arr + ' è incompatibile e non trova dove andare: la linea non può arrivare e resta ' +
           mob.par + ' ' + dep + ', che fa vincere la sua squadra');
@@ -1410,6 +1411,17 @@ function creaMotore(LYM) {
       for (var qi = 0; qi < C.seconde.length; qi++) {
         var Lq = C.seconde[qi].L, q = Lq && Lq.pos, aq = C.seconde[qi].arr;
         if (!Lq || !aq || q === pos) continue;
+        // Edu, 14/09/2026 (USDJPY 01/05/2024, metodo confermato): "La bestia della linea intralcia? ... L'ora Bing Zi arriva
+        // su L2 e blocca Wu quindi G rimane su S": il pilastro sulla linea che clasha il suo arrivo blocca il movimento,
+        // la linea resta col proprio carattere sulla propria sede.
+        var bloccaQ = (C.suLinea[q] || []).filter(function (Q) { return CLASH[Q.ramo] === aq; })[0];
+        if (bloccaQ) {
+          var dbq = dirDelCarattere(Lq.par, q);
+          racconto.push('L' + pos + ' va nel vuoto ed è scartata; L' + q + ' (incompatibile) andrebbe in ' + aq + ', ma il ' + bloccaQ.nome + ' ' +
+            bloccaQ.stelo + bloccaQ.ramo + ' arriva su L' + q + ' e lo blocca: resta ' + Lq.par + ' ' + Lq.ramo + ' sulla sua linea');
+          if (dbq) return fine(dbq, 'mobile scartata nel vuoto; la bestia blocca L' + q + ', resta ' + Lq.par, GDINC);
+          continue;
+        }
         var cq = sboccoCA(aq, [pos, q], function (L) { return COMBINA[aq] === L.ramo; });
         var sq = cq ? null : sboccoCA(aq, [pos, q], function (L) { return L.ramo === aq; });
         var dq = cq ? dirDelCarattere(Lq.par, cq.pos) : sq ? dirDelCarattere(parArrCA(aq), sq.pos) : null;
@@ -2758,8 +2770,34 @@ function creaMotore(LYM) {
                  !L.isMobile && !(C.seconde || []).some(function (X) { return X.L.pos === L.pos; }); })[0];
         if (bersK) presa = { M: M, L: bersK };
       });
+      // Edu, 08/10/2026 (USDJPY 30/09/2025 s148): "L3 parte ma l'arrivo e' combinato quindi rimane se stessa. E' una W
+      // che fa vincere la propria squadra". Perimetro DI CLAUDE: l'arrivo che combina la linea raggiunta ed e' combinato
+      // anche dal giorno (qui 亥 con 寅 di L2 e col giorno 壬寅): la sede resta se' stessa e parla. MLARRCOMBRESTA=off.
+      // confini dalle carte di Edu: non quando un pilastro cade sulla sede (USDJPY 08/02/2024, il mese la annulla) e non
+      // quando il movimento e' una ritirata (USDJPY 01/12/2022, "il pezzo forte e' la P che retrocede").
+      if (presa && !off('MLARRCOMBRESTA') && C.D && COMBINA[C.D] === presa.M.a &&
+          !(C.suLinea[presa.M.L.pos] || []).length && RETRO[presa.M.L.ramo] !== presa.M.a) {
+        var dR = dirDelCarattere(presa.M.L.par, presa.M.L.pos);
+        if (dR) {
+          racconto.push('L' + presa.M.L.pos + ' parte verso ' + presa.M.a + ', ma l\'arrivo è combinato (da L' + presa.L.pos +
+            ' ' + presa.L.ramo + ' e dal giorno ' + C.D + '): la linea rimane sé stessa, ' + PAR_IT[presa.M.L.par] + ' ' + presa.M.L.ramo);
+          return fine(dR, 'l\'arrivo è combinato: la sede rimane ' + PAR_IT[presa.M.L.par], 'T0k la sede raggiunge una linea');
+        }
+      }
       if (presa) {
-        var dP2 = dirDelCarattere(presa.L.par, presa.M.L.pos);
+        // Edu, 08/10/2026: "solo la combinazione puo' trasportare la partenza sopra un'altra linea" -> la sede che
+        // combina una linea ci porta la PROPRIA partenza (il suo carattere, sulla linea raggiunta).
+        // Provata come default l'08/10/2026: rompe due letture di Edu (USDJPY 01/12/2022, USDJPY 08/02/2024) -> resta
+        // spenta, estensione DI CLAUDE: MLCOMBPRESA=partenza per accenderla.
+        var portaP = ENV.MLCOMBPRESA === 'partenza';
+        var dP2 = portaP ? dirDelCarattere(presa.M.L.par, presa.L.pos) : dirDelCarattere(presa.L.par, presa.M.L.pos);
+        if (dP2 && portaP) {
+          racconto.push('L' + presa.M.L.pos + ' (' + (presa.M.L.pos === R.shi ? 'lo Shi' : 'la Ying') +
+            ') si muove in ' + presa.M.a + ' e combina con L' + presa.L.pos + ' ' + PAR_IT[presa.L.par] + ' ' + presa.L.ramo +
+            ': la combinazione ci porta la partenza ' + PAR_IT[presa.M.L.par] + ' ' + presa.M.L.ramo);
+          return fine(dP2, 'la sede combina L' + presa.L.pos + ' e ci porta il suo ' + PAR_IT[presa.M.L.par],
+                      'T0k la sede raggiunge una linea');
+        }
         if (dP2) {
           racconto.push('L' + presa.M.L.pos + ' (' + (presa.M.L.pos === R.shi ? 'lo Shi' : 'la Ying') +
             ') si muove in ' + presa.M.a + ' per raggiungere L' + presa.L.pos + ' ' + PAR_IT[presa.L.par] +
