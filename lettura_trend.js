@@ -19,6 +19,7 @@
 // 12. Se S e Y sono TUTTE E DUE troppo fuori stagione non possono rappresentare un trend o un contro-trend: il metodo TACE.
 //     Perimetro di Claude su "troppo": elemento morto o imprigionato nel mese (controllato dal mese o che lo controlla).
 // 7b. La sede di stagione si lascia colpire da un arrivo forte (di stagione), non se e' il ramo stesso del mese (EURJPY 07/10/2026 s178).
+// 14. L'arrivo di una linea incompatibile agisce su Shi e Ying come quello della mobile (EURJPY 07/10/2026 s178, S55).
 // 13. La Ying che genera lo Shi avvantaggia il trend, anche se la Ying e' vuota (EURUSD 07/10/2026 s112, S55).
 // Esito: segue / non segue / tace, con i punti e il racconto. ctx come trend_ly.js (dayBranch, monthBranch, yearBranch,
 // oraBranch, dayStem, yearStem, monthStem, hourStem, emaDir).
@@ -55,40 +56,50 @@
     };
     var pt = { S: 0, Y: 0 };
     var sedi = [['S', S, R.shi], ['Y', Y, R.ying]];
+    // Chi si muove: la mobile e, dal 09/10/2026 (S55), le linee INCOMPATIBILI, che girano col futuro comune e agiscono su
+    // Shi e Ying come la mobile (Edu, EURJPY 07/10/2026 s178: "Si"). c.incompatibili === false torna alla sola mobile.
+    var RETRO = { '卯':'寅','午':'巳','酉':'申','子':'亥','丑':'戌','辰':'丑','未':'辰','戌':'未' };
+    var chi = [{ pos: mob.pos, dep: dep, arr: R.mutante.movimentoNullo ? null : arr, retro: R.mutante.progressione === 'retrocedente', tipo: 'l\'arrivo' }];
+    if (c.incompatibili !== false && R.incompatibili && R.mutante.futuro) R.incompatibili.forEach(function (ip) {
+      var Li = R.linee[ip - 1], ai = R.mutante.futuro[ip - 1];
+      if (Li && ai && ai !== Li.ramo) chi.push({ pos: ip, dep: Li.ramo, arr: ai, retro: RETRO[Li.ramo] === ai, tipo: 'l\'arrivo dell\'incompatibile L' + ip });
+    });
     sedi.forEach(function (q) {
       var k = q[0], L = q[1], sp = q[2], e = WX[L.ramo], nome = k === 'S' ? 'lo Shi' : 'la Ying';
-      // 10: la sede e' la mobile
-      if (mob.pos === sp && aE && !R.mutante.movimentoNullo) {
-        if (L.vuoto) { out.racconto.push(nome + ' si muove ma è vuoto: non beneficia di nulla'); }
-        else if (GEN[aE] === e) { pt[k] += segno(L, true); out.racconto.push(nome + ' si fa generare indietro: avvantaggiato'); }
-        else if (KE[aE] === e) { pt[k] += segno(L, false); out.racconto.push(nome + ' è controllato indietro: colpito'); }
-        return;
-      }
-      if (mob.pos === R.shi || mob.pos === R.ying) { /* la mobile e' l'altra sede: niente azione da lei su questa */ }
-      else if (aE && !R.mutante.movimentoNullo) {
+      chi.forEach(function (m) {
+        var mA = m.arr, mAE = mA ? WX[mA] : null, mDE = WX[m.dep];
+        if (!mA) return;
+        // 10: la sede e' lei stessa la linea che si muove
+        if (m.pos === sp) {
+          if (L.vuoto) { out.racconto.push(nome + ' si muove ma è vuoto: non beneficia di nulla'); }
+          else if (GEN[mAE] === e) { pt[k] += segno(L, true); out.racconto.push(nome + ' si fa generare indietro: avvantaggiato'); }
+          else if (KE[mAE] === e) { pt[k] += segno(L, false); out.racconto.push(nome + ' è controllato indietro: colpito'); }
+          return;
+        }
+        if (m.pos === R.shi || m.pos === R.ying) return;   // a muoversi e' l'altra sede: niente azione da lei su questa
         var ok = true;
-        if (R.mutante.progressione === 'retrocedente') { ok = false; }                                   // 5
-        if (GEN[aE] === dE) { ok = false; }                                                              // 4
-        var lo = Math.min(mob.pos, sp), hi = Math.max(mob.pos, sp);
-        for (var q2 = lo + 1; q2 < hi; q2++) if (R.linee[q2 - 1].vuoto) ok = false;                      // 6
+        if (m.retro) ok = false;                                                                        // 5
+        if (GEN[mAE] === mDE) ok = false;                                                               // 4
+        var lo = Math.min(m.pos, sp), hi = Math.max(m.pos, sp);
+        for (var q2 = lo + 1; q2 < hi; q2++) if (R.linee[q2 - 1].vuoto) ok = false;                     // 6
         if (ok) {
-          if (GEN[aE] === e) { if (L.vuoto) out.racconto.push(nome + ' è vuoto: il nutrimento dell\'arrivo non arriva'); else { pt[k] += segno(L, true); out.racconto.push('l\'arrivo ' + arr + ' nutre ' + nome); } }
-          else if (KE[aE] === e || GEN[e] === aE) {
+          if (GEN[mAE] === e) { if (L.vuoto) out.racconto.push(nome + ' è vuoto: il nutrimento di ' + m.tipo.replace('l\'arrivo', 'quell\'arrivo') + ' non arriva'); else { pt[k] += segno(L, true); out.racconto.push(m.tipo + ' ' + mA + ' nutre ' + nome); } }
+          else if (KE[mAE] === e || GEN[e] === mAE) {
             // 7b (Edu, 09/10/2026, S55, EURJPY 07/10/2026 s178: "L5 si muove in una forte Hai che indebolisce Y"): la sede di
             //    stagione si lascia colpire da un arrivo forte (di stagione anche lui nel mese). Perimetro DI CLAUDE che tiene
             //    insieme GBPUSD 15/12/2022 (Ying Zi nel mese Zi: non si lascia drenare): la sede che e' il ramo stesso del mese
             //    resta intoccabile. c.arrivoForte === false torna alla regola 7 com'era.
-            var arrForte = c.arrivoForte !== false && !!mE && (aE === mE || GEN[mE] === aE) && L.ramo !== c.monthBranch;
-            if (timely(L) && !arrForte) out.racconto.push(nome + ' è di stagione: non si lascia ' + (KE[aE] === e ? 'controllare' : 'drenare'));   // 7
-            else { pt[k] += segno(L, false); out.racconto.push('l\'arrivo ' + (arrForte && timely(L) ? 'forte ' : '') + arr + (KE[aE] === e ? ' controlla ' : ' drena ') + nome); }
+            var arrForte = c.arrivoForte !== false && !!mE && (mAE === mE || GEN[mE] === mAE) && L.ramo !== c.monthBranch;
+            if (timely(L) && !arrForte) out.racconto.push(nome + ' è di stagione: non si lascia ' + (KE[mAE] === e ? 'controllare' : 'drenare'));   // 7
+            else { pt[k] += segno(L, false); out.racconto.push(m.tipo + ' ' + (arrForte && timely(L) ? 'forte ' : '') + mA + (KE[mAE] === e ? ' controlla ' : ' drena ') + nome); }
           }
         }
-      }
-      // 9: il trigono con l'arrivo e il mese/giorno
-      if (arr && TRINE[arr] && TRINE[arr].indexOf(L.ramo) >= 0 && L.ramo !== arr && !L.vuoto) {
-        var terzo = TRINE[arr].filter(function (b) { return b !== arr && b !== L.ramo; })[0];
-        if (terzo === c.monthBranch || terzo === c.dayBranch) { pt[k] += segno(L, true); out.racconto.push('l\'arrivo ' + arr + ' chiude il trigono con ' + nome + ' e il ' + (terzo === c.monthBranch ? 'mese' : 'giorno') + ': avvantaggiato'); }
-      }
+        // 9: il trigono con l'arrivo e il mese/giorno
+        if (TRINE[mA] && TRINE[mA].indexOf(L.ramo) >= 0 && L.ramo !== mA && !L.vuoto) {
+          var terzo = TRINE[mA].filter(function (b) { return b !== mA && b !== L.ramo; })[0];
+          if (terzo === c.monthBranch || terzo === c.dayBranch) { pt[k] += segno(L, true); out.racconto.push(m.tipo + ' ' + mA + ' chiude il trigono con ' + nome + ' e il ' + (terzo === c.monthBranch ? 'mese' : 'giorno') + ': avvantaggiato'); }
+        }
+      });
       // 8: i pilastri che convergono sulla sede
       if (L.bestia && L.bestia.cn) {
         var caduti = pil.filter(function (p) { return BESTIA_STELO[p[1]] === L.bestia.cn && R.vuoti.indexOf(p[2]) < 0; });
