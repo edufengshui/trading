@@ -2085,6 +2085,24 @@ function creaMotore(LYM) {
           if (eK !== comb.M.L.el) parK = parDi(eK, palEl);
         }
         var dK = dirDelCarattere(parK, comb.sp);
+        // Edu, 09/10/2026 (EURJPY 31/10/2023 seme 158, riletta): "L3 moves to reach Y it also brings the hiding G h up
+        // there. Fire is in the Tomb while metal and water are strong so the G h can control the Y and make the long to
+        // win". La linea che combina una sede le porta anche il suo nascosto; se la sede e' nella tomba del mese e il
+        // nascosto la controlla, parla il nascosto sulla sede. MLPORTANASCOSTO=off spegne.
+        var Lns = comb.M.L, fsn = Lns.fushen, Lsd = R.linee[comb.sp - 1];
+        if (!off('MLPORTANASCOSTO') && fsn && fsn.b && (R.vuoti || []).indexOf(fsn.b) < 0 &&
+            TOMBA[WX[Lsd.ramo]] === R.monthBranch && KE[WX[fsn.b]] === WX[Lsd.ramo] &&
+            // Edu, 09/10/2026: "La forza del nascosto e' necessaria, un nascosto senza energia non puo' fare niente":
+            // di stagione, oppure generato dall'arrivo della linea che lo porta (qui 申 Metallo genera 亥 Acqua).
+            (C.timely(WX[fsn.b]) || GEN[WX[comb.M.a]] === WX[fsn.b])) {
+          var dN = dirDelCarattere(fsn.par, comb.sp);
+          if (dN) {
+            racconto.push('L' + Lns.pos + ' si muove in ' + comb.M.a + ' per raggiungere ' + (comb.sp === R.shi ? 'lo Shi' : 'la Ying') +
+              ' ' + Lsd.ramo + ' e ci porta anche il suo nascosto ' + fsn.par + ' ' + fsn.b + '. ' + EL_IT[WX[Lsd.ramo]] +
+              ' è nella tomba del mese: il ' + fsn.par + ' ' + fsn.b + ' controlla la sede e ne decide il verso');
+            return fine(dN, 'porta il nascosto ' + fsn.par + ' ' + fsn.b + ' sulla sede nella tomba', 'T0k si muove per combinarsi con una sede');
+          }
+        }
         // Edu, 14/09/2026 (EURJPY 31/10/2023 seme 158): "Prima: L3 si muove per combinarsi con
         // Y, porta un loser B su Y. Poi interviene la bestia e sostituisce la untimely B su Y
         // con 丑 che e' C che vince." Dopo il movimento, se la sede che ha ricevuto un P/B e'
