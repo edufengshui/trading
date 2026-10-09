@@ -101,8 +101,17 @@
     var forte = (R.mutante && R.mutante.progressione === 'avanzante') || m.dep === D || m.arr === D ||
                 m.dep === c.monthBranch || m.arr === c.monthBranch;
     if (!forte) return 0;
+    // Edu, 09/10/2026 (GBPUSD 15/12/2022 s124): "C'e' una linea vuota fra Y e S quindi il movimento di L2 non puo'
+    // influenzare S. Per quanto riguarda Y, siamo nel mese Zi quindi Y non potra' mai essere drenato da un L2
+    // avanzante": (1) una linea vuota fra le due sedi ferma l'influenza; (2) la sede di stagione nel mese non si
+    // lascia drenare ne' controllare (nutrirla resta possibile).
+    var lo = Math.min(R.shi, R.ying), hi = Math.max(R.shi, R.ying);
+    for (var q = lo + 1; q < hi; q++) if (R.linee[q - 1] && R.linee[q - 1].vuoto) return 0;
     var a = WX[m.arr], e = WX[L.ramo];
     var az = GEN[a] === e ? 'nutre' : (KE[a] === e || GEN[e] === a) ? 'colpisce' : null; if (!az) return 0;
+    var mE = c.monthBranch ? WX[c.monthBranch] : null;
+    var diStagione = mE && (e === mE || GEN[mE] === e);
+    if (az === 'colpisce' && diStagione) return 0;
     var favorita = az === 'nutre';
     return ((sede === R.shi) === favorita) ? +1 : -1;
   }
