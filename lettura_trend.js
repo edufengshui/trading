@@ -21,6 +21,8 @@
 // 7b. La sede di stagione si lascia colpire da un arrivo forte (di stagione), non se e' il ramo stesso del mese (EURJPY 07/10/2026 s178).
 // 10b. La sede vuota ma di stagione riceve il nutrimento ("gia' vibrante di suo", NZDUSD 07/10/2026 s56); la sede che si
 //     muove non e' vuota alla partenza (AUDUSD 07/10/2026 s69).
+// 15. La mobile combinata alla partenza dal mese o dal giorno non si muove (EURGBP 07/10/2026 s84).
+// 16. Il mese che e' una G e si combina con lo Shi gli garantisce la vittoria (EURGBP 07/10/2026 s84).
 // 14. L'arrivo di una linea incompatibile agisce su Shi e Ying come quello della mobile (EURJPY 07/10/2026 s178, S55).
 // 13. La Ying che genera lo Shi avvantaggia il trend, anche se la Ying e' vuota (EURUSD 07/10/2026 s112, S55).
 // Esito: segue / non segue / tace, con i punti e il racconto. ctx come trend_ly.js (dayBranch, monthBranch, yearBranch,
@@ -61,7 +63,12 @@
     // Chi si muove: la mobile e, dal 09/10/2026 (S55), le linee INCOMPATIBILI, che girano col futuro comune e agiscono su
     // Shi e Ying come la mobile (Edu, EURJPY 07/10/2026 s178: "Si"). c.incompatibili === false torna alla sola mobile.
     var RETRO = { '卯':'寅','午':'巳','酉':'申','子':'亥','丑':'戌','辰':'丑','未':'辰','戌':'未' };
-    var chi = [{ pos: mob.pos, dep: dep, arr: R.mutante.movimentoNullo ? null : arr, retro: R.mutante.progressione === 'retrocedente', tipo: 'l\'arrivo' }];
+    // 15 (Edu, 09/10/2026, S55, EURGBP 07/10/2026 s84: "L3 non si può muovere per via del mese"): la mobile la cui partenza
+    //    e' combinata dal mese (o dal giorno, regola gia' a registro dal 18/09/2026) non si muove e non agisce sulle sedi.
+    //    c.partenzaLegata === false torna alla forma vecchia.
+    var legataDa = c.partenzaLegata === false ? null : (COMBINA[dep] === c.monthBranch ? 'mese' : COMBINA[dep] === c.dayBranch ? 'giorno' : null);
+    if (legataDa) out.racconto.push('la mobile è combinata alla partenza dal ' + legataDa + ': non si muove');
+    var chi = [{ pos: mob.pos, dep: dep, arr: (R.mutante.movimentoNullo || legataDa) ? null : arr, retro: R.mutante.progressione === 'retrocedente', tipo: 'l\'arrivo' }];
     if (c.incompatibili !== false && R.incompatibili && R.mutante.futuro) R.incompatibili.forEach(function (ip) {
       var Li = R.linee[ip - 1], ai = R.mutante.futuro[ip - 1];
       if (Li && ai && ai !== Li.ramo) chi.push({ pos: ip, dep: Li.ramo, arr: ai, retro: RETRO[Li.ramo] === ai, tipo: 'l\'arrivo dell\'incompatibile L' + ip });
@@ -125,6 +132,23 @@
       if (GEN[eS] === eY) { pt.Y += segno(Y, true); out.racconto.push('lo Shi genera la Ying (estensione di Claude)'); }
       if (KE[eY] === eS) { pt.S += segno(S, false); out.racconto.push('la Ying controlla lo Shi (estensione di Claude)'); }
       if (KE[eS] === eY) { pt.Y += segno(Y, false); out.racconto.push('lo Shi controlla la Ying (estensione di Claude)'); }
+    }
+    // 16 (Edu, 09/10/2026, S55, EURGBP 07/10/2026 s84: "proprio il fatto che il mese è una G che si combina con S gli
+    //    garantisce la vittoria"): il mese che e' una G e si combina con lo Shi lo avvantaggia. Estensione DI CLAUDE (anche la
+    //    W, anche la Ying) dietro c.meseTutte, spenta.
+    var palE = null;
+    R.linee.forEach(function (Lx) { if (palE) return; var ex = WX[Lx.ramo];
+      if (Lx.par === 'B') palE = ex; else if (Lx.par === 'G') palE = KE[ex];
+      else if (Lx.par === 'P') palE = GEN[ex];
+      else if (Lx.par === 'C') palE = Object.keys(GEN).filter(function (z) { return GEN[z] === ex; })[0];
+      else if (Lx.par === 'W') palE = Object.keys(KE).filter(function (z) { return KE[z] === ex; })[0]; });
+    if (palE && c.monthBranch) {
+      var parMese = KE[mE] === palE ? 'G' : KE[palE] === mE ? 'W' : null;
+      [['S', S, 'lo Shi'], ['Y', Y, 'la Ying']].forEach(function (q) {
+        if (q[0] === 'Y' && !c.meseTutte) return;
+        if (COMBINA[c.monthBranch] !== q[1].ramo) return;
+        if (parMese === 'G' || (parMese === 'W' && c.meseTutte)) { pt[q[0]] += 1; out.racconto.push('il mese è una ' + parMese + ' che si combina con ' + q[2] + ': gli garantisce la vittoria'); }
+      });
     }
     out.shi = pt.S; out.ying = pt.Y; out.punti = pt.S - pt.Y;
     if (out.punti > 0) out.verdetto = 'segue'; else if (out.punti < 0) out.verdetto = 'non segue';
