@@ -977,13 +977,16 @@ function livelloTreSistemi(e) {
   // misurarle), ma NON si tradano. CANTINA_A=0 nel localStorage lo rimette in scala.
   var cantinaA = !(typeof localStorage !== 'undefined' && localStorage && localStorage.getItem('CANTINA_A') === '0');
   if (ly && dlr && pb === ly && ly === dlr)
-    return { liv: 'A', dir: pb, cantina: cantinaA, perche: 'Plum Blossom, Liu Yao e Da Liu Ren concordano' + (cantinaA ? ' — livello A in cantina, non si trada' : ''), voci: voci };
+    // SCALA RINOMINATA (Edu, 09/10/2026, "Confermo"): il vecchio A e' abolito come livello e resta in cantina
+    // (livello "cantina"); il vecchio B diventa A, il vecchio C diventa B, il vecchio D diventa C. Dal vivo dal
+    // 15/09 al 08/10 i record del registro usano ancora le lettere vecchie (A=concordi, B=attuale+DLR...).
+    return { liv: cantinaA ? 'cantina' : 'A', dir: pb, cantina: cantinaA, perche: 'Plum Blossom, Liu Yao e Da Liu Ren concordano' + (cantinaA ? ' — in cantina, non si trada' : ''), voci: voci };
   if (dlr && at && at === dlr)
-    return { liv: 'B', dir: dlr, perche: 'sistema attuale e Da Liu Ren concordano', voci: voci };
+    return { liv: 'A', dir: dlr, perche: 'sistema attuale e Da Liu Ren concordano', voci: voci };
   if (ly && pb === ly && !dlr)
-    return { liv: 'C', dir: pb, perche: 'Plum Blossom e Liu Yao concordano, il Da Liu Ren tace', voci: voci };
+    return { liv: 'B', dir: pb, perche: 'Plum Blossom e Liu Yao concordano, il Da Liu Ren tace', voci: voci };
   if (dlr && lett && dlr === lett)
-    return { liv: 'D', dir: dlr, perche: 'Da Liu Ren e Lettura S47 concordano', voci: voci };
+    return { liv: 'C', dir: dlr, perche: 'Da Liu Ren e Lettura S47 concordano', voci: voci };
   var perche = !dlr ? 'il Da Liu Ren tace e Plum Blossom e Liu Yao non concordano'
              : (ly && pb === ly) ? 'il Da Liu Ren contrasta Plum Blossom e Liu Yao concordi'
              : lett ? 'la Lettura S47 contrasta il Da Liu Ren' : 'nessun accordo fra le voci';
@@ -1005,7 +1008,7 @@ function renderReportTreSistemi() {
       var L = livelloTreSistemi(e);
       e.livello = L.liv; e.voci = L.voci;
       e.cantina = !!L.cantina;
-      if (L.liv) { e.signal = L.dir; e.segue = (L.dir === e.trend); e.decisore = 'Livello ' + L.liv + ' · ' + L.perche + ' · ' + L.voci; e.motivo = L.cantina ? 'livello A in cantina (Edu, 09/10/2026): non si trada' : '';
+      if (L.liv) { e.signal = L.dir; e.segue = (L.dir === e.trend); e.decisore = 'Livello ' + L.liv + ' · ' + L.perche + ' · ' + L.voci; e.motivo = L.cantina ? 'in cantina (Edu, 09/10/2026): PB, LY e DLR concordi, non si trada' : '';
         // S51 (21/09/2026): la FIDUCIA del trade dal sistema-trend. Misura del 19-20/09 sulla scala
         // A+B+C+D (2.299 carte 65,6%): il sistema-trend concorde 71,1% (547 carte), tace 64,8%,
         // contraddice 61,4% (440). Non ferma il trade (le contraddette restano sopra il 60%): lo
@@ -1017,7 +1020,7 @@ function renderReportTreSistemi() {
   });
   var tradabili = esiti.filter(function (e) { return e.livello && !e.cantina && (e.signal === 'LONG' || e.signal === 'SHORT'); });
   var inCantina = esiti.filter(function (e) { return e.livello && e.cantina && (e.signal === 'LONG' || e.signal === 'SHORT'); });
-  var ordine = { A: 0, B: 1, C: 2, D: 3 };
+  var ordine = { A: 0, B: 1, C: 2, D: 3, cantina: 4 };
   tradabili.sort(function (a, b) { return ordine[a.livello] - ordine[b.livello]; });
   var esclusi = esiti.filter(function (e) { return tradabili.indexOf(e) < 0 && inCantina.indexOf(e) < 0; });
 
@@ -1036,6 +1039,7 @@ function renderReportTreSistemi() {
   }
   function livBadge(l) {
     var col = l === 'A' ? '#3fb950' : l === 'B' ? '#e3b341' : l === 'C' ? '#58a6ff' : '#8b949e';
+    if (l === 'cantina') l = 'cant.';
     return '<span style="display:inline-block;min-width:26px;text-align:center;padding:3px 8px;border-radius:6px;' +
       'font-weight:900;font-size:13px;color:#0e1022;background:' + col + '" title="livello ' + l + '">' + l + '</span>';
   }
@@ -1046,10 +1050,10 @@ function renderReportTreSistemi() {
       (e.fiducia ? '<span style="font-size:11px;font-weight:800;padding:1px 6px;border-radius:6px;margin-left:6px;color:#0e1022;background:' + (e.fiducia === 'alta' ? '#3fb950' : e.fiducia === 'bassa' ? '#e3b341' : '#8b949e') + '" title="fiducia dal sistema-trend">fiducia ' + e.fiducia + '</span>' : '') +
       '<span style="' + css.note + '">' + e.voci + (e.dlrVia ? ' · via DLR: ' + e.dlrVia : '') +
       (e.avviso ? ' · <b style="color:#e3b341">' + e.avviso + '</b>' : '') + '</span></div>';
-  }).join('') || '<div style="padding:8px 0;opacity:.7">Nessun cross da tradare oggi: nessun livello B, C o D.</div>';
+  }).join('') || '<div style="padding:8px 0;opacity:.7">Nessun cross da tradare oggi: nessun livello A, B o C.</div>';
   var righeCant = inCantina.map(function (e) {
     return '<div class="repline" data-cross="' + e.cross + '" style="' + css.row + ';cursor:pointer;opacity:.75">' +
-      livBadge('A') + '<span style="' + css.name + '">' + e.cross + '</span>' + badge(e.signal) +
+      livBadge('cantina') + '<span style="' + css.name + '">' + e.cross + '</span>' + badge(e.signal) +
       '<span style="font-size:12px;opacity:.9">' + (e.segue ? 'segue il trend' : 'non segue il trend') + ' · <b>in cantina, non si trada</b></span>' +
       '<span style="' + css.note + '">' + e.voci + (e.dlrVia ? ' · via DLR: ' + e.dlrVia : '') + '</span></div>';
   }).join('');
@@ -1067,7 +1071,7 @@ function renderReportTreSistemi() {
 
   var spente = Object.keys(lyToggles).filter(function (k) { return lyToggles[k] === false; }).length;
   var nota = '<div style="padding:6px 14px;font-size:12px;background:rgba(227,179,65,.08);border-bottom:1px solid rgba(255,255,255,.08)">' +
-    'Scala <b>B → C → D</b>: <b>B</b> 65% · <b>C</b> 70% · <b>D</b> 58% di trade giusti nei sei anni. <b>Livello A in cantina</b> dal 09/10/2026 (dal vivo 27%, fuori campione 46%): si mostra e si registra, non si trada. Tutto il resto è fermo.' +
+    'Scala <b>A → B → C</b> (dal 09/10/2026): <b>A</b> sistema attuale e DLR concordi (66% nei sei anni, 70% ago-ott 2026) · <b>B</b> PB e LY concordi, DLR tace · <b>C</b> DLR e Lettura S47 concordi. <b>In cantina</b> le carte con PB, LY e DLR tutti concordi (il vecchio A: dal vivo 27%, fuori campione 46%): si mostrano e si registrano, non si tradano. Tutto il resto è fermo.' +
     (spente ? ' <b style="color:#e3b341">Nota: a schermo hai ' + spente + ' via' + (spente > 1 ? ' spente' : ' spenta') +
       ' — il report le ignora e le usa comunque accese.</b>' : '') + '</div>';
 
@@ -1077,13 +1081,13 @@ function renderReportTreSistemi() {
       '<div style="' + css.head + '">' +
         '<b style="font-size:16px">Da tradare oggi · ' + forexData.date + ' 00:00 GMT</b>' +
         '<span style="font-size:12px;opacity:.8">' + tradabili.length + ' da tradare (' + nL + ' long, ' + nS + ' short) · ' +
-        'B ' + nB + ' · C ' + nC + ' · D ' + nD + ' · A in cantina ' + inCantina.length + ' · ' + esclusi.length + ' fermi</span>' +
+        'A ' + nA + ' · B ' + nB + ' · C ' + nC + ' · in cantina ' + inCantina.length + ' · ' + esclusi.length + ' fermi</span>' +
       '</div>' + nota +
       '<div style="' + css.sect + '">' +
-        '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">DA TRADARE · livello B, C o D</div>' + righeOk +
+        '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">DA TRADARE · livello A, B o C</div>' + righeOk +
       '</div>' +
       (inCantina.length ? '<div style="' + css.sect + ';background:rgba(63,185,80,.05);border-top:1px solid rgba(255,255,255,.10)">' +
-        '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">IN CANTINA · livello A, solo da osservare</div>' + righeCant + '</div>' : '') +
+        '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">IN CANTINA · PB, LY e DLR concordi, solo da osservare</div>' + righeCant + '</div>' : '') +
       '<details style="' + css.sect + ';background:rgba(248,81,73,.05);border-top:1px solid rgba(255,255,255,.10)">' +
         '<summary style="font-size:12px;letter-spacing:1px;opacity:.65;cursor:pointer">FERMI · ' + esclusi.length + ' cross (tocca per vedere perché)</summary>' + righeNo +
       '</details>' +
