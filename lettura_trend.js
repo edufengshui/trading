@@ -15,8 +15,10 @@
 // 10. La sede che e' lei stessa la mobile e si fa generare indietro e' avvantaggiata; controllata indietro, colpita.
 //     Una sede vuota non puo' beneficiare di nulla.
 // 11. Il carattere conta: nutrire una P o una B rafforza chi fa perdere la propria squadra (il segno si rovescia).
+//     Solo il nutrire: colpire una P o una B la indebolisce come qualunque sede (EURJPY 07/10/2026 s178, S55).
 // 12. Se S e Y sono TUTTE E DUE troppo fuori stagione non possono rappresentare un trend o un contro-trend: il metodo TACE.
 //     Perimetro di Claude su "troppo": elemento morto o imprigionato nel mese (controllato dal mese o che lo controlla).
+// 7b. La sede di stagione si lascia colpire da un arrivo forte (di stagione), non se e' il ramo stesso del mese (EURJPY 07/10/2026 s178).
 // 13. La Ying che genera lo Shi avvantaggia il trend, anche se la Ying e' vuota (EURUSD 07/10/2026 s112, S55).
 // Esito: segue / non segue / tace, con i punti e il racconto. ctx come trend_ly.js (dayBranch, monthBranch, yearBranch,
 // oraBranch, dayStem, yearStem, monthStem, hourStem, emaDir).
@@ -49,7 +51,7 @@
     var pil = [['anno', c.yearStem, c.yearBranch], ['mese', c.monthStem, c.monthBranch], ['giorno', c.dayStem, c.dayBranch], ['ora', c.hourStem, c.oraBranch]]
       .filter(function (p) { return p[1] && p[2]; });
     var segno = function (L, fav) { // 11: il carattere
-      var s = fav ? +1 : -1; if (L.par === 'P' || L.par === 'B') s = -s; return s;
+      var s = fav ? +1 : -1; if ((fav || c.colpisciPB) && (L.par === 'P' || L.par === 'B')) s = -s; return s;   // 11 solo per il nutrire (Edu, EURJPY 07/10/2026 s178: colpire la Ying P la indebolisce -> segue); c.colpisciPB torna alla forma vecchia
     };
     var pt = { S: 0, Y: 0 };
     var sedi = [['S', S, R.shi], ['Y', Y, R.ying]];
@@ -72,8 +74,13 @@
         if (ok) {
           if (GEN[aE] === e) { if (L.vuoto) out.racconto.push(nome + ' è vuoto: il nutrimento dell\'arrivo non arriva'); else { pt[k] += segno(L, true); out.racconto.push('l\'arrivo ' + arr + ' nutre ' + nome); } }
           else if (KE[aE] === e || GEN[e] === aE) {
-            if (timely(L)) out.racconto.push(nome + ' è di stagione: non si lascia ' + (KE[aE] === e ? 'controllare' : 'drenare'));   // 7
-            else { pt[k] += segno(L, false); out.racconto.push('l\'arrivo ' + arr + (KE[aE] === e ? ' controlla ' : ' drena ') + nome); }
+            // 7b (Edu, 09/10/2026, S55, EURJPY 07/10/2026 s178: "L5 si muove in una forte Hai che indebolisce Y"): la sede di
+            //    stagione si lascia colpire da un arrivo forte (di stagione anche lui nel mese). Perimetro DI CLAUDE che tiene
+            //    insieme GBPUSD 15/12/2022 (Ying Zi nel mese Zi: non si lascia drenare): la sede che e' il ramo stesso del mese
+            //    resta intoccabile. c.arrivoForte === false torna alla regola 7 com'era.
+            var arrForte = c.arrivoForte !== false && !!mE && (aE === mE || GEN[mE] === aE) && L.ramo !== c.monthBranch;
+            if (timely(L) && !arrForte) out.racconto.push(nome + ' è di stagione: non si lascia ' + (KE[aE] === e ? 'controllare' : 'drenare'));   // 7
+            else { pt[k] += segno(L, false); out.racconto.push('l\'arrivo ' + (arrForte && timely(L) ? 'forte ' : '') + arr + (KE[aE] === e ? ' controlla ' : ' drena ') + nome); }
           }
         }
       }
