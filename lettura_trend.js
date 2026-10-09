@@ -23,6 +23,7 @@
 //     muove non e' vuota alla partenza (AUDUSD 07/10/2026 s69).
 // 15. La mobile combinata alla partenza dal mese o dal giorno non si muove (EURGBP 07/10/2026 s84).
 // 16. Il mese che e' una G e si combina con lo Shi gli garantisce la vittoria (EURGBP 07/10/2026 s84).
+// 17. L'arrivo che punisce una sede la colpisce, anche se genera la mobile stessa (USDJPY 06/10/2026 s157).
 // 14. L'arrivo di una linea incompatibile agisce su Shi e Ying come quello della mobile (EURJPY 07/10/2026 s178, S55).
 // 13. La Ying che genera lo Shi avvantaggia il trend, anche se la Ying e' vuota (EURUSD 07/10/2026 s112, S55).
 // Esito: segue / non segue / tace, con i punti e il racconto. ctx come trend_ly.js (dayBranch, monthBranch, yearBranch,
@@ -104,6 +105,17 @@
             if (timely(L) && !arrForte) out.racconto.push(nome + ' è di stagione: non si lascia ' + (KE[mAE] === e ? 'controllare' : 'drenare'));   // 7
             else { pt[k] += segno(L, false); out.racconto.push(m.tipo + ' ' + (arrForte && timely(L) ? 'forte ' : '') + mA + (KE[mAE] === e ? ' controlla ' : ' drena ') + nome); }
           }
+        }
+        // 17 (Edu, 09/10/2026, S55, USDJPY 06/10/2026 s157: "L4 si muove per penalizzare Y. Segue il trend"): l'arrivo che
+        //    punisce una sede (三刑: Yin->Si->Shen->Yin, Chou->Xu->Wei->Chou, Zi<->Mao) la colpisce, anche quando genera la mobile
+        //    stessa (su quella carta l'arrivo Xu genera la partenza You). Non se retrocede, non con una vuota in mezzo, non sulla
+        //    sede vuota; la sede di stagione si difende come dal controllo (7/7b). c.penalita === false spegne.
+        var PENA = { '寅':'巳','巳':'申','申':'寅','丑':'戌','戌':'未','未':'丑','子':'卯','卯':'子' };
+        if (c.penalita !== false && PENA[mA] === L.ramo && !m.retro && !L.vuoto && !(GEN[mAE] === e || KE[mAE] === e || GEN[e] === mAE)) {
+          var okP = true; for (var q3 = Math.min(m.pos, sp) + 1; q3 < Math.max(m.pos, sp); q3++) if (R.linee[q3 - 1].vuoto) okP = false;
+          var forteP = !!mE && (mAE === mE || GEN[mE] === mAE) && L.ramo !== c.monthBranch;
+          if (okP && timely(L) && !forteP) out.racconto.push(nome + ' è di stagione: non si lascia punire');
+          else if (okP) { pt[k] += segno(L, false); out.racconto.push(m.tipo + ' ' + mA + ' punisce ' + nome); }
         }
         // 9: il trigono con l'arrivo e il mese/giorno
         if (TRINE[mA] && TRINE[mA].indexOf(L.ramo) >= 0 && L.ramo !== mA && !L.vuoto) {
