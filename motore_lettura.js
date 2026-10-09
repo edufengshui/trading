@@ -65,6 +65,8 @@
  *   T5   le tre porte                     MLPORTE    non a ritirata senza forza (MLRITIRATA)
  *   T5b/T5c porte/carattere della seconda DUEMUT2=on / SECONDACAR=dopo (spenti: costano)
  *   T6   il trigono che nutre             MLNUTRE
+ *   T6v  la sede vicina (Edu 09/10)       MLSEDEVICINA la mobile forte agisce sulla sede adiacente:
+ *                                                    Shi = il trend, Ying = la spinta contraria (serve ctx.emaDir)
  *   T7   il duello, solo alla fine        MLDUELLO   solo se una sede e' fuori e l'altra no
  *
  * BESTIE (Edu): clasha la mobile -> la blocca · clasha la ferma -> la sveglia · controlla o
@@ -3630,6 +3632,39 @@ function creaMotore(LYM) {
         var d5b = dirDelCarattere(T2.par, T2.pos);
         if (d5b) return fine(d5b, 'la seconda mobile ' + porte2[k2].nome + ': parla chi riceve, L' + T2.pos + ' ' + PAR_IT[T2.par],
                              'T5b le porte della seconda');
+      }
+    }
+
+    // --- T6v: LA SEDE VICINA (Edu, 09/10/2026, EURUSD 07/10/2026 s112 ed EURJPY 01/12/2020 s124) ------
+    // Edu: "S e Y sono comunque le linee piu' importanti dell'esagramma e cio' che fa una linea mobile le
+    // influenza. Cio' vale anche se la linea mobile (parliamo sempre dell'arrivo) drena o controlla Y o S.
+    // Questa nuova regola non cambia nessuna delle regole precedenti, ma le integra fornendo un'altra
+    // informazione." Poi: "se S rappresenta il trend allora Y rappresenta cio' che spinge nella direzione
+    // opposta. Qui Y e' drenato dalla forte L2 avanzante." Misura del 09/10 sul mazzo: la regola da sola sta
+    // al 48-52% in ogni forma; si stacca solo quando la mobile agisce sulla sede ADIACENTE ed e' FORTE
+    // (avanza, o ha il giorno o il mese sulla partenza o sull'arrivo): 60% su 92 carte (48% senza forza).
+    // Cablata cosi', come ultima informazione prima del duello: entra solo se nessuna mobile ha concluso.
+    // Serve ctx.emaDir ('up'|'down'). MLSEDEVICINA=off spegne; MLSEDEVICINA=tutte toglie il confine della forza.
+    // 09/10/2026, Edu: "si legge IN CONTEMPORANEA": la regola vive nel sistema-trend (trend_ly.js T9); qui resta
+    // SPENTA (MLSEDEVICINA=on la riaccende come ultima istanza: scattava su 1 carta).
+    if (ENV.MLSEDEVICINA === 'on' && ctx && ctx.emaDir && arr && !mobileAnnullata && pos !== R.shi && pos !== R.ying) {
+      var dSv = Math.abs(pos - R.shi), dYv = Math.abs(pos - R.ying);
+      if (dSv !== dYv && Math.min(dSv, dYv) === 1) {
+        var sedeV = dSv < dYv ? R.shi : R.ying, Lv = R.linee[sedeV - 1], eV = WX[Lv.ramo], aEl = WX[arr];
+        var azV = GEN[aEl] === eV ? 'genera' : KE[aEl] === eV ? 'controlla' : GEN[eV] === aEl ? 'drena' : null;
+        var forteV = R.mutante.progressione === 'avanzante' || dep === R.dayBranch || arr === R.dayBranch ||
+                     dep === R.monthBranch || arr === R.monthBranch;
+        var toccata = C.D && (COMBINA[C.D] === arr || CLASH[C.D] === arr || COMBINA[C.D] === dep || CLASH[C.D] === dep);
+        if (azV && !Lv.vuoto && !vuotaL(Lv, C, R) && !toccata && (R.vuoti || []).indexOf(arr) < 0 && !mob.vuoto &&
+            (forteV || ENV.MLSEDEVICINA === 'tutte')) {
+          var trendV = ctx.emaDir === 'up' ? 'LONG' : 'SHORT', oppV = trendV === 'LONG' ? 'SHORT' : 'LONG';
+          var favV = azV === 'genera';
+          var dV = ((sedeV === R.shi) === favV) ? trendV : oppV;
+          racconto.push('nessuna mobile conclude; la mobile L' + pos + ', forte, agisce sulla sede vicina L' + sedeV + ' (' +
+            (sedeV === R.shi ? 'lo Shi, il trend' : 'la Ying, la spinta contraria') + '): l\'arrivo ' + arr + ' ' + azV + ' ' +
+            PAR_IT[Lv.par] + ' ' + Lv.ramo + ' → ' + (dV === trendV ? 'segue il trend' : 'non segue il trend'));
+          return fine(dV, 'la sede vicina: l\'arrivo ' + azV + ' ' + (sedeV === R.shi ? 'lo Shi' : 'la Ying'), 'T6v la sede vicina');
+        }
       }
     }
 

@@ -74,8 +74,38 @@
     // che genera oggi) non fa niente. Non e' una regola della mobile: il contesto porta
     // c.inizioBranch (il ramo del giorno d'inizio), che l'app dovra' calcolare dalla EMA.
     { id:'T8', punto:-1, nome:'il giorno di oggi genera il giorno che ha iniziato il trend',
-      prova:function (m, c) { return !!c.dayBranch && !!c.inizioBranch && GEN[WX[c.dayBranch]] === WX[c.inizioBranch]; } }
+      prova:function (m, c) { return !!c.dayBranch && !!c.inizioBranch && GEN[WX[c.dayBranch]] === WX[c.inizioBranch]; } },
+    // T9 — LE SEDI (Edu, 09/10/2026, S54, EURUSD 07/10/2026 s112 ed EURJPY 01/12/2020 s124): "S e Y sono comunque
+    // le linee piu' importanti dell'esagramma e cio' che fa una linea mobile le influenza. Cio' vale anche se la
+    // linea mobile (parliamo sempre dell'arrivo) drena o controlla Y o S"; "se S rappresenta il trend allora Y
+    // rappresenta cio' che spinge nella direzione opposta. Qui Y e' drenato dalla forte L2 avanzante"; "e' l'unica
+    // che interpreterebbe il Trend quindi non va messa ne' all'inizio ne' alla fine: si legge IN CONTEMPORANEA e
+    // contribuisce all'interpretazione generale". Lo Shi nutrito o la Ying colpita (controllata o drenata) -> segue;
+    // lo Shi colpito o la Ying nutrita -> non segue. Misura del 09/10 sul mazzo: da sola 48-52% in ogni forma;
+    // si stacca con la mobile FORTE (avanza, o ha il giorno o il mese sulla partenza o sull'arrivo) che agisce
+    // sulla sede ADIACENTE: 60% su 92 carte (48% senza forza). Perimetro DI CLAUDE: adiacenza e forza, sede non
+    // vuota, mobile non sede, partenza e arrivo non toccati dal giorno, arrivo non vuoto.
+    { id:'T9', punto:+1, nome:'la mobile forte nutre lo Shi o colpisce la Ying adiacente (il trend)',
+      prova:function (m, c) { var v = sedeVicina(m, c); return v === +1; } },
+    { id:'T9', punto:-1, nome:'la mobile forte colpisce lo Shi o nutre la Ying adiacente (contro il trend)',
+      prova:function (m, c) { var v = sedeVicina(m, c); return v === -1; } }
   ];
+  function sedeVicina(m, c) {
+    var R = m.R; if (!R || !m.mob || m.mob.isShi || m.mob.isYing || !m.arr) return 0;
+    var pos = m.mob.pos, dS = Math.abs(pos - R.shi), dY = Math.abs(pos - R.ying);
+    if (dS === dY || Math.min(dS, dY) !== 1) return 0;
+    var sede = dS < dY ? R.shi : R.ying, L = R.linee[sede - 1]; if (!L || L.vuoto || L.isMobile) return 0;
+    if (m.mob.vuoto || (R.vuoti || []).indexOf(m.arr) >= 0) return 0;
+    var D = c.dayBranch;
+    if (D && (COMBINA[D] === m.arr || CLASH[D] === m.arr || COMBINA[D] === m.dep || CLASH[D] === m.dep)) return 0;
+    var forte = (R.mutante && R.mutante.progressione === 'avanzante') || m.dep === D || m.arr === D ||
+                m.dep === c.monthBranch || m.arr === c.monthBranch;
+    if (!forte) return 0;
+    var a = WX[m.arr], e = WX[L.ramo];
+    var az = GEN[a] === e ? 'nutre' : (KE[a] === e || GEN[e] === a) ? 'colpisce' : null; if (!az) return 0;
+    var favorita = az === 'nutre';
+    return ((sede === R.shi) === favorita) ? +1 : -1;
+  }
   var TRINE = {};
   [['Water',['申','子','辰']],['Wood',['亥','卯','未']],['Fire',['寅','午','戌']],['Metal',['巳','酉','丑']]].forEach(function (t) {
     t[1].forEach(function (b) { TRINE[b] = { el:t[0], rami:t[1] }; });

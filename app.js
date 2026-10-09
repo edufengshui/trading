@@ -453,7 +453,7 @@ function analizzaCrossPerReport(r, utcMs, dateStr) {
         out.lyDir = lyDir;
         out.lySez = (t && t.sezione) || null;
         // MOTORE DI LETTURA (S47): dal 16/09/2026 (S48) conta nella scala come livello D, col DLR.
-        var lett = letturaMotore(ly, dateStr, yearBranch, chart.monthBranch, chart.dayStem || null, chart.dayBranch, oraB0);
+        var lett = letturaMotore(ly, dateStr, yearBranch, chart.monthBranch, chart.dayStem || null, chart.dayBranch, oraB0, dir);
         out.lettDir = lett.dir; out.lettGradino = lett.gradino; out.lettPerche = lett.perche; out.lettRacconto = lett.racconto;
         // SISTEMA-TREND (S51, Edu 19-20/09/2026): voce informativa, NON conta nella scala. Legge se il
         // mercato segue il trend EMA dalla mobile e dal tocco della data (trend_ly.js). Ha bisogno
@@ -871,12 +871,13 @@ function letturaTrend(ly, dateStr, yearBranch, monthBranch, dayStem, dayBranch, 
   return out;
 }
 
-function letturaMotore(ly, dateStr, yearBranch, monthBranch, dayStem, dayBranch, oraBranch) {
+function letturaMotore(ly, dateStr, yearBranch, monthBranch, dayStem, dayBranch, oraBranch, emaDir) {
   var out = { dir: null, gradino: null, perche: null, racconto: '' };
   try {
     if (typeof creaMotore !== 'function' || !window.XKDGLiuYao || !ly || ly.error) return out;
     var stD = steliDiData(dateStr, yearBranch, monthBranch, dayStem, oraBranch);
     var ctx = { yearStem: stD.yearStem, monthStem: stD.monthStem, hourStem: stD.hourStem,
+                emaDir: emaDir || null,   // S54: il trend EMA, per la sede vicina (MLSEDEVICINA)
                 pilastri: [ { nome: 'anno',   stelo: stD.yearStem,  ramo: yearBranch  },
                             { nome: 'mese',   stelo: stD.monthStem, ramo: monthBranch },
                             { nome: 'giorno', stelo: dayStem,       ramo: dayBranch   },
