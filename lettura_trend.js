@@ -17,6 +17,7 @@
 // 11. Il carattere conta: nutrire una P o una B rafforza chi fa perdere la propria squadra (il segno si rovescia).
 // 12. Se S e Y sono TUTTE E DUE troppo fuori stagione non possono rappresentare un trend o un contro-trend: il metodo TACE.
 //     Perimetro di Claude su "troppo": elemento morto o imprigionato nel mese (controllato dal mese o che lo controlla).
+// 13. La Ying che genera lo Shi avvantaggia il trend, anche se la Ying e' vuota (EURUSD 07/10/2026 s112, S55).
 // Esito: segue / non segue / tace, con i punti e il racconto. ctx come trend_ly.js (dayBranch, monthBranch, yearBranch,
 // oraBranch, dayStem, yearStem, monthStem, hourStem, emaDir).
 (function (root, factory) {
@@ -89,6 +90,17 @@
       // la sede legata e controllata dal mese (EURJPY 16/01/2026): svantaggiata
       if (c.monthBranch && COMBINA[c.monthBranch] === L.ramo && KE[mE] === e) { pt[k] -= 1; out.racconto.push(nome + ' è combinato e controllato dal mese: svantaggiato'); }
     });
+    // 13: la Ying che genera lo Shi (Edu, 09/10/2026, S55, EURUSD 07/10/2026 s112: "Y genera S, e L5 si muove per pure
+    //     generare S. Segue il trend") — il contro-trend che nutre il trend lo avvantaggia; vale anche con la Ying vuota
+    //     (su quella carta la Ying Zi e' vuota). Il carattere dello Shi conta come nella regola 11.
+    //     Estensioni DI CLAUDE non dette da Edu (Shi che genera la Ying, controlli fra le sedi): dietro c.sediTutte, spente.
+    if (c.yGeneraS !== false && GEN[WX[Y.ramo]] === WX[S.ramo]) { pt.S += segno(S, true); out.racconto.push('la Ying genera lo Shi: il trend è nutrito'); }
+    if (c.sediTutte) {
+      var eS = WX[S.ramo], eY = WX[Y.ramo];
+      if (GEN[eS] === eY) { pt.Y += segno(Y, true); out.racconto.push('lo Shi genera la Ying (estensione di Claude)'); }
+      if (KE[eY] === eS) { pt.S += segno(S, false); out.racconto.push('la Ying controlla lo Shi (estensione di Claude)'); }
+      if (KE[eS] === eY) { pt.Y += segno(Y, false); out.racconto.push('lo Shi controlla la Ying (estensione di Claude)'); }
+    }
     out.shi = pt.S; out.ying = pt.Y; out.punti = pt.S - pt.Y;
     if (out.punti > 0) out.verdetto = 'segue'; else if (out.punti < 0) out.verdetto = 'non segue';
     if (out.verdetto && c.emaDir) out.dir = (c.emaDir === 'up') === (out.verdetto === 'segue') ? 'LONG' : 'SHORT';
