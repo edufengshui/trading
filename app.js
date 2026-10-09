@@ -701,7 +701,7 @@ function salvaNelRegistro(data, tradabili) {
   reg[data] = tradabili.map(function (e) {
     return { cross: e.cross, signal: e.signal, trend: e.trend, segue: e.segue,
              decisore: e.decisore, seed: e.seed, sup: e.sup, inf: e.inf, linea: e.linea,
-             bazi: e.bazi, livello: e.livello || null, fiducia: e.fiducia || null, voci: e.voci || null, dlrVia: e.dlrVia || null,
+             bazi: e.bazi, livello: e.livello || null, cantina: !!e.cantina, fiducia: e.fiducia || null, voci: e.voci || null, dlrVia: e.dlrVia || null,
              esito: (e.cross in vecchi) ? vecchi[e.cross] : null };
   });
   var giorni = Object.keys(reg).sort();
@@ -970,8 +970,14 @@ function livelloTreSistemi(e) {
              ' · Sistema-trend ' + (e.stVerdetto ? (e.stVerdetto + ' (' + (e.stPunti > 0 ? '+' : '') + e.stPunti + (e.stDir ? ', ' + e.stDir : '') + ')') : 'tace');
   // Lo Spirito e lo stelo del giorno restano mostrati ma dal 16/09/2026 non contano piu' nella scala.
   if (!pb) return { liv: null, dir: null, perche: 'carta non leggibile', voci: voci };
+  // LIVELLO A IN CANTINA (Edu, 09/10/2026: "E' meglio mettere in cantina il livello A"). Dal vivo dal 15/09 il
+  // livello A ha fatto 6 vinti su 22 (27%); col software di oggi e lo storico portato al 09/10/2026 fa 46% su
+  // agosto-ottobre 2026 (11/24) contro il 77% di gennaio-luglio: il 70% vale solo dentro i sei anni su cui le
+  // regole sono nate. Le carte A restano calcolate, mostrate e registrate con l'esito (per continuare a
+  // misurarle), ma NON si tradano. CANTINA_A=0 nel localStorage lo rimette in scala.
+  var cantinaA = !(typeof localStorage !== 'undefined' && localStorage && localStorage.getItem('CANTINA_A') === '0');
   if (ly && dlr && pb === ly && ly === dlr)
-    return { liv: 'A', dir: pb, perche: 'Plum Blossom, Liu Yao e Da Liu Ren concordano', voci: voci };
+    return { liv: 'A', dir: pb, cantina: cantinaA, perche: 'Plum Blossom, Liu Yao e Da Liu Ren concordano' + (cantinaA ? ' — livello A in cantina, non si trada' : ''), voci: voci };
   if (dlr && at && at === dlr)
     return { liv: 'B', dir: dlr, perche: 'sistema attuale e Da Liu Ren concordano', voci: voci };
   if (ly && pb === ly && !dlr)
@@ -998,7 +1004,8 @@ function renderReportTreSistemi() {
     if (e.pbDir) {                                   // la carta e' leggibile: si applica la scala
       var L = livelloTreSistemi(e);
       e.livello = L.liv; e.voci = L.voci;
-      if (L.liv) { e.signal = L.dir; e.segue = (L.dir === e.trend); e.decisore = 'Livello ' + L.liv + ' · ' + L.perche + ' · ' + L.voci; e.motivo = '';
+      e.cantina = !!L.cantina;
+      if (L.liv) { e.signal = L.dir; e.segue = (L.dir === e.trend); e.decisore = 'Livello ' + L.liv + ' · ' + L.perche + ' · ' + L.voci; e.motivo = L.cantina ? 'livello A in cantina (Edu, 09/10/2026): non si trada' : '';
         // S51 (21/09/2026): la FIDUCIA del trade dal sistema-trend. Misura del 19-20/09 sulla scala
         // A+B+C+D (2.299 carte 65,6%): il sistema-trend concorde 71,1% (547 carte), tace 64,8%,
         // contraddice 61,4% (440). Non ferma il trade (le contraddette restano sopra il 60%): lo
@@ -1008,10 +1015,11 @@ function renderReportTreSistemi() {
     } else if (e.signal !== 'NO TRADE') { e.signal = 'NO TRADE'; e.motivo = e.motivo || 'carta non leggibile'; }
     return e;
   });
-  var tradabili = esiti.filter(function (e) { return e.livello && (e.signal === 'LONG' || e.signal === 'SHORT'); });
+  var tradabili = esiti.filter(function (e) { return e.livello && !e.cantina && (e.signal === 'LONG' || e.signal === 'SHORT'); });
+  var inCantina = esiti.filter(function (e) { return e.livello && e.cantina && (e.signal === 'LONG' || e.signal === 'SHORT'); });
   var ordine = { A: 0, B: 1, C: 2, D: 3 };
   tradabili.sort(function (a, b) { return ordine[a.livello] - ordine[b.livello]; });
-  var esclusi = esiti.filter(function (e) { return tradabili.indexOf(e) < 0; });
+  var esclusi = esiti.filter(function (e) { return tradabili.indexOf(e) < 0 && inCantina.indexOf(e) < 0; });
 
   var css = {
     card: 'margin:18px 0;border:1px solid rgba(255,255,255,.14);border-radius:10px;overflow:hidden',
@@ -1038,7 +1046,13 @@ function renderReportTreSistemi() {
       (e.fiducia ? '<span style="font-size:11px;font-weight:800;padding:1px 6px;border-radius:6px;margin-left:6px;color:#0e1022;background:' + (e.fiducia === 'alta' ? '#3fb950' : e.fiducia === 'bassa' ? '#e3b341' : '#8b949e') + '" title="fiducia dal sistema-trend">fiducia ' + e.fiducia + '</span>' : '') +
       '<span style="' + css.note + '">' + e.voci + (e.dlrVia ? ' · via DLR: ' + e.dlrVia : '') +
       (e.avviso ? ' · <b style="color:#e3b341">' + e.avviso + '</b>' : '') + '</span></div>';
-  }).join('') || '<div style="padding:8px 0;opacity:.7">Nessun cross da tradare oggi: nessun livello A, B, C o D.</div>';
+  }).join('') || '<div style="padding:8px 0;opacity:.7">Nessun cross da tradare oggi: nessun livello B, C o D.</div>';
+  var righeCant = inCantina.map(function (e) {
+    return '<div class="repline" data-cross="' + e.cross + '" style="' + css.row + ';cursor:pointer;opacity:.75">' +
+      livBadge('A') + '<span style="' + css.name + '">' + e.cross + '</span>' + badge(e.signal) +
+      '<span style="font-size:12px;opacity:.9">' + (e.segue ? 'segue il trend' : 'non segue il trend') + ' · <b>in cantina, non si trada</b></span>' +
+      '<span style="' + css.note + '">' + e.voci + (e.dlrVia ? ' · via DLR: ' + e.dlrVia : '') + '</span></div>';
+  }).join('');
   var righeNo = esclusi.map(function (e) {
     return '<div style="' + css.row + '">' +
       '<span style="' + css.name + ';opacity:.75">' + e.cross + '</span>' + badge('NO TRADE') +
@@ -1049,11 +1063,11 @@ function renderReportTreSistemi() {
   var nL = tradabili.filter(function (e) { return e.signal === 'LONG'; }).length;
   var nS = tradabili.filter(function (e) { return e.signal === 'SHORT'; }).length;
 
-  salvaNelRegistro(forexData.date, tradabili);
+  salvaNelRegistro(forexData.date, tradabili.concat(inCantina));   // le carte A in cantina si registrano con l'esito, ma non si tradano
 
   var spente = Object.keys(lyToggles).filter(function (k) { return lyToggles[k] === false; }).length;
   var nota = '<div style="padding:6px 14px;font-size:12px;background:rgba(227,179,65,.08);border-bottom:1px solid rgba(255,255,255,.08)">' +
-    'Scala <b>A → B → C → D</b>: <b>A</b> 71% · <b>B</b> 65% · <b>C</b> 70% · <b>D</b> 58% (dal 2024 62%) di trade giusti nei sei anni. Tutto il resto è fermo.' +
+    'Scala <b>B → C → D</b>: <b>B</b> 65% · <b>C</b> 70% · <b>D</b> 58% di trade giusti nei sei anni. <b>Livello A in cantina</b> dal 09/10/2026 (dal vivo 27%, fuori campione 46%): si mostra e si registra, non si trada. Tutto il resto è fermo.' +
     (spente ? ' <b style="color:#e3b341">Nota: a schermo hai ' + spente + ' via' + (spente > 1 ? ' spente' : ' spenta') +
       ' — il report le ignora e le usa comunque accese.</b>' : '') + '</div>';
 
@@ -1063,11 +1077,13 @@ function renderReportTreSistemi() {
       '<div style="' + css.head + '">' +
         '<b style="font-size:16px">Da tradare oggi · ' + forexData.date + ' 00:00 GMT</b>' +
         '<span style="font-size:12px;opacity:.8">' + tradabili.length + ' da tradare (' + nL + ' long, ' + nS + ' short) · ' +
-        'A ' + nA + ' · B ' + nB + ' · C ' + nC + ' · D ' + nD + ' · ' + esclusi.length + ' fermi</span>' +
+        'B ' + nB + ' · C ' + nC + ' · D ' + nD + ' · A in cantina ' + inCantina.length + ' · ' + esclusi.length + ' fermi</span>' +
       '</div>' + nota +
       '<div style="' + css.sect + '">' +
-        '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">DA TRADARE · livello A, B, C o D</div>' + righeOk +
+        '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">DA TRADARE · livello B, C o D</div>' + righeOk +
       '</div>' +
+      (inCantina.length ? '<div style="' + css.sect + ';background:rgba(63,185,80,.05);border-top:1px solid rgba(255,255,255,.10)">' +
+        '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">IN CANTINA · livello A, solo da osservare</div>' + righeCant + '</div>' : '') +
       '<details style="' + css.sect + ';background:rgba(248,81,73,.05);border-top:1px solid rgba(255,255,255,.10)">' +
         '<summary style="font-size:12px;letter-spacing:1px;opacity:.65;cursor:pointer">FERMI · ' + esclusi.length + ' cross (tocca per vedere perché)</summary>' + righeNo +
       '</details>' +
