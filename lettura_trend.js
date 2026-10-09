@@ -24,6 +24,7 @@
 // 15. La mobile combinata alla partenza dal mese o dal giorno non si muove (EURGBP 07/10/2026 s84).
 // 16. Il mese che e' una G e si combina con lo Shi gli garantisce la vittoria (EURGBP 07/10/2026 s84).
 // 17. L'arrivo che punisce una sede la colpisce, anche se genera la mobile stessa (USDJPY 06/10/2026 s157).
+// 18. Il trigramma in confusione totale (ogni linea clasha il proprio futuro comune) fa tacere il metodo (AUDUSD 06/10/2026 s69).
 // 14. L'arrivo di una linea incompatibile agisce su Shi e Ying come quello della mobile (EURJPY 07/10/2026 s178, S55).
 // 13. La Ying che genera lo Shi avvantaggia il trend, anche se la Ying e' vuota (EURUSD 07/10/2026 s112, S55).
 // Esito: segue / non segue / tace, con i punti e il racconto. ctx come trend_ly.js (dayBranch, monthBranch, yearBranch,
@@ -53,6 +54,22 @@
     // 12
     // Edu, 09/10/2026: "Se 'troppo fuori stagione' taglia così tante carte allora non va bene. Diciamo che se tutte e due lo sono."
     if (troppo(S) && troppo(Y)) { out.racconto.push('Shi e Ying sono tutti e due troppo fuori stagione per rappresentare il trend: il metodo tace'); return out; }
+    // 18 (Edu, 09/10/2026, S55, AUDUSD 06/10/2026 s69: "Charts like these cannot be read with the trend methods, too much
+    //    confusion"): il trigramma in CONFUSIONE TOTALE — ogni sua linea clasha il proprio ramo nel futuro comune (la stessa
+    //    confusione totale del motore di lettura, USDJPY 13/02/2024 e 16/10/2024) e almeno una si muove — fa tacere il metodo.
+    //    Vale per tutti e due i trigrammi (il basso e' quello delle carte di Edu, l'alto e' simmetria di Claude: c.confusione
+    //    === 'basso' lo limita al basso; c.confusione === false spegne).
+    if (c.confusione !== false && R.mutante.futuro) {
+      var muoveIn = function (p) { return p === mob.pos || (R.incompatibili || []).indexOf(p) >= 0; };
+      var trigs = c.confusione === 'basso' ? [[1, 2, 3]] : [[1, 2, 3], [4, 5, 6]];
+      for (var tg = 0; tg < trigs.length; tg++) {
+        var tr = trigs[tg];
+        if (tr.some(muoveIn) && tr.every(function (p) { return CLASH[R.linee[p - 1].ramo] === R.mutante.futuro[p - 1]; })) {
+          out.racconto.push('il trigramma ' + (tg === 0 ? 'basso' : 'alto') + ' è in confusione totale (ogni linea clasha il proprio futuro): troppa confusione, il metodo tace');
+          return out;
+        }
+      }
+    }
     var dep = R.mutante.ramoDep, arr = R.mutante.ramoArr, aE = arr ? WX[arr] : null, dE = WX[dep];
     var pil = [['anno', c.yearStem, c.yearBranch], ['mese', c.monthStem, c.monthBranch], ['giorno', c.dayStem, c.dayBranch], ['ora', c.hourStem, c.oraBranch]]
       .filter(function (p) { return p[1] && p[2]; });
