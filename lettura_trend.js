@@ -25,6 +25,7 @@
 // 16. Il mese che e' una G e si combina con lo Shi gli garantisce la vittoria (EURGBP 07/10/2026 s84).
 // 17. L'arrivo che punisce una sede la colpisce, anche se genera la mobile stessa (USDJPY 06/10/2026 s157).
 // 18. Il trigramma in confusione totale (ogni linea clasha il proprio futuro comune) fa tacere il metodo (AUDUSD 06/10/2026 s69).
+// 19. La sede mobile il cui arrivo e' incompatibile (caso -5) non viene generata ne' controllata indietro (EURUSD 05/10/2026 s112).
 // 14. L'arrivo di una linea incompatibile agisce su Shi e Ying come quello della mobile (EURJPY 07/10/2026 s178, S55).
 // 13. La Ying che genera lo Shi avvantaggia il trend, anche se la Ying e' vuota (EURUSD 07/10/2026 s112, S55).
 // Esito: segue / non segue / tace, con i punti e il racconto. ctx come trend_ly.js (dayBranch, monthBranch, yearBranch,
@@ -98,6 +99,9 @@
         if (!mA) return;
         // 10: la sede e' lei stessa la linea che si muove
         if (m.pos === sp) {
+          // L'arrivo incompatibile col trigramma trasformato (o punito dal giorno: caso -5) non agisce sulla propria partenza
+          // (Edu, 08/10/2026, EURUSD 05/10/2026 s112: "G rimane in controllo"; R85_INCFUORI/MLINCFUORI).
+          if (m.pos === mob.pos && R.mutante.casoMut === -5 && c.incFuori !== false) { out.racconto.push('l\'arrivo ' + mA + ' è incompatibile: non agisce su ' + nome + ', che resta com\'è'); return; }
           // Edu (regole del vuoto, 22/09/2026): una linea che si muove non e' mai vuota alla partenza (AUDUSD 07/10/2026 s69:
           // "S si muove per generare indietro" con lo Shi Chou vuoto). c.mobileVuota === true torna alla forma vecchia.
           if (L.vuoto && c.mobileVuota) { out.racconto.push(nome + ' si muove ma è vuoto: non beneficia di nulla'); }
