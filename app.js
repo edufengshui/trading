@@ -461,6 +461,11 @@ function analizzaCrossPerReport(r, utcMs, dateStr) {
         // sui giorni di mercato (si saltano i sabati).
         var st = letturaTrend(ly, dateStr, yearBranch, chart.monthBranch, chart.dayStem || null, chart.dayBranch, oraB0, r, dir);
         out.stDir = st.dir; out.stPunti = st.punti; out.stVerdetto = st.verdetto; out.stRacconto = st.racconto; out.stInizio = st.inizio;
+        // METODO DEL TREND (S54, Edu 09/10/2026, lettura_trend.js): la carta LY letta SOLO col sistema del trend
+        // (S = trend, Y = contro-trend, 12 regole di Edu). Voce informativa, NON conta nella scala: sulle 3.309
+        // carte parla su 1.123 al 48%; col DLR concorde 60%. Da studiare nella prossima chat sulle carte perse.
+        var mt = metodoTrend(ly, dateStr, yearBranch, chart.monthBranch, chart.dayStem || null, chart.dayBranch, oraB0, dir);
+        out.mtDir = mt.dir; out.mtPunti = mt.punti; out.mtVerdetto = mt.verdetto; out.mtRacconto = mt.racconto;
         // --- TRE SISTEMI (Edu, 03/09/2026 S36): oltre a PB e LY si annotano il verdetto del
         // SISTEMA ATTUALE (PB + LY + rafforzativi, canonico = combinaS9 con tutte le vie accese)
         // e il verdetto del motore DA LIU REN (motore_dlr.js, stessa carta del pannello).
@@ -871,6 +876,19 @@ function letturaTrend(ly, dateStr, yearBranch, monthBranch, dayStem, dayBranch, 
   return out;
 }
 
+function metodoTrend(ly, dateStr, yearBranch, monthBranch, dayStem, dayBranch, oraBranch, dir) {
+  var out = { dir: null, punti: 0, verdetto: null, racconto: '' };
+  try {
+    if (!window.LetturaTrend || !ly || ly.error) return out;
+    var stD = steliDiData(dateStr, yearBranch, monthBranch, dayStem, oraBranch);
+    var v = window.LetturaTrend.leggi(ly, { dayBranch: dayBranch, monthBranch: monthBranch, yearBranch: yearBranch, oraBranch: oraBranch,
+      dayStem: dayStem, yearStem: stD.yearStem, monthStem: stD.monthStem, hourStem: stD.hourStem, emaDir: dir });
+    out.dir = v.dir || null; out.punti = v.punti || 0; out.verdetto = v.verdetto || null;
+    out.racconto = Array.isArray(v.racconto) ? v.racconto.join(' · ') : (v.racconto || '');
+  } catch (e) { out.racconto = 'metodo del trend non disponibile: ' + e.message; }
+  return out;
+}
+
 function letturaMotore(ly, dateStr, yearBranch, monthBranch, dayStem, dayBranch, oraBranch, emaDir) {
   var out = { dir: null, gradino: null, perche: null, racconto: '' };
   try {
@@ -968,7 +986,8 @@ function livelloTreSistemi(e) {
   var voci = 'PB ' + (pb || '—') + ' · LY ' + (ly || 'tace') + ' · attuale ' + (at || '—') +
              ' · DLR ' + (dlr || 'tace') + ' · Lettura S47 ' + (lett || 'tace') + (e.lettGradino ? ' (' + e.lettGradino + ')' : '') +
              ' · Spirito ' + (e.spirito || 'tace') + ' · stelo ' + (e.steloVoce || 'tace') +
-             ' · Sistema-trend ' + (e.stVerdetto ? (e.stVerdetto + ' (' + (e.stPunti > 0 ? '+' : '') + e.stPunti + (e.stDir ? ', ' + e.stDir : '') + ')') : 'tace');
+             ' · Sistema-trend ' + (e.stVerdetto ? (e.stVerdetto + ' (' + (e.stPunti > 0 ? '+' : '') + e.stPunti + (e.stDir ? ', ' + e.stDir : '') + ')') : 'tace') +
+             ' · Metodo del trend ' + (e.mtVerdetto && e.mtVerdetto !== 'tace' ? (e.mtVerdetto + ' (' + (e.mtPunti > 0 ? '+' : '') + e.mtPunti + (e.mtDir ? ', ' + e.mtDir : '') + ')') : 'tace');
   // Lo Spirito e lo stelo del giorno restano mostrati ma dal 16/09/2026 non contano piu' nella scala.
   if (!pb) return { liv: null, dir: null, perche: 'carta non leggibile', voci: voci };
   // LIVELLO A IN CANTINA (Edu, 09/10/2026: "E' meglio mettere in cantina il livello A"). Dal vivo dal 15/09 il
@@ -1061,7 +1080,7 @@ function renderReportTreSistemi() {
   var righeNo = esclusi.map(function (e) {
     return '<div style="' + css.row + '">' +
       '<span style="' + css.name + ';opacity:.75">' + e.cross + '</span>' + badge('NO TRADE') +
-      '<span style="' + css.note + '">' + e.motivo + (e.lettDir ? ' · <b>Lettura S47 ' + e.lettDir + '</b>' : '') + (e.stVerdetto ? ' · Sistema-trend ' + e.stVerdetto + ' (' + (e.stPunti > 0 ? '+' : '') + e.stPunti + ')' : '') + '</span></div>';
+      '<span style="' + css.note + '">' + e.motivo + (e.lettDir ? ' · <b>Lettura S47 ' + e.lettDir + '</b>' : '') + (e.stVerdetto ? ' · Sistema-trend ' + e.stVerdetto + ' (' + (e.stPunti > 0 ? '+' : '') + e.stPunti + ')' : '') + (e.mtVerdetto && e.mtVerdetto !== 'tace' ? ' · Metodo del trend ' + e.mtVerdetto + (e.mtDir ? ' (' + e.mtDir + ')' : '') : '') + '</span></div>';
   }).join('') || '<div style="padding:8px 0;opacity:.7">Nessun cross fermo.</div>';
   var cont = function (L) { return tradabili.filter(function (e) { return e.livello === L; }).length; };
   var nA = cont('A'), nB = cont('B'), nC = cont('C'), nD = cont('D');
