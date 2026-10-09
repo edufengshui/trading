@@ -101,6 +101,9 @@
     var forte = (R.mutante && R.mutante.progressione === 'avanzante') || m.dep === D || m.arr === D ||
                 m.dep === c.monthBranch || m.arr === c.monthBranch;
     if (!forte) return 0;
+    // Edu, 09/10/2026 (USDJPY 28/03/2022 s122): "Se L2 retrocede tecnicamente non puo' condizionare S, quindi il
+    // trend continua": la mobile che retrocede (退神) non agisce sulle sedi.
+    if (R.mutante && R.mutante.progressione === 'retrocedente') return 0;
     // Edu, 09/10/2026 (GBPUSD 15/12/2022 s124): "C'e' una linea vuota fra Y e S quindi il movimento di L2 non puo'
     // influenzare S. Per quanto riguarda Y, siamo nel mese Zi quindi Y non potra' mai essere drenato da un L2
     // avanzante": (1) una linea vuota fra le due sedi ferma l'influenza; (2) la sede di stagione nel mese non si
