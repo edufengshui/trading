@@ -90,8 +90,30 @@
     { id:'T9', punto:-1, nome:'la mobile forte colpisce lo Shi o nutre la Ying adiacente (contro il trend)',
       prova:function (m, c) { var v = sedeVicina(m, c); return v === -1; } }
   ];
+  // Edu, 09/10/2026 (EURJPY 16/01/2026 s184): "mese, linea mobile e Y formano un trigono di metallo? Y vince per
+  // questo". L'arrivo che chiude un trigono (三合) con una sede e un ramo della data (o un'altra linea ferma) nutre
+  // quella sede, da qualunque distanza: Shi nutrito -> segue, Ying nutrita -> non segue. Viene prima dell'azione
+  // sulla sede adiacente. Il trigono nella tomba del mese non agisce (regola di Edu del 19/09, T7).
+  function trigonoSede(m, c) {
+    var R = m.R; if (!R || !m.arr) return 0;
+    var tri = TRINE[m.arr]; if (!tri || TOMBA[tri.el] === c.monthBranch) return 0;
+    // Misura del 09/10: il trigono conta quando lo chiude il MESE o il GIORNO (61-67%), non una linea ferma (48%)
+    // ne' l'anno (31%). Perimetro di Claude.
+    var altri = [c.dayBranch, c.monthBranch].filter(function (b) { return !!b; });
+    var esito = 0;
+    [R.shi, R.ying].forEach(function (sp) {
+      var L = R.linee[sp - 1]; if (!L || L.vuoto || L.isMobile || tri.rami.indexOf(L.ramo) < 0 || L.ramo === m.arr) return;
+      var terzo = tri.rami.filter(function (b) { return b !== m.arr && b !== L.ramo; })[0];
+      if (altri.indexOf(terzo) < 0) return;
+      esito += (sp === R.shi) ? +1 : -1;
+    });
+    return esito > 0 ? +1 : esito < 0 ? -1 : 0;
+  }
   function sedeVicina(m, c) {
     var R = m.R; if (!R || !m.mob || m.mob.isShi || m.mob.isYing || !m.arr) return 0;
+    // Misura del 09/10: la via del trigono in T9 sta al 46% su 71 carte (chiuso da mese o giorno): SPENTA.
+    // T9TRIGONO=1 la riaccende. La lettura di Edu su EURJPY 16/01/2026 resta a registro.
+    if (typeof process !== 'undefined' && process.env && process.env.T9TRIGONO === '1') { var t = trigonoSede(m, c); if (t) return t; }
     var pos = m.mob.pos, dS = Math.abs(pos - R.shi), dY = Math.abs(pos - R.ying);
     if (dS === dY || Math.min(dS, dY) !== 1) return 0;
     var sede = dS < dY ? R.shi : R.ying, L = R.linee[sede - 1]; if (!L || L.vuoto || L.isMobile) return 0;
@@ -115,6 +137,10 @@
     var mE = c.monthBranch ? WX[c.monthBranch] : null;
     var diStagione = mE && (e === mE || GEN[mE] === e);
     if (az === 'colpisce' && diStagione) return 0;
+    // Edu, 09/10/2026 (USDCAD 21/11/2022 s133, gemella di AUDUSD 07/10/2026): "S e' troppo untimely per darci una
+    // risposta significativa sul trend. Dobbiamo usare il metodo normale": la sede letta per il trend non dev'essere
+    // morta o imprigionata nel mese (controllata dal mese, o che controlla il mese). Perimetro di Claude sul "troppo".
+    if (mE && (KE[mE] === e || KE[e] === mE)) return 0;
     var favorita = az === 'nutre';
     return ((sede === R.shi) === favorita) ? +1 : -1;
   }
