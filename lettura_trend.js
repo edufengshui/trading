@@ -26,6 +26,7 @@
 // 17. L'arrivo che punisce una sede la colpisce, anche se genera la mobile stessa (USDJPY 06/10/2026 s157).
 // 18. Il trigramma in confusione totale (ogni linea clasha il proprio futuro comune) fa tacere il metodo (AUDUSD 06/10/2026 s69).
 // 19. La sede mobile il cui arrivo e' incompatibile (caso -5) non viene generata ne' controllata indietro (EURUSD 05/10/2026 s112).
+// 20. A punti pari decidono le bestie delle due sedi (elemento dello stelo): vince chi controlla (AUDUSD 05/10/2026 s69).
 // 14. L'arrivo di una linea incompatibile agisce su Shi e Ying come quello della mobile (EURJPY 07/10/2026 s178, S55).
 // 13. La Ying che genera lo Shi avvantaggia il trend, anche se la Ying e' vuota (EURUSD 07/10/2026 s112, S55).
 // Esito: segue / non segue / tace, con i punti e il racconto. ctx come trend_ly.js (dayBranch, monthBranch, yearBranch,
@@ -90,6 +91,8 @@
     var chi = [{ pos: mob.pos, dep: dep, arr: (R.mutante.movimentoNullo || legataDa) ? null : arr, retro: R.mutante.progressione === 'retrocedente', tipo: 'l\'arrivo' }];
     if (c.incompatibili !== false && R.incompatibili && R.mutante.futuro) R.incompatibili.forEach(function (ip) {
       var Li = R.linee[ip - 1], ai = R.mutante.futuro[ip - 1];
+      // 15 anche per l'incompatibile (AUDUSD 05/10/2026 s69: lo Shi Chou legato dal giorno Zi non gira, "è tutto pari")
+      if (Li && c.partenzaLegata !== false && (COMBINA[Li.ramo] === c.monthBranch || COMBINA[Li.ramo] === c.dayBranch)) { out.racconto.push('l\'incompatibile L' + ip + ' è combinata alla partenza dal ' + (COMBINA[Li.ramo] === c.monthBranch ? 'mese' : 'giorno') + ': non gira'); return; }
       if (Li && ai && ai !== Li.ramo) chi.push({ pos: ip, dep: Li.ramo, arr: ai, retro: RETRO[Li.ramo] === ai, tipo: 'l\'arrivo dell\'incompatibile L' + ip });
     });
     sedi.forEach(function (q) {
@@ -182,6 +185,16 @@
         if (COMBINA[c.monthBranch] !== q[1].ramo) return;
         if (parMese === 'G' || (parMese === 'W' && c.meseTutte)) { pt[q[0]] += 1; out.racconto.push('il mese è una ' + parMese + ' che si combina con ' + q[2] + ': gli garantisce la vittoria'); }
       });
+    }
+    // 20 (Edu, 09/10/2026, S55, AUDUSD 05/10/2026 s69: "È tutto pari quindi usiamo le bestie e gli steli associati. S ha Wu
+    //    Y ha Ren. Vince S"): a punti pari decidono le bestie sulle due sedi con l'elemento del loro stelo (Drago Legno, Uccello
+    //    Fuoco, Gancio e Serpente Terra, Tigre Metallo, Guerriero Acqua): vince la sede la cui bestia controlla l'altra.
+    //    Perimetro DI CLAUDE: solo il controllo; con la generazione o lo stesso elemento resta pari. c.bestiePari === false spegne.
+    var ELB = { '青龍':'Wood','朱雀':'Fire','勾陳':'Earth','螣蛇':'Earth','白虎':'Metal','玄武':'Water' };
+    if (pt.S === pt.Y && c.bestiePari !== false && S.bestia && Y.bestia) {
+      var bS = ELB[S.bestia.cn], bY = ELB[Y.bestia.cn];
+      if (KE[bS] === bY) { pt.S += 1; out.racconto.push('pari: la bestia dello Shi (' + S.bestia.it + ') controlla quella della Ying (' + Y.bestia.it + '): vince lo Shi'); }
+      else if (KE[bY] === bS) { pt.Y += 1; out.racconto.push('pari: la bestia della Ying (' + Y.bestia.it + ') controlla quella dello Shi (' + S.bestia.it + '): vince la Ying'); }
     }
     out.shi = pt.S; out.ying = pt.Y; out.punti = pt.S - pt.Y;
     if (out.punti > 0) out.verdetto = 'segue'; else if (out.punti < 0) out.verdetto = 'non segue';
