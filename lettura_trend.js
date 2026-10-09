@@ -19,6 +19,8 @@
 // 12. Se S e Y sono TUTTE E DUE troppo fuori stagione non possono rappresentare un trend o un contro-trend: il metodo TACE.
 //     Perimetro di Claude su "troppo": elemento morto o imprigionato nel mese (controllato dal mese o che lo controlla).
 // 7b. La sede di stagione si lascia colpire da un arrivo forte (di stagione), non se e' il ramo stesso del mese (EURJPY 07/10/2026 s178).
+// 10b. La sede vuota ma di stagione riceve il nutrimento ("gia' vibrante di suo", NZDUSD 07/10/2026 s56); la sede che si
+//     muove non e' vuota alla partenza (AUDUSD 07/10/2026 s69).
 // 14. L'arrivo di una linea incompatibile agisce su Shi e Ying come quello della mobile (EURJPY 07/10/2026 s178, S55).
 // 13. La Ying che genera lo Shi avvantaggia il trend, anche se la Ying e' vuota (EURUSD 07/10/2026 s112, S55).
 // Esito: segue / non segue / tace, con i punti e il racconto. ctx come trend_ly.js (dayBranch, monthBranch, yearBranch,
@@ -71,7 +73,9 @@
         if (!mA) return;
         // 10: la sede e' lei stessa la linea che si muove
         if (m.pos === sp) {
-          if (L.vuoto) { out.racconto.push(nome + ' si muove ma è vuoto: non beneficia di nulla'); }
+          // Edu (regole del vuoto, 22/09/2026): una linea che si muove non e' mai vuota alla partenza (AUDUSD 07/10/2026 s69:
+          // "S si muove per generare indietro" con lo Shi Chou vuoto). c.mobileVuota === true torna alla forma vecchia.
+          if (L.vuoto && c.mobileVuota) { out.racconto.push(nome + ' si muove ma è vuoto: non beneficia di nulla'); }
           else if (GEN[mAE] === e) { pt[k] += segno(L, true); out.racconto.push(nome + ' si fa generare indietro: avvantaggiato'); }
           else if (KE[mAE] === e) { pt[k] += segno(L, false); out.racconto.push(nome + ' è controllato indietro: colpito'); }
           return;
@@ -83,7 +87,7 @@
         var lo = Math.min(m.pos, sp), hi = Math.max(m.pos, sp);
         for (var q2 = lo + 1; q2 < hi; q2++) if (R.linee[q2 - 1].vuoto) ok = false;                     // 6
         if (ok) {
-          if (GEN[mAE] === e) { if (L.vuoto) out.racconto.push(nome + ' è vuoto: il nutrimento di ' + m.tipo.replace('l\'arrivo', 'quell\'arrivo') + ' non arriva'); else { pt[k] += segno(L, true); out.racconto.push(m.tipo + ' ' + mA + ' nutre ' + nome); } }
+          if (GEN[mAE] === e) { if (L.vuoto && !(c.vuotaVibrante !== false && timely(L))) out.racconto.push(nome + ' è vuoto: il nutrimento di ' + m.tipo.replace('l\'arrivo', 'quell\'arrivo') + ' non arriva'); else { pt[k] += segno(L, true); out.racconto.push(m.tipo + ' ' + mA + ' nutre ' + nome + (L.vuoto ? ' (vuoto ma di stagione, già vibrante di suo)' : '')); } }
           else if (KE[mAE] === e || GEN[e] === mAE) {
             // 7b (Edu, 09/10/2026, S55, EURJPY 07/10/2026 s178: "L5 si muove in una forte Hai che indebolisce Y"): la sede di
             //    stagione si lascia colpire da un arrivo forte (di stagione anche lui nel mese). Perimetro DI CLAUDE che tiene
@@ -103,7 +107,10 @@
       // 8: i pilastri che convergono sulla sede
       if (L.bestia && L.bestia.cn) {
         var caduti = pil.filter(function (p) { return BESTIA_STELO[p[1]] === L.bestia.cn && R.vuoti.indexOf(p[2]) < 0; });
-        if (caduti.length >= 2) { pt[k] += 1; out.racconto.push(caduti.length + ' pilastri cadono su ' + nome + ' (' + caduti.map(function (p) { return p[0]; }).join(', ') + '): forte'); }
+        // Perimetro DI CLAUDE (NZDUSD 07/10/2026 s56, da validare): i pilastri non rendono forte una sede troppo fuori
+        // stagione (morta o imprigionata nel mese). c.pilastriSuMorta === true torna alla forma vecchia.
+        if (caduti.length >= 2 && troppo(L) && !c.pilastriSuMorta) out.racconto.push(caduti.length + ' pilastri cadono su ' + nome + ', ma è troppo fuori stagione: non la rendono forte');
+        else if (caduti.length >= 2) { pt[k] += 1; out.racconto.push(caduti.length + ' pilastri cadono su ' + nome + ' (' + caduti.map(function (p) { return p[0]; }).join(', ') + '): forte'); }
       }
       // la sede legata e controllata dal mese (EURJPY 16/01/2026): svantaggiata
       if (c.monthBranch && COMBINA[c.monthBranch] === L.ramo && KE[mE] === e) { pt[k] -= 1; out.racconto.push(nome + ' è combinato e controllato dal mese: svantaggiato'); }
