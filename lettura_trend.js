@@ -50,6 +50,8 @@
 //     vince (GBPUSD 01/10/2026 s132).
 // 35. Il blocco del giorno si scioglie se lo stelo del giorno, forte nella data, fa da passaggio fra il ramo del giorno e
 //     la sede: la sede riceve il flusso e vince (GBPUSD 24/09/2026 s132).
+// 36. La sede che si muove in un ramo che punisce l'altra sede (anche l'autopunizione) la colpisce, e la sede punita non e'
+//     piu' troppo forte (AUDUSD 24/09/2026 s70).
 // 14. L'arrivo di una linea incompatibile agisce su Shi e Ying come quello della mobile (EURJPY 07/10/2026 s178, S55).
 // 13. La Ying che genera lo Shi avvantaggia il trend, anche se la Ying e' vuota (EURUSD 07/10/2026 s112, S55).
 // Esito: segue / non segue / tace, con i punti e il racconto. ctx come trend_ly.js (dayBranch, monthBranch, yearBranch,
@@ -255,6 +257,21 @@
         if ((campF === 'S' ? S : Y).vuoto) pt[campF] += 1, out.racconto.push('la linea più forte dell\'esagramma è L' + pF + ' ' + R.linee[pF - 1].ramo + ', nel campo ' + (campF === 'S' ? 'dello Shi' : 'della Ying') + ': lo rafforza');
       }
     }
+    // 36 (Edu, 10/10/2026, S55, AUDUSD 24/09/2026 s70: "S si muove in You che penalizza Y quindi vince il segue"): la sede che
+    //    si muove (mobile o incompatibile che gira) e arriva in un ramo che PUNISCE l'altra sede — le punizioni della 17 e
+    //    l'autopunizione (Chen, Wu, You, Hai sullo stesso ramo) — la colpisce (-1), e la sede punita non e' piu' "troppo
+    //    forte" (34): li' la Ying You era il ramo del mese e la difesa di stagione non vale. c.sedePunisce === false spegne.
+    var punita = { S: false, Y: false };
+    var PENA36 = { '寅':'巳','巳':'申','申':'寅','丑':'戌','戌':'未','未':'丑','子':'卯','卯':'子' }, AUTOP = { '辰':1,'午':1,'酉':1,'亥':1 };
+    if (c.sedePunisce !== false) chi.forEach(function (m) {
+      if (!m.arr || m.retro || (m.pos !== R.shi && m.pos !== R.ying) || (m.pos === mob.pos && legataDa)) return;
+      var kA = m.pos === R.shi ? 'Y' : 'S', T = kA === 'S' ? S : Y;
+      if (T.vuoto) return;
+      if (PENA36[m.arr] === T.ramo || (m.arr === T.ramo && AUTOP[T.ramo])) {
+        pt[kA] -= 1; punita[kA] = true;
+        out.racconto.push((kA === 'S' ? 'la Ying' : 'lo Shi') + ' si muove in ' + m.arr + ' che punisce ' + (kA === 'S' ? 'lo Shi' : 'la Ying') + ': colpit' + (kA === 'S' ? 'o' : 'a'));
+      }
+    });
     // 31 (Edu, 10/10/2026, S55, EURJPY 07/09/2026 s181: "Anche se entrambi sono deboli tuttavia Y si muove per generare S.
     //    Segue il trend"): la sede che e' la mobile e il cui arrivo genera l'altra sede la nutre (+1, carattere della regola
     //    11). Non con l'arrivo vuoto (vedi 32), non se la mobile e' legata alla partenza o retrocede. c.sedeGeneraSede === false spegne.
@@ -430,7 +447,7 @@
     //    conta e vince la sede forte (+1). c.troppoForte === false spegne.
     var tForte = function (L) { var e = WX[L.ramo], dE3 = c.dayBranch ? WX[c.dayBranch] : null; return !L.vuoto && timely(L) && !!dE3 && (dE3 === e || GEN[dE3] === e); };
     if (c.troppoForte !== false) [['S', S, 'Y', Y, 'lo Shi'], ['Y', Y, 'S', S, 'la Ying']].forEach(function (q) {
-      var A = q[1], B = q[3]; if (!tForte(A) || tForte(B)) return;
+      var A = q[1], B = q[3]; if (!tForte(A) || tForte(B) || punita[q[0]]) return;
       var eA = WX[A.ramo], eB = WX[B.ramo];
       var mB = chi.filter(function (m) { return m.pos === (q[2] === 'S' ? R.shi : R.ying) && m.arr; })[0];
       var attacca = KE[eB] === eA || (mB && (CLASH[mB.arr] === A.ramo || KE[WX[mB.arr]] === eA));
