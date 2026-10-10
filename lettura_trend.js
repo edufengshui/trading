@@ -30,6 +30,8 @@
 // 21. Il mese che fa da ponte ferma il controllo solo sulla sede forte di suo, che resta forte (GBPUSD 05/10/2026 s132).
 // 22. La sede combinata e controllata dal giorno e' bloccata, fuori dal confronto; la sede generata indietro e' rafforzata
 //     qualunque sia il carattere (GBPUSD 06/10/2026 s132).
+// 23. Il giorno che drena la sede e la linea ferma accanto che la drena la indeboliscono; il giorno che genera l'arrivo
+//     della sede che si autogenera la rafforza ancora (GBPUSD 07/10/2026 s132).
 // 14. L'arrivo di una linea incompatibile agisce su Shi e Ying come quello della mobile (EURJPY 07/10/2026 s178, S55).
 // 13. La Ying che genera lo Shi avvantaggia il trend, anche se la Ying e' vuota (EURUSD 07/10/2026 s112, S55).
 // Esito: segue / non segue / tace, con i punti e il racconto. ctx come trend_ly.js (dayBranch, monthBranch, yearBranch,
@@ -126,7 +128,12 @@
           // Edu, 10/10/2026 (GBPUSD 06/10/2026 s132: "Y rafforzato dalla generazione indietro", la Ying e' una B): la sede
           // generata indietro e' rafforzata qualunque sia il suo carattere (la regola 11 vale per il nutrimento da un'altra linea).
           // c.indietroCarattere === true torna alla forma vecchia.
-          else if (GEN[mAE] === e) { pt[k] += c.indietroCarattere ? segno(L, true) : 1; out.racconto.push(nome + ' si fa generare indietro: rafforzat' + (k === 'S' ? 'o' : 'a')); }
+          else if (GEN[mAE] === e) {
+            pt[k] += c.indietroCarattere ? segno(L, true) : 1; out.racconto.push(nome + ' si fa generare indietro: rafforzat' + (k === 'S' ? 'o' : 'a'));
+            // 23b (Edu, 10/10/2026, GBPUSD 07/10/2026 s132: "Y si muove per autogenerarsi con l'aiuto del giorno che genera Wu"):
+            //     il giorno che genera l'arrivo da' ulteriore forza (+1). c.aiutoGiorno === false spegne.
+            if (c.aiutoGiorno !== false && c.dayBranch && GEN[WX[c.dayBranch]] === mAE) { pt[k] += 1; out.racconto.push('il giorno ' + c.dayBranch + ' genera l\'arrivo ' + mA + ': ' + nome + ' si autogenera con l\'aiuto del giorno'); }
+          }
           else if (KE[mAE] === e && mediato(mAE, e, L)) { pt[k] += 1; out.racconto.push(nome + ' è forte di suo e il mese ' + c.monthBranch + ' fa da ponte con l\'arrivo ' + mA + ': il controllo indietro non passa, ' + nome + ' resta forte'); }
           else if (KE[mAE] === e) { pt[k] += segno(L, false); out.racconto.push(nome + ' è controllato indietro: colpito'); }
           return;
@@ -225,6 +232,24 @@
       var stessoTrig = (mob.pos <= 3) === (sp <= 3);
       var chiude = (mob.pos !== sp && stessoTrig && !mob.vuoto && mobRami.indexOf(terzo) >= 0) ? mob.pos : null;
       if (chiude) { pt[q[0]] += segno(L, true); out.racconto.push(q[3] + ', il giorno ' + c.dayBranch + ' e L' + chiude + ' ' + terzo + ' chiudono il raduno stagionale: ' + q[3] + ' è avvantaggiat' + (q[0] === 'S' ? 'o' : 'a')); }
+    });
+    // 23 (Edu, 10/10/2026, S55, GBPUSD 07/10/2026 s132: "S è forte ma viene indebolito da L2 che gli sta vicino e dal giorno"):
+    //    il giorno che drena la sede (la sede genera il giorno) INSIEME alla linea ferma, non vuota, ACCANTO alla sede che la
+    //    drena la indeboliscono (-1, una volta sola). Il giorno da solo non basta (NZDUSD 07/10/2026 s56). Perimetro DI CLAUDE, tenuto dalle carte gia' lette:
+    //    la vicina da sola non basta (EURUSD 05/10/2026 s112, L2 Si accanto allo Shi Mao); la sede che e' il ramo stesso del
+    //    mese non si lascia drenare (GBPUSD 15/12/2022 s124, Ying Zi nel mese Zi); la mobile non conta qui (agisce col suo
+    //    arrivo). c.drenaggio === false spegne.
+    if (c.drenaggio !== false) [['S', S, R.shi, 'lo Shi'], ['Y', Y, R.ying, 'la Ying']].forEach(function (q) {
+      var L = q[1], sp = q[2], e = WX[L.ramo];
+      if (L.ramo === c.monthBranch) return;   // la sede che e' il ramo stesso del mese non si lascia drenare (GBPUSD 15/12/2022, come 7b)
+      if (!(c.dayBranch && GEN[e] === WX[c.dayBranch])) return;   // senza il giorno che drena, la vicina da sola non basta (EURUSD 05/10/2026)
+      // il giorno da solo non basta (NZDUSD 07/10/2026 s56: lo Shi Zi drenato dal giorno Yin resta "vibrante di suo"):
+      // serve anche la linea ferma accanto che lo drena, come L2 Yin in GBPUSD 07/10/2026 -> un solo -1 per tutti e due.
+      var vicina = [sp - 1, sp + 1].filter(function (p) {
+        if (p < 1 || p > 6 || p === mob.pos || (R.incompatibili || []).indexOf(p) >= 0) return false;
+        var V = R.linee[p - 1]; return !V.vuoto && GEN[e] === WX[V.ramo];
+      })[0];
+      if (vicina) { pt[q[0]] -= 1; out.racconto.push('il giorno ' + c.dayBranch + ' e L' + vicina + ' ' + R.linee[vicina - 1].ramo + ', accanto, drenano ' + q[3] + ': indebolit' + (q[0] === 'S' ? 'o' : 'a')); }
     });
     // 22 (Edu, 10/10/2026, S55, GBPUSD 06/10/2026 s132: "S bloccato dal giorno che lo combina e controlla"): la sede che il
     //    giorno combina E controlla e' bloccata: resta fuori dal confronto, non conta nulla di quello che le succede (qui due
