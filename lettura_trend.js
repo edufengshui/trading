@@ -34,6 +34,8 @@
 //     della sede che si autogenera la rafforza ancora (GBPUSD 07/10/2026 s132).
 // 24. La sede molto piu' forte dell'altra nel mese e nel giorno e' avvantaggiata; i pilastri con lo stelo che la sede
 //     controlla non la rafforzano (EURUSD 30/09/2026 s113).
+// 25. La mobile gia' forte che si fa generare indietro rafforza il campo della sede del suo trigramma; la forza ferma delle
+//     sedi (24) conta solo se non succede nient'altro (USDCAD 22/09/2026 s140).
 // 14. L'arrivo di una linea incompatibile agisce su Shi e Ying come quello della mobile (EURJPY 07/10/2026 s178, S55).
 // 13. La Ying che genera lo Shi avvantaggia il trend, anche se la Ying e' vuota (EURUSD 07/10/2026 s112, S55).
 // Esito: segue / non segue / tace, con i punti e il racconto. ctx come trend_ly.js (dayBranch, monthBranch, yearBranch,
@@ -268,7 +270,20 @@
       if (dE2) { if (dE2 === e || GEN[dE2] === e) f += 1; else if (KE[dE2] === e || GEN[e] === dE2) f -= 1; }
       return f;
     };
-    if (c.forzaSedi !== false) {
+    // 25 (Edu, 10/10/2026, S55, USDCAD 22/09/2026 s140: "L5 is already strong and moves to generate itself in the S camp. On
+    //    Y, or in his camp, nothing happens"): la mobile che non e' una sede, gia' forte (di stagione nel mese) e generata
+    //    indietro dal proprio arrivo, rafforza il CAMPO della sede del suo trigramma (+1). c.campo === false spegne.
+    if (c.campo !== false && mob.pos !== R.shi && mob.pos !== R.ying && arr && !R.mutante.movimentoNullo && !legataDa && GEN[aE] === dE && timely(mob)) {
+      var camp = (mob.pos <= 3) === (R.shi <= 3) ? 'S' : 'Y', CS = camp === 'S' ? S : Y, eC = WX[CS.ramo];
+      var PENA2 = { '寅':'巳','巳':'申','申':'寅','丑':'戌','戌':'未','未':'丑','子':'卯','卯':'子' };
+      // se l'arrivo colpisce la sede del proprio campo (la controlla, la drena, la punisce) non la rafforza (USDJPY 06/10/2026
+      // s157: "L4 si muove per penalizzare Y" — perimetro DI CLAUDE)
+      var colpisce = KE[aE] === eC || PENA2[arr] === CS.ramo;   // la controlla o la punisce (il drenaggio no: USDCAD 22/09/2026, Wei con lo Shi Wu)
+      if (!colpisce) { pt[camp] += 1; out.racconto.push('L' + mob.pos + ', già forte, si fa generare indietro nel campo ' + (camp === 'S' ? 'dello Shi' : 'della Ying') + ': lo rafforza'); }
+    }
+    // 24 vale solo se nel resto dell'esagramma non succede nulla (Edu, stessa carta: "On Y, or in his camp, nothing happens"
+    // — la forza ferma di una sede non pesa contro un'azione nell'altro campo). c.forzaSempre === true torna alla forma vecchia.
+    if (c.forzaSedi !== false && (c.forzaSempre || (pt.S === 0 && pt.Y === 0))) {
       var fS = forzaSede(S), fY = forzaSede(Y), soglia = c.sogliaForza || 3;
       // la sede forte che genera l'altra le passa la forza: nessuno squilibrio (EURUSD 05/10/2026 s112: la Ying Zi forte
       // genera lo Shi Mao, regola 13 — perimetro DI CLAUDE)
