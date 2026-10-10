@@ -37,6 +37,7 @@
 // 25. La mobile gia' forte che si fa generare indietro rafforza il campo della sede del suo trigramma; la forza ferma delle
 //     sedi (24) conta solo se non succede nient'altro (USDCAD 22/09/2026 s140).
 // 26. La sede ferma non di stagione clashata dal giorno e' eliminata e vince l'altra (regola di Edu del 05/10/2026).
+// 27. (DA VALIDARE) La sede mobile che arriva nel proprio stesso ramo resta ferma e sofferente: vince l'altra.
 // 14. L'arrivo di una linea incompatibile agisce su Shi e Ying come quello della mobile (EURJPY 07/10/2026 s178, S55).
 // 13. La Ying che genera lo Shi avvantaggia il trend, anche se la Ying e' vuota (EURUSD 07/10/2026 s112, S55).
 // Esito: segue / non segue / tace, con i punti e il racconto. ctx come trend_ly.js (dayBranch, monthBranch, yearBranch,
@@ -197,7 +198,9 @@
     //     generare S. Segue il trend") — il contro-trend che nutre il trend lo avvantaggia; vale anche con la Ying vuota
     //     (su quella carta la Ying Zi e' vuota). Il carattere dello Shi conta come nella regola 11.
     //     Estensioni DI CLAUDE non dette da Edu (Shi che genera la Ying, controlli fra le sedi): dietro c.sediTutte, spente.
-    if (c.yGeneraS !== false && GEN[WX[Y.ramo]] === WX[S.ramo]) { pt.S += segno(S, true); out.racconto.push('la Ying genera lo Shi: il trend è nutrito'); }
+    // la Ying bloccata dal giorno (combinata e controllata, regola 22) non genera nessuno (EURUSD 06/10/2026 s112)
+    var yBloccata = c.bloccoGiorno !== false && c.dayBranch && COMBINA[c.dayBranch] === Y.ramo && KE[WX[c.dayBranch]] === WX[Y.ramo];
+    if (c.yGeneraS !== false && !yBloccata && GEN[WX[Y.ramo]] === WX[S.ramo]) { pt.S += segno(S, true); out.racconto.push('la Ying genera lo Shi: il trend è nutrito'); }
     if (c.sediTutte) {
       var eS = WX[S.ramo], eY = WX[Y.ramo];
       if (GEN[eS] === eY) { pt.Y += segno(Y, true); out.racconto.push('lo Shi genera la Ying (estensione di Claude)'); }
@@ -297,13 +300,22 @@
       if (fS - fY >= soglia) { pt.S += sForza(S); out.racconto.push('lo Shi è molto più forte della Ying nel mese e nel giorno (' + fS + ' contro ' + fY + ')' + (sForza(S) < 0 ? ', ma è una ' + S.par + ': fa perdere la sua squadra' : '')); }
       else if (fY - fS >= soglia) { pt.Y += sForza(Y); out.racconto.push('la Ying è molto più forte dello Shi nel mese e nel giorno (' + fY + ' contro ' + fS + ')' + (sForza(Y) < 0 ? ', ma è una ' + Y.par + ': fa perdere la sua squadra' : '')); }
     }
+    // 27 LETTURA DI CLAUDE DA VALIDARE (10/10/2026, EURJPY 23/08/2026 s185 e NZDUSD 22/09/2026 s57, tutte e due storte
+    //    con "la Ying genera lo Shi"): la sede che e' la mobile e arriva nel proprio stesso ramo (伏吟, "il gemito": si muove
+    //    senza andare da nessuna parte) e' ferma e sofferente — non rappresenta il suo verso, vince l'altra sede.
+    //    SPENTA (c.fuyin === true la accende): sui sei anni scatta su 10 carte, 5 giuste — non regge come l'ho scritta.
+    if (c.fuyin === true && dep && dep === R.mutante.futuro[mob.pos - 1] && (mob.pos === R.shi || mob.pos === R.ying)) {
+      var kf = mob.pos === R.shi ? 'S' : 'Y', ko = kf === 'S' ? 'Y' : 'S';
+      pt[kf] = 0; pt[ko] += 1; out.racconto.push((kf === 'S' ? 'lo Shi' : 'la Ying') + ' si muove nel proprio stesso ramo (gemito): resta ferm' + (kf === 'S' ? 'o' : 'a') + ' e sofferente, vince l\'altra sede (lettura di Claude da validare)');
+    }
     // 26 (regola gia' dettata da Edu il 05/10/2026, AUDUSD 30/09/2026 s69: "L4 W non è timely quindi viene eliminata dal
     //    Clash", R82_SEDECLASH/MLSEDECLASH), portata nel metodo del trend il 10/10/2026 da EURJPY 26/08/2026 s185: la sede ferma,
-    //    non vuota, clashata dal giorno e non di stagione nel mese e' eliminata — non rappresenta piu' nulla (zero) e vince
+    //    G o W, non vuota, clashata dal giorno e non di stagione nel mese e' eliminata — non rappresenta piu' nulla (zero) e vince
     //    l'altra (+1). c.sedeEliminata === false spegne.
     if (c.sedeEliminata !== false && c.dayBranch) [['S', S, R.shi, 'lo Shi', 'Y'], ['Y', Y, R.ying, 'la Ying', 'S']].forEach(function (q) {
       var L = q[1];
-      if (L.vuoto || q[2] === mob.pos || CLASH[c.dayBranch] !== L.ramo || timely(L)) return;
+      // come nella regola di Edu: solo G/W, ferma (non la mobile, non un'incompatibile che gira), non vuota
+      if (L.vuoto || q[2] === mob.pos || (R.incompatibili || []).indexOf(q[2]) >= 0 || (L.par !== 'G' && L.par !== 'W') || CLASH[c.dayBranch] !== L.ramo || timely(L)) return;
       pt[q[0]] = 0; pt[q[4]] += 1; out.racconto.push(q[3] + ' non è di stagione ed è clashat' + (q[0] === 'S' ? 'o' : 'a') + ' dal giorno ' + c.dayBranch + ': eliminat' + (q[0] === 'S' ? 'o' : 'a') + ', vince l\'altra sede');
     });
     // 22 (Edu, 10/10/2026, S55, GBPUSD 06/10/2026 s132: "S bloccato dal giorno che lo combina e controlla"): la sede che il
