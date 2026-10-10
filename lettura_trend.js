@@ -36,6 +36,7 @@
 //     controlla non la rafforzano (EURUSD 30/09/2026 s113).
 // 25. La mobile gia' forte che si fa generare indietro rafforza il campo della sede del suo trigramma; la forza ferma delle
 //     sedi (24) conta solo se non succede nient'altro (USDCAD 22/09/2026 s140).
+// 26. La sede ferma non di stagione clashata dal giorno e' eliminata e vince l'altra (regola di Edu del 05/10/2026).
 // 14. L'arrivo di una linea incompatibile agisce su Shi e Ying come quello della mobile (EURJPY 07/10/2026 s178, S55).
 // 13. La Ying che genera lo Shi avvantaggia il trend, anche se la Ying e' vuota (EURUSD 07/10/2026 s112, S55).
 // Esito: segue / non segue / tace, con i punti e il racconto. ctx come trend_ly.js (dayBranch, monthBranch, yearBranch,
@@ -296,6 +297,15 @@
       if (fS - fY >= soglia) { pt.S += sForza(S); out.racconto.push('lo Shi è molto più forte della Ying nel mese e nel giorno (' + fS + ' contro ' + fY + ')' + (sForza(S) < 0 ? ', ma è una ' + S.par + ': fa perdere la sua squadra' : '')); }
       else if (fY - fS >= soglia) { pt.Y += sForza(Y); out.racconto.push('la Ying è molto più forte dello Shi nel mese e nel giorno (' + fY + ' contro ' + fS + ')' + (sForza(Y) < 0 ? ', ma è una ' + Y.par + ': fa perdere la sua squadra' : '')); }
     }
+    // 26 (regola gia' dettata da Edu il 05/10/2026, AUDUSD 30/09/2026 s69: "L4 W non è timely quindi viene eliminata dal
+    //    Clash", R82_SEDECLASH/MLSEDECLASH), portata nel metodo del trend il 10/10/2026 da EURJPY 26/08/2026 s185: la sede ferma,
+    //    non vuota, clashata dal giorno e non di stagione nel mese e' eliminata — non rappresenta piu' nulla (zero) e vince
+    //    l'altra (+1). c.sedeEliminata === false spegne.
+    if (c.sedeEliminata !== false && c.dayBranch) [['S', S, R.shi, 'lo Shi', 'Y'], ['Y', Y, R.ying, 'la Ying', 'S']].forEach(function (q) {
+      var L = q[1];
+      if (L.vuoto || q[2] === mob.pos || CLASH[c.dayBranch] !== L.ramo || timely(L)) return;
+      pt[q[0]] = 0; pt[q[4]] += 1; out.racconto.push(q[3] + ' non è di stagione ed è clashat' + (q[0] === 'S' ? 'o' : 'a') + ' dal giorno ' + c.dayBranch + ': eliminat' + (q[0] === 'S' ? 'o' : 'a') + ', vince l\'altra sede');
+    });
     // 22 (Edu, 10/10/2026, S55, GBPUSD 06/10/2026 s132: "S bloccato dal giorno che lo combina e controlla"): la sede che il
     //    giorno combina E controlla e' bloccata: resta fuori dal confronto, non conta nulla di quello che le succede (qui due
     //    pilastri ci cadevano sopra). c.bloccoGiorno === false spegne.
