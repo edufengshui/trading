@@ -611,6 +611,27 @@
       dire('né lo Shi né la Ying possono vincere perché sono vuoti, e nessuna bestia decide: il metodo tace'); return out;
     }
     if (scart.length === 1 && c.sostituto !== false) { var so = sostituto(scart[0]); if (so) { dire(NOME[scart[0]] + ' si muove per diventare vuot' + (scart[0] === 'S' ? 'o' : 'a') + ': fuori gioco'); return vince(so.vince, so.t, 1); } }
+    // senza sostituto e senza altro che si muova, le bestie intervengono sul lato della sede fuori gioco (Edu, 10/10/2026,
+    // USDCAD 26/11/2021 s126: "Le due linee sono inservibili, non c'è altro che si muove per cui intervengono le bestie sul
+    // lato S perché Y è comunque funzionale. L'unica bestia sul lato S è l'ora Ding Si che s'impadronisce di L6 e vince contro
+    // Y"): se la bestia di un pilastro cade su una linea del campo della sede fuori gioco (non inservibile), vince quel campo.
+    // Perimetro DI CLAUDE: tutti e quattro i pilastri col ramo non vuoto. c.bestieLato === false spegne.
+    if (scart.length === 1 && c.bestieLato !== false) {
+      var kx = scart[0], altriMossi = chi.filter(function (m) { return !vuotoVero(m.arr); }).length;
+      if (!altriMossi) {
+        var inserv = chi.map(function (m) { return m.pos; });
+        var pilL = [['dell\'anno', c.yearStem, c.yearBranch], ['del mese', c.monthStem, c.monthBranch], ['del giorno', c.dayStem, dB], ['dell\'ora', c.hourStem, c.oraBranch]].filter(function (p) { return p[1] && p[2] && vuoti.indexOf(p[2]) < 0; });
+        var presaL = null;
+        // la linea presa diventa i rami dei pilastri caduti e si confronta con l'altra sede: CHI VIENE GENERATO VINCE (regola di
+        // Edu del 04/09/2026 sul possesso, §137). Perimetro DI CLAUDE: vince se TUTTI i rami caduti sono generati dall'altra
+        // sede (EURJPY 07/09/2026: Shen e Zi su L1, lo Shi Xu genera solo Shen -> non vince, resta lo Shi)
+        var eAltra = WX[SEDE[ALTRA[kx]].ramo];
+        R.linee.forEach(function (Lx) { if (presaL || campo(Lx.pos) !== kx || inserv.indexOf(Lx.pos) >= 0 || !Lx.bestia || !Lx.bestia.cn) return;
+          var cad = pilL.filter(function (p) { return BESTIA_STELO[p[1]] === Lx.bestia.cn; });
+          if (cad.length && cad.every(function (p) { return GEN[eAltra] === WX[p[2]]; })) presaL = { pos: Lx.pos, chi: cad.map(function (p) { return p[0]; }).join(' e ') }; });
+        if (presaL) { dire(NOME[kx] + ' si muove per diventare vuot' + (kx === 'S' ? 'o' : 'a') + ' e nient\'altro si muove: intervengono le bestie dal suo lato'); return vince(kx, 'la bestia ' + presaL.chi + ' s\'impadronisce di L' + presaL.pos + ' e vince contro ' + NOME[ALTRA[kx]], 1); }
+      }
+    }
     if (scart.length === 1) return vince(ALTRA[scart[0]], NOME[scart[0]] + ' si muove per diventare vuot' + (scart[0] === 'S' ? 'o' : 'a') + ' (' + sedeMossa(scart[0]).arr + '): scartat' + (scart[0] === 'S' ? 'o' : 'a') + ', vince l\'altra sede', 1);
     if (scart.length === 2) { dire('tutte e due le sedi si muovono nel vuoto: il metodo tace'); return out; }
     // la sede G/W fuori stagione clashata dal giorno e' eliminata (ferma o mobile; non l'incompatibile che gira)
