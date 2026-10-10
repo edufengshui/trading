@@ -48,6 +48,8 @@
 //     (USDJPY 10/08/2026 s157); anche la sede incompatibile che gira nel vuoto e' scartata (32).
 // 34. La sede troppo forte (di stagione e sostenuta dal giorno) non si lascia clashare ne' controllare dall'altra sede, e
 //     vince (GBPUSD 01/10/2026 s132).
+// 35. Il blocco del giorno si scioglie se lo stelo del giorno, forte nella data, fa da passaggio fra il ramo del giorno e
+//     la sede: la sede riceve il flusso e vince (GBPUSD 24/09/2026 s132).
 // 14. L'arrivo di una linea incompatibile agisce su Shi e Ying come quello della mobile (EURJPY 07/10/2026 s178, S55).
 // 13. La Ying che genera lo Shi avvantaggia il trend, anche se la Ying e' vuota (EURUSD 07/10/2026 s112, S55).
 // Esito: segue / non segue / tace, con i punti e il racconto. ctx come trend_ly.js (dayBranch, monthBranch, yearBranch,
@@ -405,7 +407,21 @@
     //    giorno combina E controlla e' bloccata: resta fuori dal confronto, non conta nulla di quello che le succede (qui due
     //    pilastri ci cadevano sopra). c.bloccoGiorno === false spegne.
     if (c.bloccoGiorno !== false && c.dayBranch) [['S', S, 'lo Shi'], ['Y', Y, 'la Ying']].forEach(function (q) {
-      if (COMBINA[c.dayBranch] === q[1].ramo && KE[WX[c.dayBranch]] === WX[q[1].ramo]) { pt[q[0]] = 0; out.racconto.push(q[2] + ' è bloccat' + (q[0] === 'S' ? 'o' : 'a') + ' dal giorno ' + c.dayBranch + ' che lo combina e lo controlla: fuori dal confronto'); }
+      if (COMBINA[c.dayBranch] === q[1].ramo && KE[WX[c.dayBranch]] === WX[q[1].ramo]) {
+        // 35 (Edu, 10/10/2026, S55, GBPUSD 24/09/2026 s132: "S è bloccato dal giorno ma poiché lo stelo del giorno è Xin (e il
+        //    metallo è forte nella data), S beneficia del flusso terra --> metallo --> acqua che non può essere indebolito dalla
+        //    debole avanzante L2, né dal Clash o dall'autogenerazione di Y"): se lo STELO del giorno e' l'elemento di passaggio
+        //    (generato dal ramo del giorno, genera la sede) ed e' forte nella data (lo stesso elemento del mese — perimetro DI
+        //    CLAUDE), la sede non e' bloccata: riceve il flusso, vince, e l'altra sede non la indebolisce (i suoi punti non
+        //    contano). c.flussoStelo === false spegne.
+        var eSt = STELO_EL[c.dayStem], other = q[0] === 'S' ? 'Y' : 'S';
+        if (c.flussoStelo !== false && eSt && GEN[WX[c.dayBranch]] === eSt && GEN[eSt] === WX[q[1].ramo] && eSt === mE) {
+          if (pt[q[0]] < 0) pt[q[0]] = 0; pt[q[0]] += 1; if (pt[other] > 0) pt[other] = 0;
+          out.racconto.push(q[2] + ' è legat' + (q[0] === 'S' ? 'o' : 'a') + ' dal giorno ' + c.dayBranch + ', ma lo stelo ' + c.dayStem + ', forte nella data, fa scorrere il flusso ' + WX[c.dayBranch] + ' → ' + eSt + ' → ' + WX[q[1].ramo] + ': ' + q[2] + ' ne beneficia e non si lascia indebolire');
+          return;
+        }
+        pt[q[0]] = 0; out.racconto.push(q[2] + ' è bloccat' + (q[0] === 'S' ? 'o' : 'a') + ' dal giorno ' + c.dayBranch + ' che lo combina e lo controlla: fuori dal confronto');
+      }
     });
     // 34 (Edu, 10/10/2026, S55, GBPUSD 01/10/2026 s132: "S è troppo forte, non può essere clashato con successo da Y, né
     //    controllato da Y se questo è generato indietro. Vince il segue"): la sede TROPPO FORTE — di stagione nel mese e
