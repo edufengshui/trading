@@ -74,7 +74,7 @@
   var TRINE = {};
   [['Water',['申','子','辰']],['Wood',['亥','卯','未']],['Fire',['寅','午','戌']],['Metal',['巳','酉','丑']]].forEach(function (t) { t[1].forEach(function (b) { TRINE[b] = t[1]; }); });
 
-  function leggi(R, c) {
+  function leggiRegole(R, c) {
     c = c || {};
     var out = { punti: 0, shi: 0, ying: 0, verdetto: null, dir: null, racconto: [] };
     if (!R || R.error || !R.mutante || !R.mutante.pos) { out.racconto.push('nessuna mobile: il metodo tace'); return out; }
@@ -514,5 +514,234 @@
     out.racconto.push(out.verdetto ? ('Shi ' + (pt.S > 0 ? '+' : '') + pt.S + ', Ying ' + (pt.Y > 0 ? '+' : '') + pt.Y + ': ' + (out.verdetto === 'segue' ? 'il trend' : 'il contro-trend') + ' è avvantaggiato → ' + out.verdetto + (out.dir ? ' → ' + out.dir : '')) : 'nessuna delle due sedi è avvantaggiata: il metodo tace');
     return out;
   }
-  return { leggi: leggi };
+
+  // ======================================================================================================================
+  // IL METODO DEL TREND A QUATTRO PRINCIPI (Edu, 10/10/2026, S55: "Ok procedi") — riscrittura delle regole 1-38 sui principi
+  // che tornano in tutte le letture di Edu. Ordine di lettura: 1 chi esce dal gioco -> 2 cosa fa il movimento a S e Y, con la
+  // forza nel mese che decide se il colpo riesce (3) -> 4 la forza ferma conta solo se nessun movimento decide.
+  // Lo Shi e' il trend, la Ying il contro-trend: vince chi esce avvantaggiato. c.versione === 'regole' usa la lettura vecchia.
+  // ======================================================================================================================
+  var PENA = { '寅':'巳','巳':'申','申':'寅','丑':'戌','戌':'未','未':'丑','子':'卯','卯':'子' }, AUTOP = { '辰':1,'午':1,'酉':1,'亥':1 };
+  var TOMBA = { Water:'辰', Wood:'未', Fire:'戌', Metal:'丑' };
+  var RETRO = { '卯':'寅','午':'巳','酉':'申','子':'亥','丑':'戌','辰':'丑','未':'辰','戌':'未' };
+  var RADUNO = {};
+  [['Water',['亥','子','丑']],['Wood',['寅','卯','辰']],['Fire',['巳','午','未']],['Metal',['申','酉','戌']]].forEach(function (t) { t[1].forEach(function (b) { RADUNO[b] = t[1]; }); });
+  var ELB = { '青龍':'Wood','朱雀':'Fire','勾陳':'Earth','螣蛇':'Earth','白虎':'Metal','玄武':'Water' };
+
+  function leggiPrincipi(R, c) {
+    c = c || {};
+    var out = { punti: 0, shi: 0, ying: 0, verdetto: null, dir: null, racconto: [], principio: null };
+    var dire = function (t) { out.racconto.push(t); };
+    if (!R || R.error || !R.mutante || !R.mutante.pos) { dire('nessuna mobile: il metodo tace'); return out; }
+    var S = R.linee[R.shi - 1], Y = R.linee[R.ying - 1], mob = R.linee[R.mutante.pos - 1];
+    var SEDE = { S: S, Y: Y }, POS = { S: R.shi, Y: R.ying }, NOME = { S: 'lo Shi', Y: 'la Ying' }, ALTRA = { S: 'Y', Y: 'S' };
+    var mE = c.monthBranch ? WX[c.monthBranch] : null, dB = c.dayBranch, dEl = dB ? WX[dB] : null;
+    var inc = R.incompatibili || [], vuoti = R.vuoti || [];
+    var timely = function (L) { var e = WX[L.ramo]; return !!mE && (e === mE || GEN[mE] === e); };
+    var troppoFuori = function (L) { var e = WX[L.ramo]; return !!mE && (KE[mE] === e || KE[e] === mE); };
+    var arrForte = function (b) { var e = WX[b]; return !!mE && (e === mE || GEN[mE] === e); };
+    var vuotoVero = function (b) { return vuoti.indexOf(b) >= 0 && !(dB && CLASH[dB] === b); };          // il giorno che clasha fa uscire dal vuoto
+    var campo = function (pos) { return (pos <= 3) === (R.shi <= 3) ? 'S' : 'Y'; };
+    var segnoNutri = function (L) { return (L.par === 'P' || L.par === 'B') ? -1 : 1; };                    // nutrire una P/B la rovescia
+    var vuotaInMezzo = function (a, b) { for (var q = Math.min(a, b) + 1; q < Math.max(a, b); q++) if (R.linee[q - 1].vuoto) return true; return false; };
+    var _p = { S: 0, Y: 0 }, pt = {}, mosso = { v: false };
+    ['S', 'Y'].forEach(function (k) { Object.defineProperty(pt, k, { get: function () { return _p[k]; }, set: function (v) { if (v !== _p[k]) mosso.v = true; _p[k] = v; } }); });
+    var vince = function (k, perche, princ) { out.principio = princ; dire(perche); _p[k] = 1; _p[ALTRA[k]] = 0; return chiudi(); };
+    function chiudi() {
+      out.shi = _p.S; out.ying = _p.Y; out.punti = _p.S - _p.Y;
+      if (out.punti > 0) out.verdetto = 'segue'; else if (out.punti < 0) out.verdetto = 'non segue';
+      if (out.verdetto && c.emaDir) out.dir = (c.emaDir === 'up') === (out.verdetto === 'segue') ? 'LONG' : 'SHORT';
+      dire(out.verdetto ? ('Shi ' + (_p.S > 0 ? '+' : '') + _p.S + ', Ying ' + (_p.Y > 0 ? '+' : '') + _p.Y + ': ' + (out.verdetto === 'segue' ? 'il trend' : 'il contro-trend') + ' è avvantaggiato → ' + out.verdetto + (out.dir ? ' → ' + out.dir : '')) : 'nessuna delle due sedi è avvantaggiata: il metodo tace');
+      return out;
+    }
+
+    // ---------------- PRINCIPIO 1: CHI ESCE DAL GIOCO ----------------
+    if (troppoFuori(S) && troppoFuori(Y)) { dire('Shi e Ying tutti e due troppo fuori stagione: il metodo tace'); return out; }
+    // chi si muove: la mobile (se non e' legata alla partenza dal mese o dal giorno) e le incompatibili che girano
+    var dep = R.mutante.ramoDep, arr = R.mutante.ramoArr, fut = R.mutante.futuro || [];
+    var legata = function (b) { return COMBINA[b] === c.monthBranch ? 'mese' : (dB && COMBINA[b] === dB) ? 'giorno' : null; };
+    var chi = [];
+    var lm = legata(dep);
+    if (lm) dire('la mobile L' + mob.pos + ' è combinata alla partenza dal ' + lm + ': non si muove');
+    else if (arr && (!R.mutante.movimentoNullo || R.mutante.motivoNullo === 'arrival void'))
+      chi.push({ pos: mob.pos, dep: dep, arr: arr, retro: R.mutante.progressione === 'retrocedente', incArr: R.mutante.casoMut === -5, mobile: true });
+    inc.forEach(function (p) {
+      var L = R.linee[p - 1], a = fut[p - 1]; if (!L || !a || a === L.ramo) return;
+      var lg = legata(L.ramo); if (lg) { dire('l\'incompatibile L' + p + ' è combinata alla partenza dal ' + lg + ': non gira'); return; }
+      chi.push({ pos: p, dep: L.ramo, arr: a, retro: RETRO[L.ramo] === a, incArr: false, mobile: false });
+    });
+    // confusione totale di un trigramma: troppa confusione
+    if (fut.length) for (var tg = 0; tg < 2; tg++) {
+      var tr = tg === 0 ? [1, 2, 3] : [4, 5, 6];
+      if (tr.some(function (p) { return chi.some(function (m) { return m.pos === p; }); }) && tr.every(function (p) { return CLASH[R.linee[p - 1].ramo] === fut[p - 1]; })) { dire('il trigramma ' + (tg ? 'alto' : 'basso') + ' è in confusione totale: il metodo tace'); return out; }
+    }
+    var sedeMossa = function (k) { return chi.filter(function (m) { return m.pos === POS[k]; })[0]; };
+    // la sede che si muove per diventare vuota e' scartata: vince l'altra
+    var scart = ['S', 'Y'].filter(function (k) { var m = sedeMossa(k); return m && vuotoVero(m.arr); });
+    if (scart.length === 1) return vince(ALTRA[scart[0]], NOME[scart[0]] + ' si muove per diventare vuot' + (scart[0] === 'S' ? 'o' : 'a') + ' (' + sedeMossa(scart[0]).arr + '): scartat' + (scart[0] === 'S' ? 'o' : 'a') + ', vince l\'altra sede', 1);
+    if (scart.length === 2) { dire('tutte e due le sedi si muovono nel vuoto: il metodo tace'); return out; }
+    // la sede G/W fuori stagione clashata dal giorno e' eliminata (ferma o mobile; non l'incompatibile che gira)
+    var elim = ['S', 'Y'].filter(function (k) { var L = SEDE[k]; return !L.vuoto && (L.par === 'G' || L.par === 'W') && dB && CLASH[dB] === L.ramo && !timely(L) && inc.indexOf(POS[k]) < 0; });
+    if (elim.length === 1) return vince(ALTRA[elim[0]], NOME[elim[0]] + ' (una ' + SEDE[elim[0]].par + ') non è di stagione ed è clashat' + (elim[0] === 'S' ? 'o' : 'a') + ' dal giorno ' + dB + ': eliminat' + (elim[0] === 'S' ? 'o' : 'a') + ', vince l\'altra sede', 1);
+    // la sede combinata e controllata dal giorno e' bloccata — salvo il flusso dello stelo del giorno, forte nella data
+    var bloccata = { S: false, Y: false };
+    var eSt = STELO_EL[c.dayStem];
+    for (var bi = 0, bk = ['S', 'Y']; bi < 2; bi++) {
+      var k0 = bk[bi], L0 = SEDE[k0];
+      if (!(dB && COMBINA[dB] === L0.ramo && KE[dEl] === WX[L0.ramo])) continue;
+      if (eSt && GEN[dEl] === eSt && GEN[eSt] === WX[L0.ramo] && eSt === mE) return vince(k0, NOME[k0] + ' è legat' + (k0 === 'S' ? 'o' : 'a') + ' dal giorno, ma lo stelo ' + c.dayStem + ', forte nella data, fa scorrere il flusso verso di ' + (k0 === 'S' ? 'lui' : 'lei') + ': ne beneficia e non si lascia indebolire', 1);
+      bloccata[k0] = true; dire(NOME[k0] + ' è bloccat' + (k0 === 'S' ? 'o' : 'a') + ' dal giorno ' + dB + ' che lo combina e lo controlla: fuori dal confronto');
+    }
+
+    // ---------------- PRINCIPI 2 e 3: COSA FA IL MOVIMENTO, E SE IL COLPO RIESCE ----------------
+    var nutrito = { S: false, Y: false }, punita = { S: false, Y: false };
+    var difende = function (L, a, verbo) {                     // principio 3: la sede di stagione si difende, tranne da un arrivo forte
+      if (!timely(L)) return false;
+      if (L.ramo === c.monthBranch || !arrForte(a)) { dire(NOME[L === S ? 'S' : 'Y'] + ' è di stagione: non si lascia ' + verbo); return true; }
+      return false;
+    };
+    var mediato = function (aEl, L) { return !!mE && GEN[aEl] === mE && GEN[mE] === WX[L.ramo] && timely(L); };   // il mese fa da ponte
+    var colpisci = function (k, quanto, testo) { if (bloccata[k]) return; pt[k] -= quanto; dire(testo); };
+    var nutritoDaAltri = { S: false, Y: false };   // nutrita da un'altra linea (non la propria generazione indietro): GBPUSD 01/10 contro 04/08
+    var nutri = function (k, testo, qualsiasi) { if (bloccata[k]) return; pt[k] += qualsiasi ? 1 : segnoNutri(SEDE[k]); nutrito[k] = true; if (!qualsiasi) nutritoDaAltri[k] = true; dire(testo); };
+    chi.forEach(function (m) {
+      var aE = WX[m.arr], dE = WX[m.dep], kM = m.pos === R.shi ? 'S' : m.pos === R.ying ? 'Y' : null;
+      if (vuotoVero(m.arr) && !kM) return;                     // la mobile non sede che arriva nel vuoto non agisce
+      if (kM) {
+        // la sede che si muove: generata indietro, controllata indietro, ritirata
+        if (m.incArr) dire('l\'arrivo ' + m.arr + ' è incompatibile: non agisce su ' + NOME[kM]);
+        else if (m.retro) {
+          if (SEDE[kM].par === 'B' || SEDE[kM].par === 'P') { pt[kM] += 1; dire(NOME[kM] + ', una ' + SEDE[kM].par + ', retrocede: porta via la perdita'); }
+          else if (SEDE[kM].par === 'G' || SEDE[kM].par === 'W') { pt[kM] -= 1; dire(NOME[kM] + ', una ' + SEDE[kM].par + ', retrocede: porta via il vantaggio'); }
+        } else if (GEN[aE] === dE) {
+          nutri(kM, NOME[kM] + ' si fa generare indietro: rafforzat' + (kM === 'S' ? 'o' : 'a'), true);
+          if (dEl && GEN[dEl] === aE) { pt[kM] += 1; dire('il giorno ' + dB + ' genera l\'arrivo ' + m.arr + ': ' + NOME[kM] + ' si autogenera con il suo aiuto'); }
+        } else if (KE[aE] === dE) {
+          if (mediato(aE, SEDE[kM])) { pt[kM] += 1; dire(NOME[kM] + ' è forte di suo e il mese fa da ponte con l\'arrivo ' + m.arr + ': resta fort' + 'e'); }
+          else colpisci(kM, 1, NOME[kM] + ' è controllat' + (kM === 'S' ? 'o' : 'a') + ' indietro');
+        }
+        // quello che la sede che si muove fa all'altra sede
+        var kO = ALTRA[kM], O = SEDE[kO];
+        if (!O.vuoto && !m.retro && !m.incArr) {
+          if (m.mobile && GEN[aE] === WX[O.ramo]) nutri(kO, NOME[kM] + ' si muove in ' + m.arr + ' per generare ' + NOME[kO]);
+          if (PENA[m.arr] === O.ramo || (m.arr === O.ramo && AUTOP[O.ramo])) { punita[kO] = true; colpisci(kO, 1, NOME[kM] + ' si muove in ' + m.arr + ' che punisce ' + NOME[kO]); }
+          if (CLASH[m.arr] === O.ramo) colpisci(kO, 1, NOME[kM] + ' si muove in ' + m.arr + ' per clashare ' + NOME[kO]);
+        }
+      } else {
+        // la mobile (o l'incompatibile) che non e' una sede
+        if (m.retro) { dire('L' + m.pos + ' retrocede: non condiziona le sedi'); return; }
+        var genSe = GEN[aE] === dE;
+        if (genSe && timely(R.linee[m.pos - 1])) {               // gia' forte e generata indietro: rafforza il suo campo
+          var kc = campo(m.pos), C = SEDE[kc];
+          if (!(KE[aE] === WX[C.ramo] || PENA[m.arr] === C.ramo)) { pt[kc] += 1; dire('L' + m.pos + ', già forte, si fa generare indietro: rafforza il campo ' + (kc === 'S' ? 'dello Shi' : 'della Ying')); }
+        }
+        ['S', 'Y'].forEach(function (k) {
+          var L = SEDE[k], e = WX[L.ramo];
+          if (vuotaInMezzo(m.pos, POS[k])) return;
+          if (genSe && GEN[dE] === e && !L.vuoto) nutri(k, 'L' + m.pos + ' si fa generare indietro e genera ' + NOME[k]);     // la forza passa alla sede
+          if (genSe && !L.vuoto && PENA[m.arr] === L.ramo) { punita[k] = true; if (!difende(L, m.arr, 'punire')) colpisci(k, 1, 'l\'arrivo ' + m.arr + ' di L' + m.pos + ' punisce ' + NOME[k]); }   // la punizione vale anche qui (USDJPY 06/10/2026)
+          if (genSe) return;                                                                                                 // l'arrivo che genera la mobile tiene il beneficio
+          if (GEN[aE] === e) { if (!L.vuoto || timely(L)) nutri(k, 'l\'arrivo ' + m.arr + ' di L' + m.pos + ' nutre ' + NOME[k] + (L.vuoto ? ' (vuoto ma di stagione)' : '')); }
+          else if (!L.vuoto && KE[aE] === e && mediato(aE, L)) { pt[k] += 1; dire(NOME[k] + ' è forte di suo e il mese fa da ponte con l\'arrivo ' + m.arr + ': il controllo non passa'); }
+          else if (!L.vuoto && (KE[aE] === e || GEN[e] === aE)) { if (!difende(L, m.arr, KE[aE] === e ? 'controllare' : 'drenare')) colpisci(k, 1, 'l\'arrivo ' + m.arr + ' di L' + m.pos + (KE[aE] === e ? ' controlla ' : ' drena ') + NOME[k]); }
+          else if (!L.vuoto && PENA[m.arr] === L.ramo) { punita[k] = true; if (!difende(L, m.arr, 'punire')) colpisci(k, 1, 'l\'arrivo ' + m.arr + ' di L' + m.pos + ' punisce ' + NOME[k]); }
+          if (!L.vuoto && TOMBA[e] === m.arr) colpisci(k, 1, 'L' + m.pos + ' si muove per diventare la tomba di ' + NOME[k]);
+          if (!L.vuoto && TRINE[m.arr] && TRINE[m.arr].indexOf(L.ramo) >= 0 && L.ramo !== m.arr) {
+            var t3 = TRINE[m.arr].filter(function (b) { return b !== m.arr && b !== L.ramo; })[0];
+            if (t3 === c.monthBranch || t3 === dB) { pt[k] += segnoNutri(L); dire('l\'arrivo ' + m.arr + ' chiude il trigono con ' + NOME[k] + ' e il ' + (t3 === c.monthBranch ? 'mese' : 'giorno')); }
+          }
+        });
+        // lo scontro: l'arrivo clasha una linea ferma dell'altro trigramma, vince il piu' forte nel mese e il suo campo
+        var fL = function (b) { var e = WX[b]; if (!mE) return 0; return e === mE ? 2 : GEN[mE] === e ? 1 : GEN[e] === mE ? -1 : KE[mE] === e ? -2 : KE[e] === mE ? -1 : 0; };
+        var T = R.linee.filter(function (Lx) { return Lx.pos !== m.pos && Lx.pos !== R.shi && Lx.pos !== R.ying && !Lx.vuoto && CLASH[m.arr] === Lx.ramo && ((Lx.pos <= 3) !== (m.pos <= 3)); })[0];
+        if (T) {
+          var dF = fL(T.ramo) - fL(m.arr);
+          if (dF >= 3) { pt[campo(T.pos)] += 1; dire('L' + m.pos + ' clasha L' + T.pos + ', molto più forte: vince lo scontro e il suo campo'); }
+          else if (dF <= -3) { pt[campo(m.pos)] += 1; dire('L' + m.pos + ' clasha L' + T.pos + ' e vince lo scontro: vince il suo campo'); }
+        }
+      }
+      // l'arrivo incompatibile della mobile va fuori: combinarsi, stesso ramo, clashare, generare
+      if (m.mobile && m.incArr) {
+        var al = R.linee.filter(function (Lx) { return Lx.pos !== m.pos && !Lx.vuoto; });
+        var Tg = al.filter(function (Lx) { return COMBINA[m.arr] === Lx.ramo; })[0], tp = 'combina';
+        if (!Tg) { Tg = al.filter(function (Lx) { return Lx.ramo === m.arr; })[0]; tp = 'stesso'; }
+        if (!Tg) { Tg = al.filter(function (Lx) { return CLASH[m.arr] === Lx.ramo; })[0]; tp = 'clash'; }
+        if (!Tg) { Tg = al.filter(function (Lx) { return GEN[aE] === WX[Lx.ramo]; })[0]; tp = 'genera'; }
+        if (Tg && (Tg.pos === R.shi || Tg.pos === R.ying)) {
+          var kT = Tg.pos === R.shi ? 'S' : 'Y';
+          if (tp === 'clash') colpisci(kT, 1, 'l\'arrivo incompatibile ' + m.arr + ' va fuori a clashare ' + NOME[kT]);
+          if (tp === 'genera') nutri(kT, 'l\'arrivo incompatibile ' + m.arr + ' va fuori a generare ' + NOME[kT]);
+        }
+      }
+    });
+    // la sede nutrita da un movimento che controlla l'altra la colpisce
+    var colpitaDaNutrita = { S: false, Y: false };
+    ['S', 'Y'].forEach(function (k) { var o = ALTRA[k]; if (nutritoDaAltri[k] && !SEDE[o].vuoto && KE[WX[SEDE[k].ramo]] === WX[SEDE[o].ramo]) { colpitaDaNutrita[o] = true; colpisci(o, 1, NOME[k] + ', nutrit' + (k === 'S' ? 'o' : 'a') + ' da un movimento, controlla ' + NOME[o]); } });
+    // principio 3: la sede troppo forte (di stagione e sostenuta dal giorno) non si lascia colpire dall'altra sede
+    var tForte = function (L) { var e = WX[L.ramo]; return !L.vuoto && timely(L) && !!dEl && (dEl === e || GEN[dEl] === e); };
+    ['S', 'Y'].forEach(function (k) {
+      var o = ALTRA[k], A = SEDE[k], B = SEDE[o];
+      if (!tForte(A) || tForte(B) || punita[k] || colpitaDaNutrita[k] || bloccata[k]) return;
+      var mB = sedeMossa(o), att = KE[WX[B.ramo]] === WX[A.ramo] || (mB && (CLASH[mB.arr] === A.ramo || KE[WX[mB.arr]] === WX[A.ramo]));
+      if (!att) return;
+      if (pt[o] > 0) pt[o] = 0; if (pt[k] < 0) pt[k] = 0; pt[k] += 1;
+      dire(NOME[k] + ' è troppo forte (di stagione e sostenut' + (k === 'S' ? 'o' : 'a') + ' dal giorno): l\'altra sede non riesce a colpirl' + (k === 'S' ? 'o' : 'a'));
+    });
+    if (bloccata.S) _p.S = 0; if (bloccata.Y) _p.Y = 0;
+    if (_p.S !== _p.Y) { out.principio = 2; return chiudi(); }
+
+    // ---------------- PRINCIPIO 4: LA FORZA FERMA, SOLO SE NESSUN MOVIMENTO DECIDE ----------------
+    if (mosso.v) dire('i movimenti si pareggiano: decide la forza ferma');
+    out.principio = 4;
+    var fermo = { S: 0, Y: 0 };
+    // la Ying che genera lo Shi nutre il trend (non se bloccata)
+    if (!bloccata.Y && GEN[WX[Y.ramo]] === WX[S.ramo]) { fermo.S += segnoNutri(S); dire('la Ying genera lo Shi: il trend è nutrito'); }
+    // il mese G che si combina con lo Shi gli garantisce la vittoria
+    var palE = null;
+    R.linee.forEach(function (Lx) { if (palE) return; var ex = WX[Lx.ramo];
+      if (Lx.par === 'B') palE = ex; else if (Lx.par === 'G') palE = KE[ex]; else if (Lx.par === 'P') palE = GEN[ex];
+      else if (Lx.par === 'C') palE = Object.keys(GEN).filter(function (z) { return GEN[z] === ex; })[0];
+      else if (Lx.par === 'W') palE = Object.keys(KE).filter(function (z) { return KE[z] === ex; })[0]; });
+    if (palE && mE && KE[mE] === palE && COMBINA[c.monthBranch] === S.ramo) { fermo.S += 1; dire('il mese è una G che si combina con lo Shi: gli garantisce la vittoria'); }
+    // il raduno stagionale chiuso dalla sede, dal giorno e dalla mobile del suo trigramma
+    ['S', 'Y'].forEach(function (k) {
+      var L = SEDE[k], gr = RADUNO[L.ramo]; if (L.vuoto || !gr || !dB || gr.indexOf(dB) < 0 || dB === L.ramo) return;
+      var terzo = gr.filter(function (b) { return b !== L.ramo && b !== dB; })[0];
+      if (mob.pos !== POS[k] && (mob.pos <= 3) === (POS[k] <= 3) && !mob.vuoto && (mob.ramo === terzo || arr === terzo)) { fermo[k] += segnoNutri(L); dire(NOME[k] + ', il giorno e la mobile del suo trigramma chiudono il raduno stagionale'); }
+    });
+    // la linea piu' forte dell'esagramma prende il posto della sede vuota del suo campo
+    if (mE) {
+      var fz = R.linee.map(function (Lx) { if (Lx.vuoto) return -9; var ex = WX[Lx.ramo], f = ex === mE ? 2 : GEN[mE] === ex ? 1 : -9; if (f < 0) return -9; if (Lx.ramo === c.monthBranch) f++; if (dB && (Lx.ramo === dB || dEl === ex)) f++; return f; });
+      var mx = Math.max.apply(null, fz);
+      if (mx >= 3 && fz.filter(function (v) { return v === mx; }).length === 1) { var pF = fz.indexOf(mx) + 1, kF = campo(pF); if (SEDE[kF].vuoto) { fermo[kF] += 1; dire('la linea più forte, L' + pF + ', sta nel campo ' + (kF === 'S' ? 'dello Shi' : 'della Ying') + ' vuoto: ne prende il posto'); } }
+    }
+    // i pilastri che convergono su una sede (non su una troppo fuori stagione; non quelli col suo elemento controllato)
+    var pil = [['anno', c.yearStem, c.yearBranch], ['mese', c.monthStem, c.monthBranch], ['giorno', c.dayStem, dB], ['ora', c.hourStem, c.oraBranch]].filter(function (p) { return p[1] && p[2]; });
+    ['S', 'Y'].forEach(function (k) {
+      var L = SEDE[k]; if (!L.bestia || !L.bestia.cn || troppoFuori(L)) return;
+      var cad = pil.filter(function (p) { return BESTIA_STELO[p[1]] === L.bestia.cn && vuoti.indexOf(p[2]) < 0 && KE[WX[L.ramo]] !== STELO_EL[p[1]]; });
+      if (cad.length >= 2) { fermo[k] += 1; dire(cad.length + ' pilastri cadono su ' + NOME[k] + ': forte'); }
+    });
+    // il giorno e la linea accanto che drenano una sede (non quella nutrita da un movimento, non il ramo del mese)
+    ['S', 'Y'].forEach(function (k) {
+      var L = SEDE[k], e = WX[L.ramo]; if (nutrito[k] || L.ramo === c.monthBranch || !(dEl && GEN[e] === dEl)) return;
+      var v = [POS[k] - 1, POS[k] + 1].filter(function (p) { return p >= 1 && p <= 6 && p !== mob.pos && inc.indexOf(p) < 0 && !R.linee[p - 1].vuoto && GEN[e] === WX[R.linee[p - 1].ramo]; })[0];
+      if (v) { fermo[k] -= 1; dire('il giorno e L' + v + ' accanto drenano ' + NOME[k]); }
+    });
+    // la sede combinata e controllata dal mese
+    ['S', 'Y'].forEach(function (k) { var L = SEDE[k]; if (mE && COMBINA[c.monthBranch] === L.ramo && KE[mE] === WX[L.ramo]) { fermo[k] -= 1; dire(NOME[k] + ' è combinat' + (k === 'S' ? 'o' : 'a') + ' e controllat' + (k === 'S' ? 'o' : 'a') + ' dal mese'); } });
+    // la forza nel mese e nel giorno: conta lo squilibrio netto (la Ying forte che genera lo Shi gli passa la forza)
+    if (fermo.S === fermo.Y) {
+      var fs = function (L) { if (!mE) return 0; var e = WX[L.ramo], f = e === mE ? 2 : GEN[mE] === e ? 1 : GEN[e] === mE ? -1 : KE[mE] === e ? -2 : KE[e] === mE ? -1 : 0; if (dEl) { if (dEl === e || GEN[dEl] === e) f++; else if (KE[dEl] === e || GEN[e] === dEl) f--; } return f; };
+      var a = fs(S), b = fs(Y); if (GEN[WX[Y.ramo]] === WX[S.ramo] && b > a) b = a;
+      if (a - b >= 3) { fermo.S += 1; dire('lo Shi è molto più forte della Ying nel mese e nel giorno'); }
+      else if (b - a >= 3) { fermo.Y += 1; dire('la Ying è molto più forte dello Shi nel mese e nel giorno'); }
+    }
+    if (bloccata.S) fermo.S = 0; if (bloccata.Y) fermo.Y = 0;
+    _p.S += fermo.S; _p.Y += fermo.Y;
+    return chiudi();
+  }
+
+  function leggi(R, c) { return (c && c.versione === 'regole') ? leggiRegole(R, c) : leggiPrincipi(R, c); }
+  return { leggi: leggi, leggiRegole: leggiRegole, leggiPrincipi: leggiPrincipi };
 }));
