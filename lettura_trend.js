@@ -27,7 +27,7 @@
 // 18. Il trigramma in confusione totale (ogni linea clasha il proprio futuro comune) fa tacere il metodo (AUDUSD 06/10/2026 s69).
 // 19. La sede mobile il cui arrivo e' incompatibile (caso -5) non viene generata ne' controllata indietro (EURUSD 05/10/2026 s112).
 // 20. Il raduno stagionale chiuso da una sede, dal giorno e dalla mobile la avvantaggia (AUDUSD 05/10/2026 s69).
-// 21. Il mese che fa da ponte fra chi controlla e chi e' controllato ferma il controllo (GBPUSD 05/10/2026 s132).
+// 21. Il mese che fa da ponte ferma il controllo solo sulla sede forte di suo, che resta forte (GBPUSD 05/10/2026 s132).
 // 14. L'arrivo di una linea incompatibile agisce su Shi e Ying come quello della mobile (EURJPY 07/10/2026 s178, S55).
 // 13. La Ying che genera lo Shi avvantaggia il trend, anche se la Ying e' vuota (EURUSD 07/10/2026 s112, S55).
 // Esito: segue / non segue / tace, con i punti e il racconto. ctx come trend_ly.js (dayBranch, monthBranch, yearBranch,
@@ -53,11 +53,18 @@
     var S = R.linee[R.shi - 1], Y = R.linee[R.ying - 1], mob = R.linee[R.mutante.pos - 1];
     var mE = c.monthBranch ? WX[c.monthBranch] : null;
     var troppo = function (L) { var e = WX[L.ramo]; return !!mE && (KE[mE] === e || KE[e] === mE); };
-    // 21 (Edu, 10/10/2026, S55, GBPUSD 05/10/2026 s132: "S is very strong and the You month mediates between Wei and Zi"):
-    //    il MESE che sta fra chi controlla e chi e' controllato (chi controlla genera il mese, il mese genera il controllato)
-    //    fa da ponte: il controllo non passa. Perimetro DI CLAUDE da validare: il controllo mediato diventa nutrimento (Terra ->
-    //    Metallo -> Acqua). c.mediazione === false spegne; c.mediazione === 'neutra' annulla il controllo senza nutrire.
-    var mediato = function (aEl, eEl) { return c.mediazione !== false && !!mE && GEN[aEl] === mE && GEN[mE] === eEl; };
+    // 21 (Edu, 10/10/2026, S55, GBPUSD 05/10/2026 s132: "S is very strong and the You month mediates between Wei and Zi";
+    //    "Non esagerare, S è già forte di suo perché il mese è metallo e l'ora è acqua. Se non fosse stato forte la mediazione
+    //    non sarebbe stata utile"): il MESE che sta fra chi controlla e chi e' controllato (chi controlla genera il mese, il
+    //    mese genera il controllato) ferma il controllo SOLO se la sede e' forte di suo; allora la sede forte resta in piedi e
+    //    conta la sua forza (+1). Il mediato non e' un nutrimento. Sede debole: la mediazione non serve, il controllo passa.
+    //    "Forte di suo" = generata o sostenuta dal mese E con almeno un altro pilastro (giorno, ora, anno) dello stesso
+    //    elemento o che la genera (perimetro DI CLAUDE dalle parole di Edu: mese Metallo, ora Acqua). c.mediazione === false spegne.
+    var forteDiSuo = function (L) {
+      var e = WX[L.ramo]; if (!mE || !(e === mE || GEN[mE] === e)) return false;
+      return [c.dayBranch, c.oraBranch, c.yearBranch].some(function (b) { return b && (WX[b] === e || GEN[WX[b]] === e); });
+    };
+    var mediato = function (aEl, eEl, L) { return c.mediazione !== false && !!mE && GEN[aEl] === mE && GEN[mE] === eEl && forteDiSuo(L); };
     var timely = function (L) { var e = WX[L.ramo]; return !!mE && (e === mE || GEN[mE] === e); };
     // 12
     // Edu, 09/10/2026: "Se 'troppo fuori stagione' taglia così tante carte allora non va bene. Diciamo che se tutte e due lo sono."
@@ -115,7 +122,7 @@
           // "S si muove per generare indietro" con lo Shi Chou vuoto). c.mobileVuota === true torna alla forma vecchia.
           if (L.vuoto && c.mobileVuota) { out.racconto.push(nome + ' si muove ma è vuoto: non beneficia di nulla'); }
           else if (GEN[mAE] === e) { pt[k] += segno(L, true); out.racconto.push(nome + ' si fa generare indietro: avvantaggiato'); }
-          else if (KE[mAE] === e && mediato(mAE, e)) { if (c.mediazione !== 'neutra') pt[k] += segno(L, true); out.racconto.push('il mese ' + c.monthBranch + ' fa da ponte fra l\'arrivo ' + mA + ' e ' + nome + ': il controllo indietro non passa' + (c.mediazione !== 'neutra' ? ', ' + nome + ' è nutrito' : '')); }
+          else if (KE[mAE] === e && mediato(mAE, e, L)) { pt[k] += 1; out.racconto.push(nome + ' è forte di suo e il mese ' + c.monthBranch + ' fa da ponte con l\'arrivo ' + mA + ': il controllo indietro non passa, ' + nome + ' resta forte'); }
           else if (KE[mAE] === e) { pt[k] += segno(L, false); out.racconto.push(nome + ' è controllato indietro: colpito'); }
           return;
         }
@@ -127,7 +134,7 @@
         for (var q2 = lo + 1; q2 < hi; q2++) if (R.linee[q2 - 1].vuoto) ok = false;                     // 6
         if (ok) {
           if (GEN[mAE] === e) { if (L.vuoto && !(c.vuotaVibrante !== false && timely(L))) out.racconto.push(nome + ' è vuoto: il nutrimento di ' + m.tipo.replace('l\'arrivo', 'quell\'arrivo') + ' non arriva'); else { pt[k] += segno(L, true); out.racconto.push(m.tipo + ' ' + mA + ' nutre ' + nome + (L.vuoto ? ' (vuoto ma di stagione, già vibrante di suo)' : '')); } }
-          else if (KE[mAE] === e && mediato(mAE, e) && !L.vuoto) { if (c.mediazione !== 'neutra') pt[k] += segno(L, true); out.racconto.push('il mese ' + c.monthBranch + ' fa da ponte fra ' + m.tipo + ' ' + mA + ' e ' + nome + ': il controllo non passa' + (c.mediazione !== 'neutra' ? ', ' + nome + ' è nutrito' : '')); }
+          else if (KE[mAE] === e && mediato(mAE, e, L) && !L.vuoto) { pt[k] += 1; out.racconto.push(nome + ' è forte di suo e il mese ' + c.monthBranch + ' fa da ponte con ' + m.tipo + ' ' + mA + ': il controllo non passa, ' + nome + ' resta forte'); }
           else if (KE[mAE] === e || GEN[e] === mAE) {
             // 7b (Edu, 09/10/2026, S55, EURJPY 07/10/2026 s178: "L5 si muove in una forte Hai che indebolisce Y"): la sede di
             //    stagione si lascia colpire da un arrivo forte (di stagione anche lui nel mese). Perimetro DI CLAUDE che tiene
