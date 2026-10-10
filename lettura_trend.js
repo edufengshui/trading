@@ -28,6 +28,8 @@
 // 19. La sede mobile il cui arrivo e' incompatibile (caso -5) non viene generata ne' controllata indietro (EURUSD 05/10/2026 s112).
 // 20. Il raduno stagionale chiuso da una sede, dal giorno e dalla mobile la avvantaggia (AUDUSD 05/10/2026 s69).
 // 21. Il mese che fa da ponte ferma il controllo solo sulla sede forte di suo, che resta forte (GBPUSD 05/10/2026 s132).
+// 22. La sede combinata e controllata dal giorno e' bloccata, fuori dal confronto; la sede generata indietro e' rafforzata
+//     qualunque sia il carattere (GBPUSD 06/10/2026 s132).
 // 14. L'arrivo di una linea incompatibile agisce su Shi e Ying come quello della mobile (EURJPY 07/10/2026 s178, S55).
 // 13. La Ying che genera lo Shi avvantaggia il trend, anche se la Ying e' vuota (EURUSD 07/10/2026 s112, S55).
 // Esito: segue / non segue / tace, con i punti e il racconto. ctx come trend_ly.js (dayBranch, monthBranch, yearBranch,
@@ -121,7 +123,10 @@
           // Edu (regole del vuoto, 22/09/2026): una linea che si muove non e' mai vuota alla partenza (AUDUSD 07/10/2026 s69:
           // "S si muove per generare indietro" con lo Shi Chou vuoto). c.mobileVuota === true torna alla forma vecchia.
           if (L.vuoto && c.mobileVuota) { out.racconto.push(nome + ' si muove ma è vuoto: non beneficia di nulla'); }
-          else if (GEN[mAE] === e) { pt[k] += segno(L, true); out.racconto.push(nome + ' si fa generare indietro: avvantaggiato'); }
+          // Edu, 10/10/2026 (GBPUSD 06/10/2026 s132: "Y rafforzato dalla generazione indietro", la Ying e' una B): la sede
+          // generata indietro e' rafforzata qualunque sia il suo carattere (la regola 11 vale per il nutrimento da un'altra linea).
+          // c.indietroCarattere === true torna alla forma vecchia.
+          else if (GEN[mAE] === e) { pt[k] += c.indietroCarattere ? segno(L, true) : 1; out.racconto.push(nome + ' si fa generare indietro: rafforzat' + (k === 'S' ? 'o' : 'a')); }
           else if (KE[mAE] === e && mediato(mAE, e, L)) { pt[k] += 1; out.racconto.push(nome + ' è forte di suo e il mese ' + c.monthBranch + ' fa da ponte con l\'arrivo ' + mA + ': il controllo indietro non passa, ' + nome + ' resta forte'); }
           else if (KE[mAE] === e) { pt[k] += segno(L, false); out.racconto.push(nome + ' è controllato indietro: colpito'); }
           return;
@@ -220,6 +225,12 @@
       var stessoTrig = (mob.pos <= 3) === (sp <= 3);
       var chiude = (mob.pos !== sp && stessoTrig && !mob.vuoto && mobRami.indexOf(terzo) >= 0) ? mob.pos : null;
       if (chiude) { pt[q[0]] += segno(L, true); out.racconto.push(q[3] + ', il giorno ' + c.dayBranch + ' e L' + chiude + ' ' + terzo + ' chiudono il raduno stagionale: ' + q[3] + ' è avvantaggiat' + (q[0] === 'S' ? 'o' : 'a')); }
+    });
+    // 22 (Edu, 10/10/2026, S55, GBPUSD 06/10/2026 s132: "S bloccato dal giorno che lo combina e controlla"): la sede che il
+    //    giorno combina E controlla e' bloccata: resta fuori dal confronto, non conta nulla di quello che le succede (qui due
+    //    pilastri ci cadevano sopra). c.bloccoGiorno === false spegne.
+    if (c.bloccoGiorno !== false && c.dayBranch) [['S', S, 'lo Shi'], ['Y', Y, 'la Ying']].forEach(function (q) {
+      if (COMBINA[c.dayBranch] === q[1].ramo && KE[WX[c.dayBranch]] === WX[q[1].ramo]) { pt[q[0]] = 0; out.racconto.push(q[2] + ' è bloccat' + (q[0] === 'S' ? 'o' : 'a') + ' dal giorno ' + c.dayBranch + ' che lo combina e lo controlla: fuori dal confronto'); }
     });
     out.shi = pt.S; out.ying = pt.Y; out.punti = pt.S - pt.Y;
     if (out.punti > 0) out.verdetto = 'segue'; else if (out.punti < 0) out.verdetto = 'non segue';
