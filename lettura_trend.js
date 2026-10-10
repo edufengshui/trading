@@ -190,9 +190,9 @@
     //    trigono stagionale fra Y, il giorno e L2"): il raduno stagionale (三會: Hai-Zi-Chou Acqua, Yin-Mao-Chen Legno,
     //    Si-Wu-Wei Fuoco, Shen-You-Xu Metallo) chiuso da una sede, dal ramo del giorno e da un'altra linea avvantaggia la sede.
     //    Su quella carta lo Shi Chou (L4) e la Ying Chou (L1) potrebbero chiudere lo stesso raduno col giorno Zi e L2 Hai:
-    //    vince la Ying, perche' a chiudere con lei e' L2, la MOBILE, nel suo stesso trigramma (lo Shi Chou sta nell'altro trigramma). Perimetro
-//    DI CLAUDE da validare: a chiudere dev'essere la mobile (col suo ramo, o col suo arrivo se arriva), nello stesso trigramma
-//    della sede, non vuota.
+    //    vince la Ying, perche' a chiudere con lei e' L2, la MOBILE, nel suo stesso trigramma (lo Shi Chou sta nell'altro trigramma). Stesso trigramma
+//    CONFERMATO da Edu (10/10/2026: "Hai sta nel trigramma dello Y quindi il raduno vale per Y e non per S"). Resta DI CLAUDE
+//    che a chiudere debba essere la mobile (col suo ramo, o col suo arrivo se arriva) e non una linea ferma; non vuota.
     //    Sostituisce lo spareggio con le bestie (cancellato da Edu il 10/10/2026). c.radunoGiorno === false spegne.
     var RADUNO = {};
     [['Water',['亥','子','丑']],['Wood',['寅','卯','辰']],['Fire',['巳','午','未']],['Metal',['申','酉','戌']]].forEach(function (t) { t[1].forEach(function (b) { RADUNO[b] = t[1]; }); });
