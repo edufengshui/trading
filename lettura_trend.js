@@ -619,20 +619,23 @@
     if (scart.length === 1 && c.bestieLato !== false) {
       var kx = scart[0], altriMossi = chi.filter(function (m) { return !vuotoVero(m.arr); }).length;
       if (!altriMossi) {
-        // EURJPY 07/09/2026 (Edu, 10/10: "La bestia dell'anno interviene su Y e fa vincere S"): la bestia puo' prendere anche la
-        // sede fuori gioco stessa; i pilastri si guardano in ordine (anno, mese, giorno, ora), anche col ramo vuoto (li' l'anno
-        // Wu era vuoto). La linea presa diventa il ramo del pilastro e si confronta con l'altra sede: CHI VIENE GENERATO VINCE
-        // (regola del possesso, 04/09/2026). Le altre linee che si muovono nel vuoto sono inservibili.
+        // Bestie dal lato della sede fuori gioco (Edu, 10/10/2026): possono prendere anche la sede stessa; pilastri in ordine
+        // (anno, mese, giorno, ora) col ramo NON vuoto (Edu: "Hai ragione sul ramo vuoto della bestia dell'anno, non va usato.
+        // Prendiamo quella del mese che fa la stessa cosa: Shen genera la nativa Hai che perde il confronto con S").
+        // Se il pilastro genera la linea nativa, la nativa resta (rafforzata) e si confronta lei; altrimenti la linea diventa il
+        // ramo del pilastro (USDCAD 26/11/2021: Si dell'ora su L6). Confronto con l'altra sede: chi viene generato vince, chi
+        // controlla vince. Le altre linee che si muovono nel vuoto sono inservibili.
         var inserv = chi.filter(function (m) { return m.pos !== POS[kx]; }).map(function (m) { return m.pos; });
-        var pilL = [['dell\'anno', c.yearStem, c.yearBranch], ['del mese', c.monthStem, c.monthBranch], ['del giorno', c.dayStem, dB], ['dell\'ora', c.hourStem, c.oraBranch]].filter(function (p) { return p[1] && p[2]; });
+        var pilL = [['dell\'anno', c.yearStem, c.yearBranch], ['del mese', c.monthStem, c.monthBranch], ['del giorno', c.dayStem, dB], ['dell\'ora', c.hourStem, c.oraBranch]].filter(function (p) { return p[1] && p[2] && vuoti.indexOf(p[2]) < 0; });
         var presaL = null, eAltra = WX[SEDE[ALTRA[kx]].ramo];
         pilL.forEach(function (p) {
           if (presaL) return;
           var Lx = R.linee.filter(function (L) { return campo(L.pos) === kx && inserv.indexOf(L.pos) < 0 && L.bestia && L.bestia.cn === BESTIA_STELO[p[1]]; })[0];
           if (!Lx) return;
-          var eP = WX[p[2]];
-          if (GEN[eAltra] === eP) presaL = { pos: Lx.pos, chi: p[0], vince: kx, t: 'la bestia ' + p[0] + ' s\'impadronisce di L' + Lx.pos + ' (' + p[2] + '), che è generata da ' + NOME[ALTRA[kx]] + ': vince il suo campo' };
-          else if (GEN[eP] === eAltra) presaL = { pos: Lx.pos, chi: p[0], vince: ALTRA[kx], t: 'la bestia ' + p[0] + ' s\'impadronisce di L' + Lx.pos + ' (' + p[2] + '), che genera ' + NOME[ALTRA[kx]] + ': vince ' + NOME[ALTRA[kx]] };
+          var eP = WX[p[2]], eN = WX[Lx.ramo], nativa = GEN[eP] === eN, eA = nativa ? eN : eP, chiA = nativa ? 'la nativa ' + Lx.ramo + ', generata da ' + p[2] + ',' : 'L' + Lx.pos + ', diventata ' + p[2] + ',';
+          var vA = GEN[eAltra] === eA || KE[eA] === eAltra, vB = GEN[eA] === eAltra || KE[eAltra] === eA;
+          if (vA && !vB) presaL = { vince: kx, t: 'la bestia ' + p[0] + ' prende L' + Lx.pos + ': ' + chiA + ' vince il confronto con ' + NOME[ALTRA[kx]] };
+          else if (vB && !vA) presaL = { vince: ALTRA[kx], t: 'la bestia ' + p[0] + ' prende L' + Lx.pos + ': ' + chiA + ' perde il confronto con ' + NOME[ALTRA[kx]] };
         });
         if (presaL) { dire(NOME[kx] + ' si muove per diventare vuot' + (kx === 'S' ? 'o' : 'a') + ' e nient\'altro si muove: intervengono le bestie dal suo lato'); return vince(presaL.vince, presaL.t, 1); }
       }
