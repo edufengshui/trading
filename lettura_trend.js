@@ -598,6 +598,18 @@
       if (GEN[aE] === eO) return { vince: ALTRA[k], t: 'L' + m.pos + ' prende il posto di ' + NOME[k] + ' ma nutre ' + NOME[ALTRA[k]] + ': vince l\'altra sede' };
       return null;
     };
+    // tutte e due le sedi fuori gioco (una scartata nel vuoto e l'altra vuota, o tutte e due): intervengono le bestie dei
+    // pilastri, e la sede presa da una bestia vince (Edu, 10/10/2026, GBPUSD 20/12/2023 s127: "Qui né S né Y possono vincere
+    // perché sono vuoti. La bestia dell'ora interviene e s'impadronisce di Y e fa vincere il non segue"). Perimetro DI CLAUDE:
+    // valgono tutti e quattro i pilastri (li' era l'ora); se le bestie prendono tutte e due le sedi o nessuna, il metodo tace.
+    var fuori = function (k) { return scart.indexOf(k) >= 0 || (SEDE[k].vuoto && vuotoVero(SEDE[k].ramo) && !sedeMossa(k)); };   // la sede che si muove non e' vuota alla partenza
+    if (fuori('S') && fuori('Y') && c.bestieSedi !== false) {
+      var pil0 = [['l\'anno', c.yearStem, c.yearBranch], ['il mese', c.monthStem, c.monthBranch], ['il giorno', c.dayStem, dB], ['l\'ora', c.hourStem, c.oraBranch]].filter(function (p) { return p[1]; });
+      var presa = {}; ['S', 'Y'].forEach(function (k) { var L = SEDE[k]; if (!L.bestia || !L.bestia.cn) return; pil0.forEach(function (p) { if (BESTIA_STELO[p[1]] === L.bestia.cn) presa[k] = p[0]; }); });
+      var pk = Object.keys(presa);
+      if (pk.length === 1) return vince(pk[0], 'né lo Shi né la Ying possono vincere perché sono vuoti: la bestia del' + presa[pk[0]].replace(/^il |^l'/, function (x) { return x === 'il ' ? ' ' : 'l\''; }) + ' s\'impadronisce di ' + NOME[pk[0]] + ' e la fa vincere', 1);
+      dire('né lo Shi né la Ying possono vincere perché sono vuoti, e nessuna bestia decide: il metodo tace'); return out;
+    }
     if (scart.length === 1 && c.sostituto !== false) { var so = sostituto(scart[0]); if (so) { dire(NOME[scart[0]] + ' si muove per diventare vuot' + (scart[0] === 'S' ? 'o' : 'a') + ': fuori gioco'); return vince(so.vince, so.t, 1); } }
     if (scart.length === 1) return vince(ALTRA[scart[0]], NOME[scart[0]] + ' si muove per diventare vuot' + (scart[0] === 'S' ? 'o' : 'a') + ' (' + sedeMossa(scart[0]).arr + '): scartat' + (scart[0] === 'S' ? 'o' : 'a') + ', vince l\'altra sede', 1);
     if (scart.length === 2) { dire('tutte e due le sedi si muovono nel vuoto: il metodo tace'); return out; }
