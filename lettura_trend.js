@@ -58,11 +58,11 @@
     //    non sarebbe stata utile"): il MESE che sta fra chi controlla e chi e' controllato (chi controlla genera il mese, il
     //    mese genera il controllato) ferma il controllo SOLO se la sede e' forte di suo; allora la sede forte resta in piedi e
     //    conta la sua forza (+1). Il mediato non e' un nutrimento. Sede debole: la mediazione non serve, il controllo passa.
-    //    "Forte di suo" = generata o sostenuta dal mese E con almeno un altro pilastro (giorno, ora, anno) dello stesso
-    //    elemento o che la genera (perimetro DI CLAUDE dalle parole di Edu: mese Metallo, ora Acqua). c.mediazione === false spegne.
+    //    "Forte di suo" = il mese la genera o e' del suo elemento (Edu, 10/10/2026: "Bastava il mese, l'ora è un di più che
+    //    aggiunge ulteriore forza"). c.mediazione === false spegne.
     var forteDiSuo = function (L) {
-      var e = WX[L.ramo]; if (!mE || !(e === mE || GEN[mE] === e)) return false;
-      return [c.dayBranch, c.oraBranch, c.yearBranch].some(function (b) { return b && (WX[b] === e || GEN[WX[b]] === e); });
+      // Edu (10/10/2026): "Bastava il mese, l'ora è un di più che aggiunge ulteriore forza" -> basta il mese
+      var e = WX[L.ramo]; return !!mE && (e === mE || GEN[mE] === e);
     };
     var mediato = function (aEl, eEl, L) { return c.mediazione !== false && !!mE && GEN[aEl] === mE && GEN[mE] === eEl && forteDiSuo(L); };
     var timely = function (L) { var e = WX[L.ramo]; return !!mE && (e === mE || GEN[mE] === e); };
