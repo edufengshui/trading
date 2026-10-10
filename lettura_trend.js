@@ -46,6 +46,8 @@
 // 32. La sede che si muove per diventare vuota e' scartata completamente: rimane l'altra, che vince (EURJPY 07/09/2026 s181).
 // 33. L'arrivo che clasha una linea forte dell'altro trigramma apre uno scontro: vince il piu' forte nel mese e il suo campo
 //     (USDJPY 10/08/2026 s157); anche la sede incompatibile che gira nel vuoto e' scartata (32).
+// 34. La sede troppo forte (di stagione e sostenuta dal giorno) non si lascia clashare ne' controllare dall'altra sede, e
+//     vince (GBPUSD 01/10/2026 s132).
 // 14. L'arrivo di una linea incompatibile agisce su Shi e Ying come quello della mobile (EURJPY 07/10/2026 s178, S55).
 // 13. La Ying che genera lo Shi avvantaggia il trend, anche se la Ying e' vuota (EURUSD 07/10/2026 s112, S55).
 // Esito: segue / non segue / tace, con i punti e il racconto. ctx come trend_ly.js (dayBranch, monthBranch, yearBranch,
@@ -404,6 +406,21 @@
     //    pilastri ci cadevano sopra). c.bloccoGiorno === false spegne.
     if (c.bloccoGiorno !== false && c.dayBranch) [['S', S, 'lo Shi'], ['Y', Y, 'la Ying']].forEach(function (q) {
       if (COMBINA[c.dayBranch] === q[1].ramo && KE[WX[c.dayBranch]] === WX[q[1].ramo]) { pt[q[0]] = 0; out.racconto.push(q[2] + ' è bloccat' + (q[0] === 'S' ? 'o' : 'a') + ' dal giorno ' + c.dayBranch + ' che lo combina e lo controlla: fuori dal confronto'); }
+    });
+    // 34 (Edu, 10/10/2026, S55, GBPUSD 01/10/2026 s132: "S è troppo forte, non può essere clashato con successo da Y, né
+    //    controllato da Y se questo è generato indietro. Vince il segue"): la sede TROPPO FORTE — di stagione nel mese e
+    //    sostenuta dal giorno (stesso elemento o generata; perimetro DI CLAUDE dalla carta: Zi nel mese You col giorno Shen) —
+    //    non si lascia clashare ne' controllare dall'altra sede, nemmeno se quella si rafforza: quello che l'altra ha preso non
+    //    conta e vince la sede forte (+1). c.troppoForte === false spegne.
+    var tForte = function (L) { var e = WX[L.ramo], dE3 = c.dayBranch ? WX[c.dayBranch] : null; return !L.vuoto && timely(L) && !!dE3 && (dE3 === e || GEN[dE3] === e); };
+    if (c.troppoForte !== false) [['S', S, 'Y', Y, 'lo Shi'], ['Y', Y, 'S', S, 'la Ying']].forEach(function (q) {
+      var A = q[1], B = q[3]; if (!tForte(A) || tForte(B)) return;
+      var eA = WX[A.ramo], eB = WX[B.ramo];
+      var mB = chi.filter(function (m) { return m.pos === (q[2] === 'S' ? R.shi : R.ying) && m.arr; })[0];
+      var attacca = KE[eB] === eA || (mB && (CLASH[mB.arr] === A.ramo || KE[WX[mB.arr]] === eA));
+      if (!attacca) return;
+      if (pt[q[2]] > 0) pt[q[2]] = 0; pt[q[0]] += 1;
+      out.racconto.push(q[4] + ' è troppo fort' + (q[0] === 'S' ? 'e' : 'e') + ' (di stagione e sostenut' + (q[0] === 'S' ? 'o' : 'a') + ' dal giorno): l\'altra sede non riesce a colpirl' + (q[0] === 'S' ? 'o' : 'a') + ', vince lei');
     });
     // 32 (Edu, 10/10/2026, S55, EURJPY 07/09/2026 s181: "Y si muove per diventare vuota quindi viene scartata completamente.
     //    Rimane S che vince"; stessa regola dell'08/10/2026, USDJPY 02/10/2024): la sede che e' la mobile e arriva nel vuoto e'
