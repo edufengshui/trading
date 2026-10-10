@@ -309,7 +309,7 @@
     // 16 (Edu, 09/10/2026, S55, EURGBP 07/10/2026 s84: "proprio il fatto che il mese è una G che si combina con S gli
     //    garantisce la vittoria"): il mese che e' una G e si combina con lo Shi lo avvantaggia. Estensione DI CLAUDE (anche la
     //    W, anche la Ying) dietro c.meseTutte, spenta.
-    var palE = null;
+    var palE = null; var garanzia = null;   // 16 "gli garantisce la vittoria": decide alla fine (perimetro DI CLAUDE, GBPUSD 04/08/2026 s134)
     R.linee.forEach(function (Lx) { if (palE) return; var ex = WX[Lx.ramo];
       if (Lx.par === 'B') palE = ex; else if (Lx.par === 'G') palE = KE[ex];
       else if (Lx.par === 'P') palE = GEN[ex];
@@ -320,7 +320,7 @@
       [['S', S, 'lo Shi'], ['Y', Y, 'la Ying']].forEach(function (q) {
         if (q[0] === 'Y' && !c.meseTutte) return;
         if (COMBINA[c.monthBranch] !== q[1].ramo) return;
-        if (parMese === 'G' || (parMese === 'W' && c.meseTutte)) { pt[q[0]] += 1; out.racconto.push('il mese è una ' + parMese + ' che si combina con ' + q[2] + ': gli garantisce la vittoria'); }
+        if (parMese === 'G' || (parMese === 'W' && c.meseTutte)) { pt[q[0]] += 1; garanzia = q[0]; out.racconto.push('il mese è una ' + parMese + ' che si combina con ' + q[2] + ': gli garantisce la vittoria'); }
       });
     }
     // 20 (Edu, 10/10/2026, S55, AUDUSD 05/10/2026 s69: "Il motivo per cui Y vince in un confronto di parità con S è dato dal
@@ -455,6 +455,8 @@
       if (pt[q[2]] > 0) pt[q[2]] = 0; pt[q[0]] += 1;
       out.racconto.push(q[4] + ' è troppo fort' + (q[0] === 'S' ? 'e' : 'e') + ' (di stagione e sostenut' + (q[0] === 'S' ? 'o' : 'a') + ' dal giorno): l\'altra sede non riesce a colpirl' + (q[0] === 'S' ? 'o' : 'a') + ', vince lei');
     });
+    // 16 come garanzia: la sede col mese G che la combina vince comunque (SPENTA, c.garanzia === true: decisiva su 11 carte ne prende 4)
+    if (garanzia && c.garanzia === true) { var gO = garanzia === 'S' ? 'Y' : 'S'; if (pt[garanzia] <= pt[gO]) { pt[garanzia] = pt[gO] + 1; out.racconto.push('il mese G combinato garantisce la vittoria: vince ' + (garanzia === 'S' ? 'lo Shi' : 'la Ying')); } }
     // 32 (Edu, 10/10/2026, S55, EURJPY 07/09/2026 s181: "Y si muove per diventare vuota quindi viene scartata completamente.
     //    Rimane S che vince"; stessa regola dell'08/10/2026, USDJPY 02/10/2024): la sede che e' la mobile e arriva nel vuoto e'
     //    scartata — zero — e l'altra sede vince (almeno +1). Non se la mobile e' legata alla partenza. c.sedeVuotaScartata === false spegne.
