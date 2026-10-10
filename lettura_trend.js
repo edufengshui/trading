@@ -40,6 +40,8 @@
 // 27. (DA VALIDARE) La sede mobile che arriva nel proprio stesso ramo resta ferma e sofferente: vince l'altra.
 // 28. L'arrivo incompatibile della mobile va fuori (combina, stesso ramo, clash, genera): clashare una sede la colpisce,
 //     generarla la nutre; la Ying che si muove a clashare lo Shi non lo genera piu' (USDJPY 02/09/2026 s160).
+// 29. L'arrivo della mobile che e' la tomba di una sede la seppellisce. 30. La linea piu' forte dell'esagramma rafforza il
+//     campo in cui sta, anche con la sede vuota (EURUSD 26/08/2026 s116).
 // 14. L'arrivo di una linea incompatibile agisce su Shi e Ying come quello della mobile (EURJPY 07/10/2026 s178, S55).
 // 13. La Ying che genera lo Shi avvantaggia il trend, anche se la Ying e' vuota (EURUSD 07/10/2026 s112, S55).
 // Esito: segue / non segue / tace, con i punti e il racconto. ctx come trend_ly.js (dayBranch, monthBranch, yearBranch,
@@ -213,6 +215,33 @@
         var kT = T.pos === R.shi ? 'S' : 'Y', nT = kT === 'S' ? 'lo Shi' : 'la Ying';
         if (tipo === 'clash') { pt[kT] -= 1; colpoFuori = kT; out.racconto.push('l\'arrivo ' + arr + ' è incompatibile e va fuori a clashare ' + nT + ': colpit' + (kT === 'S' ? 'o' : 'a')); }
         else { pt[kT] += segno(T, true); out.racconto.push('l\'arrivo ' + arr + ' è incompatibile e va fuori a generare ' + nT); }
+      }
+    }
+    // 29 (Edu, 10/10/2026, S55, EURUSD 26/08/2026 s116: "L1 si muove per diventare la tomba di S"): l'arrivo della mobile
+    //    che e' la TOMBA dell'elemento di una sede (Acqua 辰, Legno 未, Fuoco 戌, Metallo 丑 — le tombe dettate da Edu il
+    //    19/09/2026) la seppellisce: colpita (-1). Non sulla mobile stessa. c.tomba === false spegne.
+    var TOMBA = { Water:'辰', Wood:'未', Fire:'戌', Metal:'丑' };
+    if (c.tomba !== false && arr && !R.mutante.movimentoNullo && !legataDa) [['S', S, R.shi, 'lo Shi'], ['Y', Y, R.ying, 'la Ying']].forEach(function (q) {
+      if (q[2] === mob.pos || TOMBA[WX[q[1].ramo]] !== arr) return;
+      pt[q[0]] -= 1; out.racconto.push('L' + mob.pos + ' si muove per diventare la tomba di ' + q[3] + ' (' + arr + '): sepolt' + (q[0] === 'S' ? 'o' : 'a'));
+    });
+    // 30 (Edu, stessa carta: "Y è vuoto, ma nel suo campo c'è la linea più forte dell'esagramma (L4)"): la linea piu' forte
+    //    dell'esagramma da' forza al CAMPO (trigramma) in cui sta quando la sede di quel campo e' vuota (+1): ne prende il posto.
+    //    Con la sede piena non conta (perimetro DI CLAUDE: GBPUSD 05/10 e EURGBP 07/10, You di stagione nel campo della Ying). Forza
+    //    (perimetro DI CLAUDE): stesso elemento del mese +2, e' il ramo del mese +1, e' il ramo del giorno o dello stesso
+    //    elemento del giorno +1; deve essere di stagione, non vuota, e unica in testa. c.lineaForte === false spegne.
+    if (c.lineaForte !== false && mE) {
+      var fz = R.linee.map(function (Lx) {
+        if (Lx.vuoto) return -9; var ex = WX[Lx.ramo], f = 0;
+        if (ex === mE) f += 2; else if (GEN[mE] === ex) f += 1; else return -9;
+        if (Lx.ramo === c.monthBranch) f += 1;
+        if (c.dayBranch && (Lx.ramo === c.dayBranch || WX[c.dayBranch] === ex)) f += 1;
+        return f;
+      });
+      var mx = Math.max.apply(null, fz), quante = fz.filter(function (v) { return v === mx; }).length;
+      if (mx >= 3 && quante === 1) {
+        var pF = fz.indexOf(mx) + 1, campF = (pF <= 3) === (R.shi <= 3) ? 'S' : 'Y';
+        if ((campF === 'S' ? S : Y).vuoto) pt[campF] += 1, out.racconto.push('la linea più forte dell\'esagramma è L' + pF + ' ' + R.linee[pF - 1].ramo + ', nel campo ' + (campF === 'S' ? 'dello Shi' : 'della Ying') + ': lo rafforza');
       }
     }
     // 13: la Ying che genera lo Shi (Edu, 09/10/2026, S55, EURUSD 07/10/2026 s112: "Y genera S, e L5 si muove per pure
