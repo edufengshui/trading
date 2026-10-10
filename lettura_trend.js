@@ -42,6 +42,7 @@
 //     generarla la nutre; la Ying che si muove a clashare lo Shi non lo genera piu' (USDJPY 02/09/2026 s160).
 // 29. L'arrivo della mobile che e' la tomba di una sede la seppellisce. 30. La linea piu' forte dell'esagramma rafforza il
 //     campo in cui sta, anche con la sede vuota (EURUSD 26/08/2026 s116).
+// 31. La sede mobile il cui arrivo (anche vuoto) genera l'altra sede la nutre (EURJPY 07/09/2026 s181).
 // 14. L'arrivo di una linea incompatibile agisce su Shi e Ying come quello della mobile (EURJPY 07/10/2026 s178, S55).
 // 13. La Ying che genera lo Shi avvantaggia il trend, anche se la Ying e' vuota (EURUSD 07/10/2026 s112, S55).
 // Esito: segue / non segue / tace, con i punti e il racconto. ctx come trend_ly.js (dayBranch, monthBranch, yearBranch,
@@ -106,7 +107,10 @@
     var segno = function (L, fav) { // 11: il carattere
       var s = fav ? +1 : -1; if ((fav || c.colpisciPB) && (L.par === 'P' || L.par === 'B')) s = -s; return s;   // 11 solo per il nutrire (Edu, EURJPY 07/10/2026 s178: colpire la Ying P la indebolisce -> segue); c.colpisciPB torna alla forma vecchia
     };
-    var pt = { S: 0, Y: 0 };
+    // pt registra se qualcosa e' successo (serve alla regola 24: la forza ferma conta solo se non succede nient'altro)
+    var nutrito = { S: false, Y: false };   // la sede nutrita da un movimento (regole 2 e 31)
+    var tocco = { v: false }, _p = { S: 0, Y: 0 }, pt = {};
+    ['S', 'Y'].forEach(function (k) { Object.defineProperty(pt, k, { get: function () { return _p[k]; }, set: function (v) { if (v !== _p[k]) tocco.v = true; _p[k] = v; }, enumerable: true }); });
     var sedi = [['S', S, R.shi], ['Y', Y, R.ying]];
     // Chi si muove: la mobile e, dal 09/10/2026 (S55), le linee INCOMPATIBILI, che girano col futuro comune e agiscono su
     // Shi e Ying come la mobile (Edu, EURJPY 07/10/2026 s178: "Si"). c.incompatibili === false torna alla sola mobile.
@@ -156,7 +160,7 @@
         var lo = Math.min(m.pos, sp), hi = Math.max(m.pos, sp);
         for (var q2 = lo + 1; q2 < hi; q2++) if (R.linee[q2 - 1].vuoto) ok = false;                     // 6
         if (ok) {
-          if (GEN[mAE] === e) { if (L.vuoto && !(c.vuotaVibrante !== false && timely(L))) out.racconto.push(nome + ' è vuoto: il nutrimento di ' + m.tipo.replace('l\'arrivo', 'quell\'arrivo') + ' non arriva'); else { pt[k] += segno(L, true); out.racconto.push(m.tipo + ' ' + mA + ' nutre ' + nome + (L.vuoto ? ' (vuoto ma di stagione, già vibrante di suo)' : '')); } }
+          if (GEN[mAE] === e) { if (L.vuoto && !(c.vuotaVibrante !== false && timely(L))) out.racconto.push(nome + ' è vuoto: il nutrimento di ' + m.tipo.replace('l\'arrivo', 'quell\'arrivo') + ' non arriva'); else { pt[k] += segno(L, true); nutrito[k] = true; out.racconto.push(m.tipo + ' ' + mA + ' nutre ' + nome + (L.vuoto ? ' (vuoto ma di stagione, già vibrante di suo)' : '')); } }
           else if (KE[mAE] === e && mediato(mAE, e, L) && !L.vuoto) { pt[k] += 1; out.racconto.push(nome + ' è forte di suo e il mese ' + c.monthBranch + ' fa da ponte con ' + m.tipo + ' ' + mA + ': il controllo non passa, ' + nome + ' resta forte'); }
           else if (KE[mAE] === e || GEN[e] === mAE) {
             // 7b (Edu, 09/10/2026, S55, EURJPY 07/10/2026 s178: "L5 si muove in una forte Hai che indebolisce Y"): la sede di
@@ -244,6 +248,14 @@
         if ((campF === 'S' ? S : Y).vuoto) pt[campF] += 1, out.racconto.push('la linea più forte dell\'esagramma è L' + pF + ' ' + R.linee[pF - 1].ramo + ', nel campo ' + (campF === 'S' ? 'dello Shi' : 'della Ying') + ': lo rafforza');
       }
     }
+    // 31 (Edu, 10/10/2026, S55, EURJPY 07/09/2026 s181: "Anche se entrambi sono deboli tuttavia Y si muove per generare S.
+    //    Segue il trend"): la sede che e' la mobile e il cui arrivo genera l'altra sede la nutre (+1, carattere della regola
+    //    11), anche con l'arrivo vuoto (li' Wu era vuoto). Non se la mobile e' legata alla partenza o retrocede. c.sedeGeneraSede === false spegne.
+    if (c.sedeGeneraSede !== false && arr && !legataDa && R.mutante.casoMut !== -5 && R.mutante.progressione !== 'retrocedente' && (mob.pos === R.shi || mob.pos === R.ying)
+        && (!R.mutante.movimentoNullo || R.mutante.motivoNullo === 'arrival void')) {
+      var altra = mob.pos === R.shi ? ['Y', Y, 'la Ying'] : ['S', S, 'lo Shi'];
+      if (GEN[aE] === WX[altra[1].ramo] && !altra[1].vuoto) { pt[altra[0]] += segno(altra[1], true); nutrito[altra[0]] = true; out.racconto.push((mob.pos === R.shi ? 'lo Shi' : 'la Ying') + ' si muove in ' + arr + ' per generare ' + altra[2]); }
+    }
     // 13: la Ying che genera lo Shi (Edu, 09/10/2026, S55, EURUSD 07/10/2026 s112: "Y genera S, e L5 si muove per pure
     //     generare S. Segue il trend") — il contro-trend che nutre il trend lo avvantaggia; vale anche con la Ying vuota
     //     (su quella carta la Ying Zi e' vuota). Il carattere dello Shi conta come nella regola 11.
@@ -302,6 +314,9 @@
     //    arrivo). c.drenaggio === false spegne.
     if (c.drenaggio !== false) [['S', S, R.shi, 'lo Shi'], ['Y', Y, R.ying, 'la Ying']].forEach(function (q) {
       var L = q[1], sp = q[2], e = WX[L.ramo];
+      // la debolezza ferma non annulla il nutrimento portato da un movimento (Edu, EURJPY 07/09/2026: "Anche se entrambi sono
+      // deboli tuttavia Y si muove per generare S")
+      if (nutrito[q[0]]) return;
       if (L.ramo === c.monthBranch) return;   // la sede che e' il ramo stesso del mese non si lascia drenare (GBPUSD 15/12/2022, come 7b)
       if (!(c.dayBranch && GEN[e] === WX[c.dayBranch])) return;   // senza il giorno che drena, la vicina da sola non basta (EURUSD 05/10/2026)
       // il giorno da solo non basta (NZDUSD 07/10/2026 s56: lo Shi Zi drenato dal giorno Yin resta "vibrante di suo"):
@@ -337,7 +352,7 @@
     }
     // 24 vale solo se nel resto dell'esagramma non succede nulla (Edu, stessa carta: "On Y, or in his camp, nothing happens"
     // — la forza ferma di una sede non pesa contro un'azione nell'altro campo). c.forzaSempre === true torna alla forma vecchia.
-    if (c.forzaSedi !== false && (c.forzaSempre || (pt.S === 0 && pt.Y === 0))) {
+    if (c.forzaSedi !== false && (c.forzaSempre || !tocco.v)) {
       var fS = forzaSede(S), fY = forzaSede(Y), soglia = c.sogliaForza || 3;
       // la sede forte che genera l'altra le passa la forza: nessuno squilibrio (EURUSD 05/10/2026 s112: la Ying Zi forte
       // genera lo Shi Mao, regola 13 — perimetro DI CLAUDE)
