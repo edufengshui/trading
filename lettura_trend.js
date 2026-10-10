@@ -32,6 +32,8 @@
 //     qualunque sia il carattere (GBPUSD 06/10/2026 s132).
 // 23. Il giorno che drena la sede e la linea ferma accanto che la drena la indeboliscono; il giorno che genera l'arrivo
 //     della sede che si autogenera la rafforza ancora (GBPUSD 07/10/2026 s132).
+// 24. La sede molto piu' forte dell'altra nel mese e nel giorno e' avvantaggiata; i pilastri con lo stelo che la sede
+//     controlla non la rafforzano (EURUSD 30/09/2026 s113).
 // 14. L'arrivo di una linea incompatibile agisce su Shi e Ying come quello della mobile (EURJPY 07/10/2026 s178, S55).
 // 13. La Ying che genera lo Shi avvantaggia il trend, anche se la Ying e' vuota (EURUSD 07/10/2026 s112, S55).
 // Esito: segue / non segue / tace, con i punti e il racconto. ctx come trend_ly.js (dayBranch, monthBranch, yearBranch,
@@ -46,6 +48,7 @@
   var KE  = { Wood:'Earth', Earth:'Water', Water:'Fire', Fire:'Metal', Metal:'Wood' };
   var COMBINA = { '子':'丑','丑':'子','寅':'亥','亥':'寅','卯':'戌','戌':'卯','辰':'酉','酉':'辰','巳':'申','申':'巳','午':'未','未':'午' };
   var CLASH = { '子':'午','午':'子','丑':'未','未':'丑','寅':'申','申':'寅','卯':'酉','酉':'卯','辰':'戌','戌':'辰','巳':'亥','亥':'巳' };
+  var STELO_EL = { '甲':'Wood','乙':'Wood','丙':'Fire','丁':'Fire','戊':'Earth','己':'Earth','庚':'Metal','辛':'Metal','壬':'Water','癸':'Water' };
   var BESTIA_STELO = { '甲':'青龍','乙':'青龍','丙':'朱雀','丁':'朱雀','戊':'勾陳','己':'螣蛇','庚':'白虎','辛':'白虎','壬':'玄武','癸':'玄武' };
   var TRINE = {};
   [['Water',['申','子','辰']],['Wood',['亥','卯','未']],['Fire',['寅','午','戌']],['Metal',['巳','酉','丑']]].forEach(function (t) { t[1].forEach(function (b) { TRINE[b] = t[1]; }); });
@@ -176,7 +179,9 @@
       });
       // 8: i pilastri che convergono sulla sede
       if (L.bestia && L.bestia.cn) {
-        var caduti = pil.filter(function (p) { return BESTIA_STELO[p[1]] === L.bestia.cn && R.vuoti.indexOf(p[2]) < 0; });
+        // Perimetro DI CLAUDE (EURUSD 30/09/2026 s113: tre steli di Fuoco sulla Ying Acqua): il pilastro il cui stelo e'
+        // dell'elemento che la sede controlla la impegna, non la rafforza. c.pilastriTutti === true torna alla forma vecchia.
+        var caduti = pil.filter(function (p) { return BESTIA_STELO[p[1]] === L.bestia.cn && R.vuoti.indexOf(p[2]) < 0 && (c.pilastriTutti || KE[e] !== STELO_EL[p[1]]); });
         // Perimetro DI CLAUDE (NZDUSD 07/10/2026 s56, da validare): i pilastri non rendono forte una sede troppo fuori
         // stagione (morta o imprigionata nel mese). c.pilastriSuMorta === true torna alla forma vecchia.
         if (caduti.length >= 2 && troppo(L) && !c.pilastriSuMorta) out.racconto.push(caduti.length + ' pilastri cadono su ' + nome + ', ma è troppo fuori stagione: non la rendono forte');
@@ -251,6 +256,26 @@
       })[0];
       if (vicina) { pt[q[0]] -= 1; out.racconto.push('il giorno ' + c.dayBranch + ' e L' + vicina + ' ' + R.linee[vicina - 1].ramo + ', accanto, drenano ' + q[3] + ': indebolit' + (q[0] === 'S' ? 'o' : 'a')); }
     });
+    // 24 (Edu, 10/10/2026, S55, EURUSD 30/09/2026 s113: "S è molto più forte di Y. Ma non lo vedi da solo?"): la forza
+    //    propria delle due sedi nel mese e nel giorno. Mese: stesso elemento +2, la genera +1, lei genera il mese -1, il mese
+    //    la controlla -2, lei controlla il mese -1. Giorno: stesso elemento o la genera +1, la controlla o la drena -1. Se una
+    //    sede e' MOLTO piu' forte dell'altra (scarto 3 o piu', perimetro DI CLAUDE) e' avvantaggiata (+1). La forza da sola non
+    //    dice il verso quando le sedi si equivalgono (Edu, 09/10/2026): conta solo lo squilibrio netto. c.forzaSedi === false spegne.
+    var forzaSede = function (L) {
+      if (!mE) return 0; var e = WX[L.ramo], f = 0;
+      if (e === mE) f += 2; else if (GEN[mE] === e) f += 1; else if (GEN[e] === mE) f -= 1; else if (KE[mE] === e) f -= 2; else if (KE[e] === mE) f -= 1;
+      var dE2 = c.dayBranch ? WX[c.dayBranch] : null;
+      if (dE2) { if (dE2 === e || GEN[dE2] === e) f += 1; else if (KE[dE2] === e || GEN[e] === dE2) f -= 1; }
+      return f;
+    };
+    if (c.forzaSedi !== false) {
+      var fS = forzaSede(S), fY = forzaSede(Y), soglia = c.sogliaForza || 3;
+      // la sede forte che genera l'altra le passa la forza: nessuno squilibrio (EURUSD 05/10/2026 s112: la Ying Zi forte
+      // genera lo Shi Mao, regola 13 — perimetro DI CLAUDE)
+      if (GEN[WX[Y.ramo]] === WX[S.ramo] && fY > fS) fY = fS;   // solo in questo verso: lo Shi forte che genera la Ying resta forte (EURUSD 30/09/2026 s113)
+      if (fS - fY >= soglia) { pt.S += 1; out.racconto.push('lo Shi è molto più forte della Ying nel mese e nel giorno (' + fS + ' contro ' + fY + ')'); }
+      else if (fY - fS >= soglia) { pt.Y += 1; out.racconto.push('la Ying è molto più forte dello Shi nel mese e nel giorno (' + fY + ' contro ' + fS + ')'); }
+    }
     // 22 (Edu, 10/10/2026, S55, GBPUSD 06/10/2026 s132: "S bloccato dal giorno che lo combina e controlla"): la sede che il
     //    giorno combina E controlla e' bloccata: resta fuori dal confronto, non conta nulla di quello che le succede (qui due
     //    pilastri ci cadevano sopra). c.bloccoGiorno === false spegne.
