@@ -42,7 +42,8 @@
 //     generarla la nutre; la Ying che si muove a clashare lo Shi non lo genera piu' (USDJPY 02/09/2026 s160).
 // 29. L'arrivo della mobile che e' la tomba di una sede la seppellisce. 30. La linea piu' forte dell'esagramma rafforza il
 //     campo in cui sta, anche con la sede vuota (EURUSD 26/08/2026 s116).
-// 31. La sede mobile il cui arrivo (anche vuoto) genera l'altra sede la nutre (EURJPY 07/09/2026 s181).
+// 31. La sede mobile il cui arrivo genera l'altra sede la nutre.
+// 32. La sede che si muove per diventare vuota e' scartata completamente: rimane l'altra, che vince (EURJPY 07/09/2026 s181).
 // 14. L'arrivo di una linea incompatibile agisce su Shi e Ying come quello della mobile (EURJPY 07/10/2026 s178, S55).
 // 13. La Ying che genera lo Shi avvantaggia il trend, anche se la Ying e' vuota (EURUSD 07/10/2026 s112, S55).
 // Esito: segue / non segue / tace, con i punti e il racconto. ctx come trend_ly.js (dayBranch, monthBranch, yearBranch,
@@ -250,9 +251,9 @@
     }
     // 31 (Edu, 10/10/2026, S55, EURJPY 07/09/2026 s181: "Anche se entrambi sono deboli tuttavia Y si muove per generare S.
     //    Segue il trend"): la sede che e' la mobile e il cui arrivo genera l'altra sede la nutre (+1, carattere della regola
-    //    11), anche con l'arrivo vuoto (li' Wu era vuoto). Non se la mobile e' legata alla partenza o retrocede. c.sedeGeneraSede === false spegne.
+    //    11). Non con l'arrivo vuoto (vedi 32), non se la mobile e' legata alla partenza o retrocede. c.sedeGeneraSede === false spegne.
     if (c.sedeGeneraSede !== false && arr && !legataDa && R.mutante.casoMut !== -5 && R.mutante.progressione !== 'retrocedente' && (mob.pos === R.shi || mob.pos === R.ying)
-        && (!R.mutante.movimentoNullo || R.mutante.motivoNullo === 'arrival void')) {
+        && !R.mutante.movimentoNullo) {
       var altra = mob.pos === R.shi ? ['Y', Y, 'la Ying'] : ['S', S, 'lo Shi'];
       if (GEN[aE] === WX[altra[1].ramo] && !altra[1].vuoto) { pt[altra[0]] += segno(altra[1], true); nutrito[altra[0]] = true; out.racconto.push((mob.pos === R.shi ? 'lo Shi' : 'la Ying') + ' si muove in ' + arr + ' per generare ' + altra[2]); }
     }
@@ -389,6 +390,14 @@
     if (c.bloccoGiorno !== false && c.dayBranch) [['S', S, 'lo Shi'], ['Y', Y, 'la Ying']].forEach(function (q) {
       if (COMBINA[c.dayBranch] === q[1].ramo && KE[WX[c.dayBranch]] === WX[q[1].ramo]) { pt[q[0]] = 0; out.racconto.push(q[2] + ' è bloccat' + (q[0] === 'S' ? 'o' : 'a') + ' dal giorno ' + c.dayBranch + ' che lo combina e lo controlla: fuori dal confronto'); }
     });
+    // 32 (Edu, 10/10/2026, S55, EURJPY 07/09/2026 s181: "Y si muove per diventare vuota quindi viene scartata completamente.
+    //    Rimane S che vince"; stessa regola dell'08/10/2026, USDJPY 02/10/2024): la sede che e' la mobile e arriva nel vuoto e'
+    //    scartata — zero — e l'altra sede vince (almeno +1). Non se la mobile e' legata alla partenza. c.sedeVuotaScartata === false spegne.
+    if (c.sedeVuotaScartata !== false && arr && !legataDa && (mob.pos === R.shi || mob.pos === R.ying) && R.vuoti && R.vuoti.indexOf(arr) >= 0) {
+      var kS = mob.pos === R.shi ? 'S' : 'Y', kO = kS === 'S' ? 'Y' : 'S';
+      pt[kS] = 0; if (pt[kO] < 1) pt[kO] = 1;
+      out.racconto.push((kS === 'S' ? 'lo Shi' : 'la Ying') + ' si muove per diventare vuot' + (kS === 'S' ? 'o' : 'a') + ' (' + arr + '): scartat' + (kS === 'S' ? 'o' : 'a') + ' completamente, rimane ' + (kO === 'S' ? 'lo Shi' : 'la Ying') + ' che vince');
+    }
     out.shi = pt.S; out.ying = pt.Y; out.punti = pt.S - pt.Y;
     if (out.punti > 0) out.verdetto = 'segue'; else if (out.punti < 0) out.verdetto = 'non segue';
     if (out.verdetto && c.emaDir) out.dir = (c.emaDir === 'up') === (out.verdetto === 'segue') ? 'LONG' : 'SHORT';
