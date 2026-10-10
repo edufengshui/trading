@@ -273,8 +273,13 @@
       // la sede forte che genera l'altra le passa la forza: nessuno squilibrio (EURUSD 05/10/2026 s112: la Ying Zi forte
       // genera lo Shi Mao, regola 13 — perimetro DI CLAUDE)
       if (GEN[WX[Y.ramo]] === WX[S.ramo] && fY > fS) fY = fS;   // solo in questo verso: lo Shi forte che genera la Ying resta forte (EURUSD 30/09/2026 s113)
-      if (fS - fY >= soglia) { pt.S += 1; out.racconto.push('lo Shi è molto più forte della Ying nel mese e nel giorno (' + fS + ' contro ' + fY + ')'); }
-      else if (fY - fS >= soglia) { pt.Y += 1; out.racconto.push('la Ying è molto più forte dello Shi nel mese e nel giorno (' + fY + ' contro ' + fS + ')'); }
+      // Il carattere conta come nella regola 11 (perimetro DI CLAUDE, 10/10/2026): la sede P o B molto forte e' una P/B forte,
+      // che fa perdere la propria squadra (USDCHF 01/10/2026 s83 lo Shi B Hai, USDCAD 22/09/2026 s140 la Ying P Zi, AUDUSD
+      // 24/09/2026 s70 e EURJPY 30/09/2026 s178 la Ying P). SPENTA (c.forzaCarattere === true la accende): rovescia GBPUSD
+      // 15/12/2022 s124, dove la Ying P Zi forte vince per Edu. Contraddizione portata a Edu il 10/10/2026.
+      var sForza = function (L) { return (c.forzaCarattere === true && (L.par === 'P' || L.par === 'B')) ? -1 : 1; };
+      if (fS - fY >= soglia) { pt.S += sForza(S); out.racconto.push('lo Shi è molto più forte della Ying nel mese e nel giorno (' + fS + ' contro ' + fY + ')' + (sForza(S) < 0 ? ', ma è una ' + S.par + ': fa perdere la sua squadra' : '')); }
+      else if (fY - fS >= soglia) { pt.Y += sForza(Y); out.racconto.push('la Ying è molto più forte dello Shi nel mese e nel giorno (' + fY + ' contro ' + fS + ')' + (sForza(Y) < 0 ? ', ma è una ' + Y.par + ': fa perdere la sua squadra' : '')); }
     }
     // 22 (Edu, 10/10/2026, S55, GBPUSD 06/10/2026 s132: "S bloccato dal giorno che lo combina e controlla"): la sede che il
     //    giorno combina E controlla e' bloccata: resta fuori dal confronto, non conta nulla di quello che le succede (qui due
