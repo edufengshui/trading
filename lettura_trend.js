@@ -52,6 +52,8 @@
 //     la sede: la sede riceve il flusso e vince (GBPUSD 24/09/2026 s132).
 // 36. La sede che si muove in un ramo che punisce l'altra sede (anche l'autopunizione) la colpisce, e la sede punita non e'
 //     piu' troppo forte (AUDUSD 24/09/2026 s70).
+// 37. La mobile generata indietro che genera una sede la nutre; la sede nutrita che controlla l'altra la colpisce, anche se
+//     troppo forte (GBPUSD 04/08/2026 s134).
 // 14. L'arrivo di una linea incompatibile agisce su Shi e Ying come quello della mobile (EURJPY 07/10/2026 s178, S55).
 // 13. La Ying che genera lo Shi avvantaggia il trend, anche se la Ying e' vuota (EURUSD 07/10/2026 s112, S55).
 // Esito: segue / non segue / tace, con i punti e il racconto. ctx come trend_ly.js (dayBranch, monthBranch, yearBranch,
@@ -257,6 +259,25 @@
         if ((campF === 'S' ? S : Y).vuoto) pt[campF] += 1, out.racconto.push('la linea più forte dell\'esagramma è L' + pF + ' ' + R.linee[pF - 1].ramo + ', nel campo ' + (campF === 'S' ? 'dello Shi' : 'della Ying') + ': lo rafforza');
       }
     }
+    // 37 (Edu, 10/10/2026, S55, GBPUSD 04/08/2026 s134: "S cannot move because G Chen is clashed. L1 move to generate back
+    //    which generates S. Y is controlled by S. Follow"):
+    //    a) la mobile (non sede) che si fa generare indietro e la cui partenza genera una sede la nutre (+1): la forza presa
+    //       dalla mobile passa alla sede. Non se retrocede o e' legata, non con una vuota in mezzo (6).
+    //    b) la sede nutrita da un movimento che controlla l'altra sede la colpisce (-1), anche se l'altra e' "troppo forte" (34).
+    //    Perimetro DI CLAUDE per b: il controllo fermo fra le sedi conta solo se chi controlla e' stata nutrita da un movimento.
+    //    c.mobileNutre === false / c.controlloNutrito === false spengono.
+    var vinceControllo = { S: false, Y: false };
+    if (c.mobileNutre !== false && arr && !R.mutante.movimentoNullo && !legataDa && R.mutante.progressione !== 'retrocedente' && GEN[aE] === dE && mob.pos !== R.shi && mob.pos !== R.ying)
+      [['S', S, R.shi, 'lo Shi'], ['Y', Y, R.ying, 'la Ying']].forEach(function (q) {
+        if (GEN[dE] !== WX[q[1].ramo] || q[1].vuoto) return;
+        for (var qv = Math.min(mob.pos, q[2]) + 1; qv < Math.max(mob.pos, q[2]); qv++) if (R.linee[qv - 1].vuoto) return;
+        pt[q[0]] += segno(q[1], true); nutrito[q[0]] = true;
+        out.racconto.push('L' + mob.pos + ' si muove per farsi generare indietro e genera ' + q[3]);
+      });
+    if (c.controlloNutrito !== false) [['S', S, 'Y', Y, 'lo Shi', 'la Ying'], ['Y', Y, 'S', S, 'la Ying', 'lo Shi']].forEach(function (q) {
+      if (!nutrito[q[0]] || q[3].vuoto || KE[WX[q[1].ramo]] !== WX[q[3].ramo]) return;
+      pt[q[2]] -= 1; vinceControllo[q[2]] = true; out.racconto.push(q[4] + ', nutrit' + (q[0] === 'S' ? 'o' : 'a') + ', controlla ' + q[5]);
+    });
     // 36 (Edu, 10/10/2026, S55, AUDUSD 24/09/2026 s70: "S si muove in You che penalizza Y quindi vince il segue"): la sede che
     //    si muove (mobile o incompatibile che gira) e arriva in un ramo che PUNISCE l'altra sede — le punizioni della 17 e
     //    l'autopunizione (Chen, Wu, You, Hai sullo stesso ramo) — la colpisce (-1), e la sede punita non e' piu' "troppo
@@ -447,7 +468,7 @@
     //    conta e vince la sede forte (+1). c.troppoForte === false spegne.
     var tForte = function (L) { var e = WX[L.ramo], dE3 = c.dayBranch ? WX[c.dayBranch] : null; return !L.vuoto && timely(L) && !!dE3 && (dE3 === e || GEN[dE3] === e); };
     if (c.troppoForte !== false) [['S', S, 'Y', Y, 'lo Shi'], ['Y', Y, 'S', S, 'la Ying']].forEach(function (q) {
-      var A = q[1], B = q[3]; if (!tForte(A) || tForte(B) || punita[q[0]]) return;
+      var A = q[1], B = q[3]; if (!tForte(A) || tForte(B) || punita[q[0]] || vinceControllo[q[0]]) return;
       var eA = WX[A.ramo], eB = WX[B.ramo];
       var mB = chi.filter(function (m) { return m.pos === (q[2] === 'S' ? R.shi : R.ying) && m.arr; })[0];
       var attacca = KE[eB] === eA || (mB && (CLASH[mB.arr] === A.ramo || KE[WX[mB.arr]] === eA));
