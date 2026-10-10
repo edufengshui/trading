@@ -26,7 +26,7 @@
 // 17. L'arrivo che punisce una sede la colpisce, anche se genera la mobile stessa (USDJPY 06/10/2026 s157).
 // 18. Il trigramma in confusione totale (ogni linea clasha il proprio futuro comune) fa tacere il metodo (AUDUSD 06/10/2026 s69).
 // 19. La sede mobile il cui arrivo e' incompatibile (caso -5) non viene generata ne' controllata indietro (EURUSD 05/10/2026 s112).
-// 20. A punti pari decidono le bestie delle due sedi (elemento dello stelo): vince chi controlla (AUDUSD 05/10/2026 s69).
+// 20. Il raduno stagionale chiuso da una sede, dal giorno e dalla mobile la avvantaggia (AUDUSD 05/10/2026 s69).
 // 14. L'arrivo di una linea incompatibile agisce su Shi e Ying come quello della mobile (EURJPY 07/10/2026 s178, S55).
 // 13. La Ying che genera lo Shi avvantaggia il trend, anche se la Ying e' vuota (EURUSD 07/10/2026 s112, S55).
 // Esito: segue / non segue / tace, con i punti e il racconto. ctx come trend_ly.js (dayBranch, monthBranch, yearBranch,
@@ -186,16 +186,26 @@
         if (parMese === 'G' || (parMese === 'W' && c.meseTutte)) { pt[q[0]] += 1; out.racconto.push('il mese è una ' + parMese + ' che si combina con ' + q[2] + ': gli garantisce la vittoria'); }
       });
     }
-    // 20 (Edu, 09/10/2026, S55, AUDUSD 05/10/2026 s69: "È tutto pari quindi usiamo le bestie e gli steli associati. S ha Wu
-    //    Y ha Ren. Vince S"): a punti pari decidono le bestie sulle due sedi con l'elemento del loro stelo (Drago Legno, Uccello
-    //    Fuoco, Gancio e Serpente Terra, Tigre Metallo, Guerriero Acqua): vince la sede la cui bestia controlla l'altra.
-    //    Perimetro DI CLAUDE: solo il controllo; con la generazione o lo stesso elemento resta pari. c.bestiePari === false spegne.
-    var ELB = { '青龍':'Wood','朱雀':'Fire','勾陳':'Earth','螣蛇':'Earth','白虎':'Metal','玄武':'Water' };
-    if (pt.S === pt.Y && c.bestiePari !== false && S.bestia && Y.bestia) {
-      var bS = ELB[S.bestia.cn], bY = ELB[Y.bestia.cn];
-      if (KE[bS] === bY) { pt.S += 1; out.racconto.push('pari: la bestia dello Shi (' + S.bestia.it + ') controlla quella della Ying (' + Y.bestia.it + '): vince lo Shi'); }
-      else if (KE[bY] === bS) { pt.Y += 1; out.racconto.push('pari: la bestia della Ying (' + Y.bestia.it + ') controlla quella dello Shi (' + S.bestia.it + '): vince la Ying'); }
-    }
+    // 20 (Edu, 10/10/2026, S55, AUDUSD 05/10/2026 s69: "Il motivo per cui Y vince in un confronto di parità con S è dato dal
+    //    trigono stagionale fra Y, il giorno e L2"): il raduno stagionale (三會: Hai-Zi-Chou Acqua, Yin-Mao-Chen Legno,
+    //    Si-Wu-Wei Fuoco, Shen-You-Xu Metallo) chiuso da una sede, dal ramo del giorno e da un'altra linea avvantaggia la sede.
+    //    Su quella carta lo Shi Chou (L4) e la Ying Chou (L1) potrebbero chiudere lo stesso raduno col giorno Zi e L2 Hai:
+    //    vince la Ying, perche' a chiudere con lei e' L2, la MOBILE, nel suo stesso trigramma (lo Shi Chou sta nell'altro trigramma). Perimetro
+//    DI CLAUDE da validare: a chiudere dev'essere la mobile (col suo ramo, o col suo arrivo se arriva), nello stesso trigramma
+//    della sede, non vuota.
+    //    Sostituisce lo spareggio con le bestie (cancellato da Edu il 10/10/2026). c.radunoGiorno === false spegne.
+    var RADUNO = {};
+    [['Water',['亥','子','丑']],['Wood',['寅','卯','辰']],['Fire',['巳','午','未']],['Metal',['申','酉','戌']]].forEach(function (t) { t[1].forEach(function (b) { RADUNO[b] = t[1]; }); });
+    if (c.radunoGiorno !== false && c.dayBranch) [['S', S, R.shi, 'lo Shi'], ['Y', Y, R.ying, 'la Ying']].forEach(function (q) {
+      var L = q[1], sp = q[2], gr = RADUNO[L.ramo];
+      if (L.vuoto || !gr || gr.indexOf(c.dayBranch) < 0 || c.dayBranch === L.ramo) return;
+      var terzo = gr.filter(function (b) { return b !== L.ramo && b !== c.dayBranch; })[0];
+      // a chiudere e' la MOBILE (su quella carta L2, ferma perche' legata: conta col suo ramo; se arriva, anche col suo arrivo)
+      var mobRami = [dep]; if (arr && !R.mutante.movimentoNullo && !legataDa) mobRami.push(arr);
+      var stessoTrig = (mob.pos <= 3) === (sp <= 3);
+      var chiude = (mob.pos !== sp && stessoTrig && !mob.vuoto && mobRami.indexOf(terzo) >= 0) ? mob.pos : null;
+      if (chiude) { pt[q[0]] += segno(L, true); out.racconto.push(q[3] + ', il giorno ' + c.dayBranch + ' e L' + chiude + ' ' + terzo + ' chiudono il raduno stagionale: ' + q[3] + ' è avvantaggiat' + (q[0] === 'S' ? 'o' : 'a')); }
+    });
     out.shi = pt.S; out.ying = pt.Y; out.punti = pt.S - pt.Y;
     if (out.punti > 0) out.verdetto = 'segue'; else if (out.punti < 0) out.verdetto = 'non segue';
     if (out.verdetto && c.emaDir) out.dir = (c.emaDir === 'up') === (out.verdetto === 'segue') ? 'LONG' : 'SHORT';
