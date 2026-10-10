@@ -578,10 +578,32 @@
     var sedeMossa = function (k) { return chi.filter(function (m) { return m.pos === POS[k]; })[0]; };
     // la sede che si muove per diventare vuota e' scartata: vince l'altra
     var scart = ['S', 'Y'].filter(function (k) { var m = sedeMossa(k); return m && vuotoVero(m.arr); });
+    // la sede fuori gioco e' sostituita da una linea del suo campo che si muove (Edu, 10/10/2026, USDJPY 02/10/2024 s143:
+    // "se la sede è fuori gioco, se c'è una linea mobile del proprio campo a muoversi si prende quella. Qui L3 si muove per
+    // controllare Y e fa vincere la propria squadra"). Se il sostituto colpisce l'altra sede (controlla, clasha, punisce,
+    // drena) vince il campo della sede fuori gioco; se la nutre vince l'altra. Senza sostituto: vince l'altra sede.
+    var sostituto = function (k) {
+      var O = SEDE[ALTRA[k]], eO = WX[O.ramo];
+      var m = chi.filter(function (x) { return x.pos !== POS[k] && campo(x.pos) === k && x.arr && !vuotoVero(x.arr) && !x.retro; })[0];
+      if (!m || O.vuoto) return null;
+      var aE = WX[m.arr];
+      // nell'ordine di Edu (combinare, clashare, generare) lo scontro col clash viene prima: USDJPY 10/08/2026 s157 ("L1 si
+      // muove per clashare L4 ... essendo L4 molto più forte vince lo scontro facendo vincere Y")
+      var fL0 = function (b) { var e = WX[b]; if (!mE) return 0; return e === mE ? 2 : GEN[mE] === e ? 1 : GEN[e] === mE ? -1 : KE[mE] === e ? -2 : KE[e] === mE ? -1 : 0; };
+      var Tc = R.linee.filter(function (Lx) { return Lx.pos !== m.pos && Lx.pos !== R.shi && Lx.pos !== R.ying && !Lx.vuoto && CLASH[m.arr] === Lx.ramo && campo(Lx.pos) !== k; })[0];
+      if (Tc) { var dd = fL0(Tc.ramo) - fL0(m.arr);
+        if (dd >= 3) return { vince: ALTRA[k], t: 'L' + m.pos + ' prende il posto di ' + NOME[k] + ' e clasha L' + Tc.pos + ', molto più forte: perde lo scontro, vince l\'altra sede' };
+        if (dd <= -3) return { vince: k, t: 'L' + m.pos + ' prende il posto di ' + NOME[k] + ' e vince lo scontro con L' + Tc.pos }; }
+      if (KE[aE] === eO || CLASH[m.arr] === O.ramo || PENA[m.arr] === O.ramo || GEN[eO] === aE) return { vince: k, t: 'L' + m.pos + ' si muove in ' + m.arr + ' e prende il posto di ' + NOME[k] + ': ' + (KE[aE] === eO ? 'controlla' : CLASH[m.arr] === O.ramo ? 'clasha' : PENA[m.arr] === O.ramo ? 'punisce' : 'drena') + ' ' + NOME[ALTRA[k]] + ', vince il suo campo' };
+      if (GEN[aE] === eO) return { vince: ALTRA[k], t: 'L' + m.pos + ' prende il posto di ' + NOME[k] + ' ma nutre ' + NOME[ALTRA[k]] + ': vince l\'altra sede' };
+      return null;
+    };
+    if (scart.length === 1 && c.sostituto !== false) { var so = sostituto(scart[0]); if (so) { dire(NOME[scart[0]] + ' si muove per diventare vuot' + (scart[0] === 'S' ? 'o' : 'a') + ': fuori gioco'); return vince(so.vince, so.t, 1); } }
     if (scart.length === 1) return vince(ALTRA[scart[0]], NOME[scart[0]] + ' si muove per diventare vuot' + (scart[0] === 'S' ? 'o' : 'a') + ' (' + sedeMossa(scart[0]).arr + '): scartat' + (scart[0] === 'S' ? 'o' : 'a') + ', vince l\'altra sede', 1);
     if (scart.length === 2) { dire('tutte e due le sedi si muovono nel vuoto: il metodo tace'); return out; }
     // la sede G/W fuori stagione clashata dal giorno e' eliminata (ferma o mobile; non l'incompatibile che gira)
     var elim = ['S', 'Y'].filter(function (k) { var L = SEDE[k]; return !L.vuoto && (L.par === 'G' || L.par === 'W') && dB && CLASH[dB] === L.ramo && !timely(L) && inc.indexOf(POS[k]) < 0; });
+    if (elim.length === 1 && c.sostituto !== false) { var so2 = sostituto(elim[0]); if (so2) { dire(NOME[elim[0]] + ' è eliminat' + (elim[0] === 'S' ? 'o' : 'a') + ' dal clash del giorno: fuori gioco'); return vince(so2.vince, so2.t, 1); } }
     if (elim.length === 1) return vince(ALTRA[elim[0]], NOME[elim[0]] + ' (una ' + SEDE[elim[0]].par + ') non è di stagione ed è clashat' + (elim[0] === 'S' ? 'o' : 'a') + ' dal giorno ' + dB + ': eliminat' + (elim[0] === 'S' ? 'o' : 'a') + ', vince l\'altra sede', 1);
     // la sede combinata e controllata dal giorno e' bloccata — salvo il flusso dello stelo del giorno, forte nella data
     var bloccata = { S: false, Y: false };
