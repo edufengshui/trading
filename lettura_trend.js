@@ -54,6 +54,7 @@
 //     piu' troppo forte (AUDUSD 24/09/2026 s70).
 // 37. La mobile generata indietro che genera una sede la nutre; la sede nutrita che controlla l'altra la colpisce, anche se
 //     troppo forte (GBPUSD 04/08/2026 s134).
+// 38. La sede mobile che retrocede: B/P vince, G/W perde (regole di Edu del 16-17/09, da USDCAD 24/08/2026 s137).
 // 14. L'arrivo di una linea incompatibile agisce su Shi e Ying come quello della mobile (EURJPY 07/10/2026 s178, S55).
 // 13. La Ying che genera lo Shi avvantaggia il trend, anche se la Ying e' vuota (EURUSD 07/10/2026 s112, S55).
 // Esito: segue / non segue / tace, con i punti e il racconto. ctx come trend_ly.js (dayBranch, monthBranch, yearBranch,
@@ -278,6 +279,15 @@
       if (!nutrito[q[0]] || q[3].vuoto || KE[WX[q[1].ramo]] !== WX[q[3].ramo]) return;
       pt[q[2]] -= 1; vinceControllo[q[2]] = true; out.racconto.push(q[4] + ', nutrit' + (q[0] === 'S' ? 'o' : 'a') + ', controlla ' + q[5]);
     });
+    // 38 (regola di Edu del 16/09/2026, USDCHF 16/09/2026 s81: "Quando un B retrocede la propria squadra vince"; e del 17/09:
+    //    "un G/W che retrocede porta via il vantaggio e la sua sede perde"), portata nel metodo del trend il 10/10/2026 da
+    //    USDCAD 24/08/2026 s137: la SEDE che e' la mobile e retrocede vince se e' una B (o una P: estensione DI CLAUDE al
+    //    carattere che fa perdere), perde se e' una G o una W. c.sedeRetro === false spegne.
+    if (c.sedeRetro !== false && arr && !legataDa && R.mutante.progressione === 'retrocedente' && (mob.pos === R.shi || mob.pos === R.ying)) {
+      var kR = mob.pos === R.shi ? 'S' : 'Y', LR = R.linee[mob.pos - 1], nR = kR === 'S' ? 'lo Shi' : 'la Ying';
+      if (LR.par === 'B' || LR.par === 'P') { pt[kR] += 1; out.racconto.push(nR + ', una ' + LR.par + ', retrocede: porta via la perdita, la sua squadra vince'); }
+      else if (LR.par === 'G' || LR.par === 'W') { pt[kR] -= 1; out.racconto.push(nR + ', una ' + LR.par + ', retrocede: porta via il vantaggio, perde'); }
+    }
     // 36 (Edu, 10/10/2026, S55, AUDUSD 24/09/2026 s70: "S si muove in You che penalizza Y quindi vince il segue"): la sede che
     //    si muove (mobile o incompatibile che gira) e arriva in un ramo che PUNISCE l'altra sede — le punizioni della 17 e
     //    l'autopunizione (Chen, Wu, You, Hai sullo stesso ramo) — la colpisce (-1), e la sede punita non e' piu' "troppo
