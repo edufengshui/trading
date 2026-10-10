@@ -44,6 +44,8 @@
 //     campo in cui sta, anche con la sede vuota (EURUSD 26/08/2026 s116).
 // 31. La sede mobile il cui arrivo genera l'altra sede la nutre.
 // 32. La sede che si muove per diventare vuota e' scartata completamente: rimane l'altra, che vince (EURJPY 07/09/2026 s181).
+// 33. L'arrivo che clasha una linea forte dell'altro trigramma apre uno scontro: vince il piu' forte nel mese e il suo campo
+//     (USDJPY 10/08/2026 s157); anche la sede incompatibile che gira nel vuoto e' scartata (32).
 // 14. L'arrivo di una linea incompatibile agisce su Shi e Ying come quello della mobile (EURJPY 07/10/2026 s178, S55).
 // 13. La Ying che genera lo Shi avvantaggia il trend, anche se la Ying e' vuota (EURUSD 07/10/2026 s112, S55).
 // Esito: segue / non segue / tace, con i punti e il racconto. ctx come trend_ly.js (dayBranch, monthBranch, yearBranch,
@@ -257,6 +259,19 @@
       var altra = mob.pos === R.shi ? ['Y', Y, 'la Ying'] : ['S', S, 'lo Shi'];
       if (GEN[aE] === WX[altra[1].ramo] && !altra[1].vuoto) { pt[altra[0]] += segno(altra[1], true); nutrito[altra[0]] = true; out.racconto.push((mob.pos === R.shi ? 'lo Shi' : 'la Ying') + ' si muove in ' + arr + ' per generare ' + altra[2]); }
     }
+    // 33 (Edu, 10/10/2026, S55, USDJPY 10/08/2026 s157: "L1 si muove per clashare L4. Il risultato però è che essendo L4 molto
+    //    più forte vince lo scontro facendo vincere Y"): l'arrivo della mobile che clasha una linea ferma (non sede, non vuota)
+    //    dell'ALTRO trigramma apre uno scontro: vince chi e' molto piu' forte nel mese (scarto 3 o piu', perimetro DI CLAUDE),
+    //    e vince il CAMPO di chi vince (+1). c.scontro === false spegne.
+    var fLin = function (ramo) { var ex = WX[ramo]; if (!mE) return 0; return ex === mE ? 2 : GEN[mE] === ex ? 1 : GEN[ex] === mE ? -1 : KE[mE] === ex ? -2 : KE[ex] === mE ? -1 : 0; };
+    if (c.scontro !== false && arr && !R.mutante.movimentoNullo && !legataDa) {
+      var Tc = R.linee.filter(function (Lx) { return Lx.pos !== mob.pos && Lx.pos !== R.shi && Lx.pos !== R.ying && !Lx.vuoto && CLASH[arr] === Lx.ramo && ((Lx.pos <= 3) !== (mob.pos <= 3)); })[0];
+      if (Tc) {
+        var fA = fLin(arr), fT = fLin(Tc.ramo), campM = (mob.pos <= 3) === (R.shi <= 3) ? 'S' : 'Y', campT = campM === 'S' ? 'Y' : 'S';
+        if (fT - fA >= 3) { pt[campT] += 1; out.racconto.push('L' + mob.pos + ' si muove in ' + arr + ' per clashare L' + Tc.pos + ' ' + Tc.ramo + ', molto più forte: vince lo scontro e il campo ' + (campT === 'S' ? 'dello Shi' : 'della Ying')); }
+        else if (fA - fT >= 3) { pt[campM] += 1; out.racconto.push('L' + mob.pos + ' si muove in ' + arr + ' per clashare L' + Tc.pos + ' ' + Tc.ramo + ' e vince lo scontro: vince il campo ' + (campM === 'S' ? 'dello Shi' : 'della Ying')); }
+      }
+    }
     // 13: la Ying che genera lo Shi (Edu, 09/10/2026, S55, EURUSD 07/10/2026 s112: "Y genera S, e L5 si muove per pure
     //     generare S. Segue il trend") — il contro-trend che nutre il trend lo avvantaggia; vale anche con la Ying vuota
     //     (su quella carta la Ying Zi e' vuota). Il carattere dello Shi conta come nella regola 11.
@@ -393,10 +408,16 @@
     // 32 (Edu, 10/10/2026, S55, EURJPY 07/09/2026 s181: "Y si muove per diventare vuota quindi viene scartata completamente.
     //    Rimane S che vince"; stessa regola dell'08/10/2026, USDJPY 02/10/2024): la sede che e' la mobile e arriva nel vuoto e'
     //    scartata — zero — e l'altra sede vince (almeno +1). Non se la mobile e' legata alla partenza. c.sedeVuotaScartata === false spegne.
-    if (c.sedeVuotaScartata !== false && arr && !legataDa && (mob.pos === R.shi || mob.pos === R.ying) && R.vuoti && R.vuoti.indexOf(arr) >= 0) {
-      var kS = mob.pos === R.shi ? 'S' : 'Y', kO = kS === 'S' ? 'Y' : 'S';
+    // anche la sede INCOMPATIBILE che gira nel vuoto (Edu, USDJPY 10/08/2026 s157: "S si muove per diventare vuota e perderebbe")
+    var sedeNelVuoto = null, arrV = null;
+    if (c.sedeVuotaScartata !== false && R.vuoti) {
+      if (arr && !legataDa && (mob.pos === R.shi || mob.pos === R.ying) && R.vuoti.indexOf(arr) >= 0) { sedeNelVuoto = mob.pos; arrV = arr; }
+      else chi.forEach(function (m) { if (!sedeNelVuoto && m.pos !== mob.pos && (m.pos === R.shi || m.pos === R.ying) && m.arr && R.vuoti.indexOf(m.arr) >= 0) { sedeNelVuoto = m.pos; arrV = m.arr; } });
+    }
+    if (sedeNelVuoto) {
+      var arr0 = arrV, kS = sedeNelVuoto === R.shi ? 'S' : 'Y', kO = kS === 'S' ? 'Y' : 'S';
       pt[kS] = 0; if (pt[kO] < 1) pt[kO] = 1;
-      out.racconto.push((kS === 'S' ? 'lo Shi' : 'la Ying') + ' si muove per diventare vuot' + (kS === 'S' ? 'o' : 'a') + ' (' + arr + '): scartat' + (kS === 'S' ? 'o' : 'a') + ' completamente, rimane ' + (kO === 'S' ? 'lo Shi' : 'la Ying') + ' che vince');
+      out.racconto.push((kS === 'S' ? 'lo Shi' : 'la Ying') + ' si muove per diventare vuot' + (kS === 'S' ? 'o' : 'a') + ' (' + arr0 + '): scartat' + (kS === 'S' ? 'o' : 'a') + ' completamente, rimane ' + (kO === 'S' ? 'lo Shi' : 'la Ying') + ' che vince');
     }
     out.shi = pt.S; out.ying = pt.Y; out.punti = pt.S - pt.Y;
     if (out.punti > 0) out.verdetto = 'segue'; else if (out.punti < 0) out.verdetto = 'non segue';
