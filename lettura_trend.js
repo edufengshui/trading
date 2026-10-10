@@ -410,9 +410,11 @@
     //    scartata — zero — e l'altra sede vince (almeno +1). Non se la mobile e' legata alla partenza. c.sedeVuotaScartata === false spegne.
     // anche la sede INCOMPATIBILE che gira nel vuoto (Edu, USDJPY 10/08/2026 s157: "S si muove per diventare vuota e perderebbe")
     var sedeNelVuoto = null, arrV = null;
+    // l'arrivo vuoto clashato dal giorno esce dal vuoto (Edu, 22/09/2026, USDCAD 21/09/2026 s139): non e' vuoto
+    var vuotoVero = function (b) { return R.vuoti.indexOf(b) >= 0 && !(c.dayBranch && CLASH[c.dayBranch] === b); };
     if (c.sedeVuotaScartata !== false && R.vuoti) {
-      if (arr && !legataDa && (mob.pos === R.shi || mob.pos === R.ying) && R.vuoti.indexOf(arr) >= 0) { sedeNelVuoto = mob.pos; arrV = arr; }
-      else chi.forEach(function (m) { if (!sedeNelVuoto && m.pos !== mob.pos && (m.pos === R.shi || m.pos === R.ying) && m.arr && R.vuoti.indexOf(m.arr) >= 0) { sedeNelVuoto = m.pos; arrV = m.arr; } });
+      if (arr && !legataDa && (mob.pos === R.shi || mob.pos === R.ying) && vuotoVero(arr)) { sedeNelVuoto = mob.pos; arrV = arr; }
+      else chi.forEach(function (m) { if (!sedeNelVuoto && m.pos !== mob.pos && (m.pos === R.shi || m.pos === R.ying) && m.arr && vuotoVero(m.arr)) { sedeNelVuoto = m.pos; arrV = m.arr; } });
     }
     if (sedeNelVuoto) {
       var arr0 = arrV, kS = sedeNelVuoto === R.shi ? 'S' : 'Y', kO = kS === 'S' ? 'Y' : 'S';
