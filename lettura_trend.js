@@ -38,6 +38,8 @@
 //     sedi (24) conta solo se non succede nient'altro (USDCAD 22/09/2026 s140).
 // 26. La sede ferma non di stagione clashata dal giorno e' eliminata e vince l'altra (regola di Edu del 05/10/2026).
 // 27. (DA VALIDARE) La sede mobile che arriva nel proprio stesso ramo resta ferma e sofferente: vince l'altra.
+// 28. L'arrivo incompatibile della mobile va fuori (combina, stesso ramo, clash, genera): clashare una sede la colpisce,
+//     generarla la nutre; la Ying che si muove a clashare lo Shi non lo genera piu' (USDJPY 02/09/2026 s160).
 // 14. L'arrivo di una linea incompatibile agisce su Shi e Ying come quello della mobile (EURJPY 07/10/2026 s178, S55).
 // 13. La Ying che genera lo Shi avvantaggia il trend, anche se la Ying e' vuota (EURUSD 07/10/2026 s112, S55).
 // Esito: segue / non segue / tace, con i punti e il racconto. ctx come trend_ly.js (dayBranch, monthBranch, yearBranch,
@@ -194,13 +196,32 @@
       // la sede legata e controllata dal mese (EURJPY 16/01/2026): svantaggiata
       if (c.monthBranch && COMBINA[c.monthBranch] === L.ramo && KE[mE] === e) { pt[k] -= 1; out.racconto.push(nome + ' è combinato e controllato dal mese: svantaggiato'); }
     });
+    // 28 (Edu, 10/10/2026, S55, USDJPY 02/09/2026 s160: "Y si muove per clashare S. È chiaro che poi non segue"): l'arrivo
+    //    incompatibile della mobile va FUORI nell'ordine della regola dell'08/10/2026 (R85_INCFUORI) — combinarsi, la linea
+    //    con lo stesso ramo, clashare, generare. Se va a CLASHARE una sede la colpisce (-1); se la GENERA la nutre (+1, col
+    //    carattere della regola 11). Se la mobile e' una sede e colpisce l'altra, la regola 13 decade. c.incFuoriTrend === false spegne.
+    var colpoFuori = null;
+    if (c.incFuoriTrend !== false && R.mutante.casoMut === -5 && arr) {
+      var altre = R.linee.filter(function (Lx) { return Lx.pos !== mob.pos && !Lx.vuoto; });
+      var tipo = null, T = null;
+      var comb = altre.filter(function (Lx) { return COMBINA[arr] === Lx.ramo; })[0];
+      var stesso = altre.filter(function (Lx) { return Lx.ramo === arr; })[0];
+      var cl = altre.filter(function (Lx) { return CLASH[arr] === Lx.ramo; })[0];
+      var gn = altre.filter(function (Lx) { return GEN[aE] === WX[Lx.ramo]; })[0];
+      if (comb) { tipo = 'combina'; T = comb; } else if (stesso) { tipo = 'stesso'; T = stesso; } else if (cl) { tipo = 'clash'; T = cl; } else if (gn) { tipo = 'genera'; T = gn; }
+      if (T && (T.pos === R.shi || T.pos === R.ying) && (tipo === 'clash' || tipo === 'genera')) {
+        var kT = T.pos === R.shi ? 'S' : 'Y', nT = kT === 'S' ? 'lo Shi' : 'la Ying';
+        if (tipo === 'clash') { pt[kT] -= 1; colpoFuori = kT; out.racconto.push('l\'arrivo ' + arr + ' è incompatibile e va fuori a clashare ' + nT + ': colpit' + (kT === 'S' ? 'o' : 'a')); }
+        else { pt[kT] += segno(T, true); out.racconto.push('l\'arrivo ' + arr + ' è incompatibile e va fuori a generare ' + nT); }
+      }
+    }
     // 13: la Ying che genera lo Shi (Edu, 09/10/2026, S55, EURUSD 07/10/2026 s112: "Y genera S, e L5 si muove per pure
     //     generare S. Segue il trend") — il contro-trend che nutre il trend lo avvantaggia; vale anche con la Ying vuota
     //     (su quella carta la Ying Zi e' vuota). Il carattere dello Shi conta come nella regola 11.
     //     Estensioni DI CLAUDE non dette da Edu (Shi che genera la Ying, controlli fra le sedi): dietro c.sediTutte, spente.
     // la Ying bloccata dal giorno (combinata e controllata, regola 22) non genera nessuno (EURUSD 06/10/2026 s112)
     var yBloccata = c.bloccoGiorno !== false && c.dayBranch && COMBINA[c.dayBranch] === Y.ramo && KE[WX[c.dayBranch]] === WX[Y.ramo];
-    if (c.yGeneraS !== false && !yBloccata && GEN[WX[Y.ramo]] === WX[S.ramo]) { pt.S += segno(S, true); out.racconto.push('la Ying genera lo Shi: il trend è nutrito'); }
+    if (c.yGeneraS !== false && !yBloccata && !(colpoFuori === 'S' && mob.pos === R.ying) && GEN[WX[Y.ramo]] === WX[S.ramo]) { pt.S += segno(S, true); out.racconto.push('la Ying genera lo Shi: il trend è nutrito'); }
     if (c.sediTutte) {
       var eS = WX[S.ramo], eY = WX[Y.ramo];
       if (GEN[eS] === eY) { pt.Y += segno(Y, true); out.racconto.push('lo Shi genera la Ying (estensione di Claude)'); }
