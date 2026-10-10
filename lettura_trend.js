@@ -619,17 +619,22 @@
     if (scart.length === 1 && c.bestieLato !== false) {
       var kx = scart[0], altriMossi = chi.filter(function (m) { return !vuotoVero(m.arr); }).length;
       if (!altriMossi) {
-        var inserv = chi.map(function (m) { return m.pos; });
-        var pilL = [['dell\'anno', c.yearStem, c.yearBranch], ['del mese', c.monthStem, c.monthBranch], ['del giorno', c.dayStem, dB], ['dell\'ora', c.hourStem, c.oraBranch]].filter(function (p) { return p[1] && p[2] && vuoti.indexOf(p[2]) < 0; });
-        var presaL = null;
-        // la linea presa diventa i rami dei pilastri caduti e si confronta con l'altra sede: CHI VIENE GENERATO VINCE (regola di
-        // Edu del 04/09/2026 sul possesso, §137). Perimetro DI CLAUDE: vince se TUTTI i rami caduti sono generati dall'altra
-        // sede (EURJPY 07/09/2026: Shen e Zi su L1, lo Shi Xu genera solo Shen -> non vince, resta lo Shi)
-        var eAltra = WX[SEDE[ALTRA[kx]].ramo];
-        R.linee.forEach(function (Lx) { if (presaL || campo(Lx.pos) !== kx || inserv.indexOf(Lx.pos) >= 0 || !Lx.bestia || !Lx.bestia.cn) return;
-          var cad = pilL.filter(function (p) { return BESTIA_STELO[p[1]] === Lx.bestia.cn; });
-          if (cad.length && cad.every(function (p) { return GEN[eAltra] === WX[p[2]]; })) presaL = { pos: Lx.pos, chi: cad.map(function (p) { return p[0]; }).join(' e ') }; });
-        if (presaL) { dire(NOME[kx] + ' si muove per diventare vuot' + (kx === 'S' ? 'o' : 'a') + ' e nient\'altro si muove: intervengono le bestie dal suo lato'); return vince(kx, 'la bestia ' + presaL.chi + ' s\'impadronisce di L' + presaL.pos + ' e vince contro ' + NOME[ALTRA[kx]], 1); }
+        // EURJPY 07/09/2026 (Edu, 10/10: "La bestia dell'anno interviene su Y e fa vincere S"): la bestia puo' prendere anche la
+        // sede fuori gioco stessa; i pilastri si guardano in ordine (anno, mese, giorno, ora), anche col ramo vuoto (li' l'anno
+        // Wu era vuoto). La linea presa diventa il ramo del pilastro e si confronta con l'altra sede: CHI VIENE GENERATO VINCE
+        // (regola del possesso, 04/09/2026). Le altre linee che si muovono nel vuoto sono inservibili.
+        var inserv = chi.filter(function (m) { return m.pos !== POS[kx]; }).map(function (m) { return m.pos; });
+        var pilL = [['dell\'anno', c.yearStem, c.yearBranch], ['del mese', c.monthStem, c.monthBranch], ['del giorno', c.dayStem, dB], ['dell\'ora', c.hourStem, c.oraBranch]].filter(function (p) { return p[1] && p[2]; });
+        var presaL = null, eAltra = WX[SEDE[ALTRA[kx]].ramo];
+        pilL.forEach(function (p) {
+          if (presaL) return;
+          var Lx = R.linee.filter(function (L) { return campo(L.pos) === kx && inserv.indexOf(L.pos) < 0 && L.bestia && L.bestia.cn === BESTIA_STELO[p[1]]; })[0];
+          if (!Lx) return;
+          var eP = WX[p[2]];
+          if (GEN[eAltra] === eP) presaL = { pos: Lx.pos, chi: p[0], vince: kx, t: 'la bestia ' + p[0] + ' s\'impadronisce di L' + Lx.pos + ' (' + p[2] + '), che è generata da ' + NOME[ALTRA[kx]] + ': vince il suo campo' };
+          else if (GEN[eP] === eAltra) presaL = { pos: Lx.pos, chi: p[0], vince: ALTRA[kx], t: 'la bestia ' + p[0] + ' s\'impadronisce di L' + Lx.pos + ' (' + p[2] + '), che genera ' + NOME[ALTRA[kx]] + ': vince ' + NOME[ALTRA[kx]] };
+        });
+        if (presaL) { dire(NOME[kx] + ' si muove per diventare vuot' + (kx === 'S' ? 'o' : 'a') + ' e nient\'altro si muove: intervengono le bestie dal suo lato'); return vince(presaL.vince, presaL.t, 1); }
       }
     }
     if (scart.length === 1) return vince(ALTRA[scart[0]], NOME[scart[0]] + ' si muove per diventare vuot' + (scart[0] === 'S' ? 'o' : 'a') + ' (' + sedeMossa(scart[0]).arr + '): scartat' + (scart[0] === 'S' ? 'o' : 'a') + ', vince l\'altra sede', 1);
