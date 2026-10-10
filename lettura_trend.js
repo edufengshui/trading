@@ -633,10 +633,18 @@
           var Lx = R.linee.filter(function (L) { return campo(L.pos) === kx && inserv.indexOf(L.pos) < 0 && L.bestia && L.bestia.cn === BESTIA_STELO[p[1]]; })[0];
           if (!Lx) return;
           var eP = WX[p[2]], eN = WX[Lx.ramo], nativa = GEN[eP] === eN, eA = nativa ? eN : eP, chiA = nativa ? 'la nativa ' + Lx.ramo + ', generata da ' + p[2] + ',' : 'L' + Lx.pos + ', diventata ' + p[2] + ',';
+          // Edu, 10/10/2026, EURUSD 30/11/2021 s112: "Nothing helps S, the line is void and the beasts are not helping. Y wins
+          // also because it's very timely": se sulla stessa linea cadono piu' pilastri in disaccordo (uno genera la nativa,
+          // un altro la controlla: li' Wu e Mao su Wei) le bestie non aiutano; e non vincono contro un'altra sede molto di
+          // stagione (stesso elemento del mese: li' la Ying Zi nel mese Hai).
+          var tutti = pilL.filter(function (q) { return Lx.bestia.cn === BESTIA_STELO[q[1]]; });
+          if (tutti.some(function (q) { return GEN[WX[q[2]]] === eN; }) && tutti.some(function (q) { return KE[WX[q[2]]] === eN; })) { dire('su L' + Lx.pos + ' cadono bestie in disaccordo: non aiutano'); presaL = { nulla: true }; return; }
           var vA = GEN[eAltra] === eA || KE[eA] === eAltra, vB = GEN[eA] === eAltra || KE[eAltra] === eA;
+          if (vA && !vB && eAltra === mE) { dire(NOME[ALTRA[kx]] + ' è molto di stagione: la bestia non basta'); presaL = { nulla: true }; return; }
           if (vA && !vB) presaL = { vince: kx, t: 'la bestia ' + p[0] + ' prende L' + Lx.pos + ': ' + chiA + ' vince il confronto con ' + NOME[ALTRA[kx]] };
           else if (vB && !vA) presaL = { vince: ALTRA[kx], t: 'la bestia ' + p[0] + ' prende L' + Lx.pos + ': ' + chiA + ' perde il confronto con ' + NOME[ALTRA[kx]] };
         });
+        if (presaL && presaL.nulla) presaL = null;
         if (presaL) { dire(NOME[kx] + ' si muove per diventare vuot' + (kx === 'S' ? 'o' : 'a') + ' e nient\'altro si muove: intervengono le bestie dal suo lato'); return vince(presaL.vince, presaL.t, 1); }
       }
     }
