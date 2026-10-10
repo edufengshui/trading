@@ -438,8 +438,12 @@
     if (c.sedeEliminata !== false && c.dayBranch) [['S', S, R.shi, 'lo Shi', 'Y'], ['Y', Y, R.ying, 'la Ying', 'S']].forEach(function (q) {
       var L = q[1];
       // come nella regola di Edu: solo G/W, ferma (non la mobile, non un'incompatibile che gira), non vuota
-      if (L.vuoto || q[2] === mob.pos || (R.incompatibili || []).indexOf(q[2]) >= 0 || (L.par !== 'G' && L.par !== 'W') || CLASH[c.dayBranch] !== L.ramo || timely(L)) return;
-      pt[q[0]] = 0; pt[q[4]] += 1; out.racconto.push(q[3] + ' non è di stagione ed è clashat' + (q[0] === 'S' ? 'o' : 'a') + ' dal giorno ' + c.dayBranch + ': eliminat' + (q[0] === 'S' ? 'o' : 'a') + ', vince l\'altra sede');
+      // anche la sede che e' la MOBILE clashata alla partenza dal giorno (regola di Edu del 04-05/10/2026, R80_DANNOGIORNO:
+      // "se il giorno clasha una mobile alla partenza la linea è danneggiata ... il giorno elimina solo la G/W che NON è
+      // timely"), portata qui da GBPUSD 06/08/2026 s134; non se la combina il giorno (protetta, EURJPY 01/10/2026)
+      var eMob = q[2] === mob.pos && c.mobileEliminata !== false && COMBINA[c.dayBranch] !== L.ramo;
+      if (L.vuoto || (q[2] === mob.pos && !eMob) || (R.incompatibili || []).indexOf(q[2]) >= 0 || (L.par !== 'G' && L.par !== 'W') || CLASH[c.dayBranch] !== L.ramo || timely(L)) return;
+      pt[q[0]] = 0; pt[q[4]] = Math.max(pt[q[4]], 0) + 1; out.racconto.push(q[3] + ' non è di stagione ed è clashat' + (q[0] === 'S' ? 'o' : 'a') + ' dal giorno ' + c.dayBranch + ': eliminat' + (q[0] === 'S' ? 'o' : 'a') + ', vince l\'altra sede');
     });
     // 22 (Edu, 10/10/2026, S55, GBPUSD 06/10/2026 s132: "S bloccato dal giorno che lo combina e controlla"): la sede che il
     //    giorno combina E controlla e' bloccata: resta fuori dal confronto, non conta nulla di quello che le succede (qui due
