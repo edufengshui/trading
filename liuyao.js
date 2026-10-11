@@ -168,6 +168,10 @@
     return PAL2;
   }
 
+  // l'arrivo vuoto di stagione esce dal vuoto (Edu, 11/10/2026, S56): stesso elemento del mese o generato dal mese
+  var _XINGA = {'寅':'巳','巳':'申','申':'寅','丑':'戌','戌':'未','未':'丑','子':'卯','卯':'子','辰':'辰','午':'午','酉':'酉','亥':'亥'};
+  function arrDiStagione(b, mEl, dB) { if (dB && _XINGA[dB] === b) return false; var e = WX[b], G = { Wood:'Fire', Fire:'Earth', Earth:'Metal', Metal:'Water', Water:'Wood' }; return !!mEl && (e === mEl || G[mEl] === e); }
+  function arrTimelyOn() { return !((typeof process !== 'undefined' && process.env && process.env.ARRTIMELY === '0') || (typeof localStorage !== 'undefined' && localStorage && localStorage.getItem('ARRTIMELY') === '0')); }
   function build(supNum, infNum, linea, ctx){
     ctx = ctx || {};
     var dayBranch   = ctx.dayBranch || null;
@@ -307,7 +311,17 @@
     // il giorno che PENALIZZA l'arrivo e' la morte del movimento (Edu, S47): l'arrivo vuoto e
     // penalizzato non esce dal vuoto con un clash (USDCHF 28/02/2022, "Y cannot advance")
     var _arrPenalizzato = !!(dayBranch && _XINGV[dayBranch] === ramoArr);
-    var _arrVuotoClash = (_vuotoClashOn && !_arrPenalizzato && vuoti.indexOf(ramoArr) >= 0) ? clashSuRamo(ramoArr, linea) : 0;
+    // L'ARRIVO VUOTO DI STAGIONE ESCE DAL VUOTO (Edu, 11/10/2026, S56: "La dottrina dice che una linea vuota timely esce dal
+    // vuoto molto facilmente mentre una untimely mai. Per fare uscire dal vuoto potrebbe bastare che la linea vuota sia
+    // l'arrivo"; dopo la prova: "C'è una conferma positiva quindi. Mettila come regola nel LY normale"). L'arrivo della mobile
+    // (e delle incompatibili) vuoto ma di stagione nel mese (stesso elemento del mese o generato dal mese) non e' vuoto: il
+    // movimento c'e'. Le linee ferme vuote restano vuote. Prova: S17 57,12% -> 57,36%, 39 carte cambiate (13/38 -> 26/39).
+    // ARRTIMELY=0 (o localStorage ARRTIMELY=0 nell'app) la spegne.
+    var _arrTimelyOn = !((typeof process !== 'undefined' && process.env && process.env.ARRTIMELY === '0') ||
+                         (typeof localStorage !== 'undefined' && localStorage && localStorage.getItem('ARRTIMELY') === '0'));
+    // l'arrivo PENALIZZATO dal giorno resta vuoto (dottrina S47, USDCHF 28/02/2022 s92: "Y cannot advance")
+    var _arrV = vuoti.indexOf(ramoArr) >= 0 && !(_arrTimelyOn && !_arrPenalizzato && arrDiStagione(ramoArr, monthEl, dayBranch));
+    var _arrVuotoClash = (_vuotoClashOn && !_arrPenalizzato && _arrV) ? clashSuRamo(ramoArr, linea) : 0;
     // IL GIORNO LIBERA LA MOBILE (Edu, 26/08/2026, da USDCAD 08/03/2023).
     // NOME CORRETTO (Edu, 26/08/2026): NON e' un "autoclash" — la linea non si clasha da sola:
     // e' il GIORNO che clasha l'ARRIVO. La mobile e' legata al proprio arrivo (自合: la partenza
@@ -319,9 +333,9 @@
     // Audit: GIORNOLIBERA=off ripristina il comportamento precedente (movimento nullo).
     var _giornoLibera = !(typeof process !== 'undefined' && process.env && process.env.GIORNOLIBERA === 'off')
         && (COMBINA[ramoDep] === ramoArr) && !!dayBranch && (CLASH[dayBranch] === ramoArr)
-        && (vuoti.indexOf(ramoArr) < 0);
+        && !_arrV;
     // arrivo vuoto (旬空): movimento nullo (la mobile non e' mai vuota di suo, 動不為空)
-    if (vuoti.indexOf(ramoArr) >= 0 && _arrVuotoClash !== 1) { effEl = null; casoMut = 0;
+    if (_arrV && _arrVuotoClash !== 1) { effEl = null; casoMut = 0;
       motivoNullo = _arrVuotoClash >= 2 ? 'arrival void, hit by two clashes: blocked' : 'arrival void'; }
     // sospensione dal giorno: il giorno COMBINA (六合) o CLASHA (六冲) partenza o arrivo.
     // FISSATA (Edu, 21/08/2026): se il GIORNO e' legato in 六合 dal MESE, la sua capacita'
@@ -2056,7 +2070,7 @@
       var ENVr = (typeof process!=='undefined' && process.env) ? process.env : {};
       var arrR = R.mutante.ramoArr;
       if (ENVr.RITIROTRIG !== 'off' && (mob.par==='G' || mob.par==='W') && mob.pos!==R.shi && mob.pos!==R.ying &&
-          arrR && R.vuoti.indexOf(arrR)<0) {
+          arrR && (R.vuoti.indexOf(arrR)<0 || (arrTimelyOn() && arrDiStagione(arrR, R.monthEl, R.dayBranch || (R.ctx && R.ctx.dayBranch))))) {
         var TRI_R = [['申','子','辰'],['亥','卯','未'],['寅','午','戌'],['巳','酉','丑']];
         var triR = TRI_R.filter(function (g) { return g.indexOf(arrR)>=0; })[0];
         var ramiR = [c.Y, c.Mo, c.D, ctx && ctx.oraBranch].filter(function (x) { return !!x; });
@@ -2607,7 +2621,7 @@
       if (!R.anDong) return null;
       for (var p in R.anDong) {
         var l=R.linee[p-1];
-        if (l && l.par==='W' && R.vuoti.indexOf(R.anDong[p].arr)>=0) {
+        if (l && l.par==='W' && R.vuoti.indexOf(R.anDong[p].arr)>=0 && !(arrTimelyOn() && arrDiStagione(R.anDong[p].arr, R.monthEl, R.dayBranch || (R.ctx && R.ctx.dayBranch)))) {
           var seat = l.pos<=3 ? 'LONG' : 'SHORT';
           state.why = 'The <b>W</b> L'+l.pos+' ('+l.ramo+') is in dark movement (暗動) but its arrival <b>'+R.anDong[p].arr+'</b> is void: the void does not receive — the W cannot win, who does not win loses → '+seat+'.';
           return seat;
@@ -2949,7 +2963,7 @@
     dottrina:'When NO stem (year/month/day/hour) has a usable root (rooted AND in the day-polarity scale), the OVERABUNDANT element of the four branches (>=3, no tie) potentiates — through the Beast (六獸) of the MOBILE line — that line, provided the mobile ARRIVAL is VOID. Then read normally: if the abundance GENERATES the arrival (E生arrival) the void arrival is activated and ACTS (mobile Shi/Ying: read control arrival↔opposite pole); otherwise the mobile STAYS and wins its seat (G/W hold, B/P invert, C silent). Guides: USDJPY 31/07/2024 (case A), EURGBP 21/01/2022 (case B). Doctrinal, low n by calendar rarity; removed only by a card that falsifies it in its perimeter. Needs year/month/hour stems in ctx (silent if absent). Evaluated last.',
     test: function (R, ctx, state) {
       if (!ctx || ctx.yearStem==null || ctx.monthStem==null) return null;    // steli non forniti → tace
-      if (R.vuoti.indexOf(R.mutante.ramoArr) < 0) return null;               // arrivo del mobile vuoto
+      if (R.vuoti.indexOf(R.mutante.ramoArr) < 0 || (arrTimelyOn() && arrDiStagione(R.mutante.ramoArr, R.monthEl, R.dayBranch || (R.ctx && R.ctx.dayBranch)))) return null;               // arrivo del mobile vuoto
       var SE={'甲':'Wood','乙':'Wood','丙':'Fire','丁':'Fire','戊':'Earth','己':'Earth','庚':'Metal','辛':'Metal','壬':'Water','癸':'Water'};
       var YANG=['甲','丙','戊','己','庚','壬'];
       var dS=R.dayStem, lad=(YANG.indexOf(dS)>=0);
