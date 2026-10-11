@@ -533,6 +533,18 @@
     var out = { punti: 0, shi: 0, ying: 0, verdetto: null, dir: null, racconto: [], principio: null };
     var dire = function (t) { out.racconto.push(t); };
     if (!R || R.error || !R.mutante || !R.mutante.pos) { dire('nessuna mobile: il metodo tace'); return out; }
+    // IL VUOTO DI STAGIONE NON E' VUOTO (Edu, 11/10/2026, S56, EURUSD 30/08/2023 s108: "Certo Zi è vuoto ma è anche
+    // estremamente timely. Non si può trattare una linea vuota timely come una untimely, quindi adatta le regole a riguardo"):
+    // nel metodo del trend un ramo vuoto di stagione nel mese (stesso elemento del mese o generato dal mese) non e' trattato
+    // come vuoto — ne' sulle linee, ne' negli arrivi, ne' nei pilastri delle bestie. Resta vuoto solo il ramo fuori stagione.
+    // c.vuotoTimely === false torna alla forma vecchia.
+    if (c.vuotoTimely !== false && c.monthBranch) {
+      var mE0 = WX[c.monthBranch], diStag = function (b) { var e = WX[b]; return e === mE0 || GEN[mE0] === e; };
+      R = Object.assign({}, R, {
+        linee: R.linee.map(function (L) { return (L.vuoto && diStag(L.ramo)) ? Object.assign({}, L, { vuoto: false, vuotoDiStagione: true }) : L; }),
+        vuoti: (R.vuoti || []).filter(function (b) { return !diStag(b); })
+      });
+    }
     var S = R.linee[R.shi - 1], Y = R.linee[R.ying - 1], mob = R.linee[R.mutante.pos - 1];
     var SEDE = { S: S, Y: Y }, POS = { S: R.shi, Y: R.ying }, NOME = { S: 'lo Shi', Y: 'la Ying' }, ALTRA = { S: 'Y', Y: 'S' };
     var mE = c.monthBranch ? WX[c.monthBranch] : null, dB = c.dayBranch, dEl = dB ? WX[dB] : null;
