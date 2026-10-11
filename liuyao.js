@@ -317,7 +317,7 @@
     // (e delle incompatibili) vuoto ma di stagione nel mese (stesso elemento del mese o generato dal mese) non e' vuoto: il
     // movimento c'e'. Le linee ferme vuote restano vuote. Prova: S17 57,12% -> 57,36%, 39 carte cambiate (13/38 -> 26/39).
     // ARRTIMELY=0 (o localStorage ARRTIMELY=0 nell'app) la spegne.
-    var _arrTimelyOn = !((typeof process !== 'undefined' && process.env && process.env.ARRTIMELY === '0') ||
+    var _arrTimelyOn = !ctx.noArrTimely && !((typeof process !== 'undefined' && process.env && process.env.ARRTIMELY === '0') ||
                          (typeof localStorage !== 'undefined' && localStorage && localStorage.getItem('ARRTIMELY') === '0'));
     // l'arrivo PENALIZZATO dal giorno resta vuoto (dottrina S47, USDCHF 28/02/2022 s92: "Y cannot advance")
     var _arrV = vuoti.indexOf(ramoArr) >= 0 && !(_arrTimelyOn && !_arrPenalizzato && arrDiStagione(ramoArr, monthEl, dayBranch));
@@ -794,6 +794,16 @@
       '-4':'null movement — ' + (motivoNullo || 'self-combination')
     };
 
+    // IL CLASH TOTALE DEL TRIGRAMMA NON CAMBIA NIENTE (Edu, 11/10/2026, S56, USDCAD 21/12/2023 s133: "Non cambia niente
+    // perché il trigramma inferiore subisce sempre il total clash"): se il trigramma della mobile e' in clash totale col
+    // proprio futuro comune (ogni linea clasha il suo ramo futuro), l'uscita dal vuoto dell'arrivo di stagione non cambia la
+    // lettura: la carta si legge come con l'arrivo vuoto. Perimetro DI CLAUDE: vale solo per l'arrivo uscito dal vuoto per
+    // la regola dell'11/10 (non tocca le altre letture del clash totale).
+    if (_arrTimelyOn && vuoti.indexOf(ramoArr) >= 0 && !_arrV) {
+      var _trM = linea <= 3 ? [1, 2, 3] : [4, 5, 6];
+      if (_trM.every(function (p) { var rf = ramoTrasfA(p); return rf && CLASH[ramoAl(p)] === rf; }))
+        return build(supNum, infNum, linea, Object.assign({}, ctx, { noArrTimely: true }));
+    }
     return {
       sup: supNum, inf: infNum, linea: linea, incompatibili: incompatibili,
       palNum: palNum, palName: TRIGRAM[palNum].name, palPinyin: TRIGRAM[palNum].pinyin,
