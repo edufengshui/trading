@@ -575,6 +575,38 @@
       var tr = tg === 0 ? [1, 2, 3] : [4, 5, 6];
       if (tr.some(function (p) { return chi.some(function (m) { return m.pos === p; }); }) && tr.every(function (p) { return CLASH[R.linee[p - 1].ramo] === fut[p - 1]; })) { dire('il trigramma ' + (tg ? 'alto' : 'basso') + ' è in confusione totale: il metodo tace'); return out; }
     }
+    // I TRIANGOLI DEI TRIGRAMMI (Edu, 11/10/2026, S56, EURUSD 30/08/2023 s108: "The lower Gua has a water triangle with
+    // Shen (day and month), Zi and Chen. The upper Gua has a wood triangle with Hai (hour), Mao and Wei. Upper wins, not
+    // follow"): due linee di un trigramma e un pilastro della data chiudono un trigono (三合); il trigono vale per la sede di
+    // quel trigramma, anche con linee vuote e con la sede che si muove nel vuoto (su quella carta L1 Zi e' vuota e la Ying
+    // Mao si muove nel vuoto). Se tutti e due i trigrammi hanno il loro trigono, vince chi viene generato o chi controlla
+    // (la stessa regola del confronto delle bestie, EURJPY 07/09/2026): li' l'Acqua del basso genera il Legno dell'alto.
+    // Perimetro DI CLAUDE: la SEDE e' una delle due linee del trigono (su EURJPY 26/08/2026 s185 i trigoni non toccano le sedi
+    // e la carta resta alla regola della G eliminata dal clash); le due linee e il pilastro sono tre rami diversi del trigono; conta col ramo fermo delle linee
+    // (non con gli arrivi); con un trigono solo (c.triangoliUno === true) vince il suo campo — non detto da Edu, spento.
+    // c.triangoli === false spegne.
+    if (c.triangoli !== false) {
+      var pilR = [c.yearBranch, c.monthBranch, dB, c.oraBranch].filter(Boolean);
+      var triTrig = function (k) {
+        var tr = (POS[k] <= 3) ? [1, 2, 3] : [4, 5, 6], rami = tr.map(function (p) { return R.linee[p - 1].ramo; });
+        for (var i = 0; i < rami.length; i++) {
+          var T = TRINE[rami[i]]; if (!T) continue;
+          var dentro = T.filter(function (b) { return rami.indexOf(b) >= 0; });
+          if (dentro.length < 2 || dentro.indexOf(SEDE[k].ramo) < 0) continue;   // la sede deve stare nel trigono
+          var manca = T.filter(function (b) { return rami.indexOf(b) < 0; });
+          if (manca.length === 1 && pilR.indexOf(manca[0]) >= 0) return { el: WX[T[1]], rami: dentro, pil: manca[0] };
+        }
+        return null;
+      };
+      var tS = triTrig('S'), tY = triTrig('Y');
+      var nomeT = function (k, t) { return 'il trigramma ' + (POS[k] <= 3 ? 'basso' : 'alto') + ' chiude il trigono ' + t.el + ' con ' + t.rami.join(' e ') + ' e il pilastro ' + t.pil; };
+      if (tS && tY && tS.el !== tY.el) {
+        var vS = GEN[tY.el] === tS.el || KE[tS.el] === tY.el, vY = GEN[tS.el] === tY.el || KE[tY.el] === tS.el;
+        if (vS !== vY) { dire(nomeT('S', tS)); dire(nomeT('Y', tY)); return vince(vS ? 'S' : 'Y', 'il trigono ' + (vS ? 'dello Shi' : 'della Ying') + (vS ? (GEN[tY.el] === tS.el ? ' viene generato dall\'altro' : ' controlla l\'altro') : (GEN[tS.el] === tY.el ? ' viene generato dall\'altro' : ' controlla l\'altro')) + ': vince ' + (vS ? 'lo Shi' : 'la Ying'), 1); }
+      } else if (c.triangoliUno === true && (tS ? !tY : tY)) {
+        var kT1 = tS ? 'S' : 'Y'; dire(nomeT(kT1, tS || tY)); return vince(kT1, 'solo ' + (kT1 === 'S' ? 'lo Shi' : 'la Ying') + ' ha il trigono del suo trigramma: vince', 1);
+      }
+    }
     var sedeMossa = function (k) { return chi.filter(function (m) { return m.pos === POS[k]; })[0]; };
     // la sede che si muove per diventare vuota e' scartata: vince l'altra
     var scart = ['S', 'Y'].filter(function (k) { var m = sedeMossa(k); return m && vuotoVero(m.arr); });
