@@ -577,6 +577,12 @@
     var legata = function (b) { return COMBINA[b] === c.monthBranch ? 'mese' : (dB && COMBINA[b] === dB) ? 'giorno' : null; };
     var chi = [];
     var lm = legata(dep);
+    // LA SEDE MOBILE ROTTA DAL MESE NON SI MUOVE (Edu, 11/10/2026, S56, EURUSD 17/06/2020 s112: "As Y cannot move
+    // there's no possible competition"): la sede mobile con la partenza clashata dal mese (月破, rotta dal mese) non puo'
+    // muoversi — nessuno scontro possibile fra le sedi. PERIMETRO DI CLAUDE, da confermare: il blocco vale solo quando poi
+    // il flusso di Qi della data trova la via e decide (vedi sotto); se il flusso tace, la carta resta alla lettura di
+    // prima (col blocco sempre acceso 19 carte del backtest girano da 9 giuste a 5). c.rottaMese === false spegne.
+    var rottaMese = c.rottaMese !== false && !lm && (mob.pos === R.shi || mob.pos === R.ying) && c.monthBranch && CLASH[c.monthBranch] === dep;
     if (lm) dire('la mobile L' + mob.pos + ' è combinata alla partenza dal ' + lm + ': non si muove');
     else if (arr && (!R.mutante.movimentoNullo || R.mutante.motivoNullo === 'arrival void'))
       chi.push({ pos: mob.pos, dep: dep, arr: arr, retro: R.mutante.progressione === 'retrocedente', incArr: R.mutante.casoMut === -5, mobile: true });
@@ -620,6 +626,45 @@
         if (vS !== vY) { dire(nomeT('S', tS)); dire(nomeT('Y', tY)); return vince(vS ? 'S' : 'Y', 'il trigono ' + (vS ? 'dello Shi' : 'della Ying') + (vS ? (GEN[tY.el] === tS.el ? ' viene generato dall\'altro' : ' controlla l\'altro') : (GEN[tS.el] === tY.el ? ' viene generato dall\'altro' : ' controlla l\'altro')) + ': vince ' + (vS ? 'lo Shi' : 'la Ying'), 1); }
       } else if (c.triangoliUno === true && (tS ? !tY : tY)) {
         var kT1 = tS ? 'S' : 'Y'; dire(nomeT(kT1, tS || tY)); return vince(kT1, 'solo ' + (kT1 === 'S' ? 'lo Shi' : 'la Ying') + ' ha il trigono del suo trigramma: vince', 1);
+      }
+    }
+    // IL FLUSSO DI QI DELLA DATA (Edu, 11/10/2026, S56, EURUSD 17/06/2020 s112: "As Y cannot move there's no possible
+    // competition. The beasts are not helping so we use the Qi flow. In the date the Qi goes from water to wood, then to
+    // fire. This fire generates L5 which generates L4 Shen metal which wins"): con la sede mobile rotta dal mese e
+    // nient'altro che si muove, le sedi non si scontrano; li' le bestie non aiutano (la Tigre cade su L1 vuota e il
+    // pilastro del mese ha il ramo vuoto), e decide il flusso di Qi. I rami dei pilastri si mettono in catena di
+    // generazione (Acqua dell'anno → Legno del giorno e dell'ora → Fuoco del mese, anche se vuoto); l'elemento finale
+    // entra nell'esagramma sulla linea NON vuota che genera, e di linea in linea la generazione prosegue finché il giro
+    // dei cinque elementi si chiude: l'ultima linea vince per il suo campo (li' Fuoco → L5 Xu Terra → L4 Shen Metallo,
+    // campo della Ying → non segue → SHORT, il mercato conferma). Perimetro DI CLAUDE: la catena della data deve avere un
+    // solo inizio (un solo elemento non generato dagli altri presenti); a ogni passo nell'esagramma la linea candidata
+    // non vuota dev'essere una sola (se sono due o nessuna la via tace); se la via tace si torna alle altre regole;
+    // il flusso NON entra su una linea vuota nemmeno se di stagione (su quella carta L1 Wei e' vuota ma di stagione, e
+    // Edu ha fatto entrare il Fuoco su L5, non su L1: per ricevere il flusso il vuoto resta vuoto — DA CONFERMARE).
+    // c.flussoQi === false spegne.
+    if (rottaMese && !chi.some(function (m) { return m.pos !== mob.pos; }) && c.flussoQi !== false) {
+      var fq = (function () {
+        var ramiD = [c.yearBranch, c.monthBranch, dB, c.oraBranch].filter(Boolean);
+        var elsD = []; ramiD.forEach(function (b) { var e = WX[b]; if (e && elsD.indexOf(e) < 0) elsD.push(e); });
+        var inizi = elsD.filter(function (e) { return !elsD.some(function (x) { return x !== e && GEN[x] === e; }); });
+        if (inizi.length !== 1) return null;
+        var cur = inizi[0], visti = [cur], passi = [];
+        while (visti.length < 5) {
+          var nx = GEN[cur]; if (visti.indexOf(nx) >= 0) break;
+          if (elsD.indexOf(nx) >= 0) { cur = nx; visti.push(nx); continue; }        // il passo resta nella data
+          var cand = R.linee.filter(function (Lx) { return !Lx.vuoto && !Lx.vuotoDiStagione && WX[Lx.ramo] === nx; });
+          if (cand.length !== 1) break;
+          passi.push(cand[0]); cur = nx; visti.push(nx);
+        }
+        if (!passi.length) return null;
+        var fin = passi[passi.length - 1], kF = campo(fin.pos);
+        return { k: kF, t: 'il flusso di Qi della data (' + visti.slice(0, visti.length - passi.length).join(' → ') + ') entra nell\'esagramma: ' + passi.map(function (Lx) { return 'L' + Lx.pos + ' ' + Lx.ramo; }).join(' → ') + '; l\'ultima linea sta nel campo ' + (kF === 'S' ? 'dello Shi' : 'della Ying') + ' e lo fa vincere' };
+      })();
+      if (fq) {
+        dire('la mobile L' + mob.pos + ' (' + NOME[mob.pos === R.shi ? 'S' : 'Y'] + ') ha la partenza ' + dep + ' rotta dal mese ' + c.monthBranch + ': non può muoversi, nessuno scontro possibile');
+        dire('le sedi non possono scontrarsi: decide il flusso di Qi della data');
+        chi = [];
+        return vince(fq.k, fq.t, 1);
       }
     }
     var sedeMossa = function (k) { return chi.filter(function (m) { return m.pos === POS[k]; })[0]; };
