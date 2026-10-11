@@ -538,8 +538,8 @@
     // nel metodo del trend un ramo vuoto di stagione nel mese (stesso elemento del mese o generato dal mese) non e' trattato
     // come vuoto — ne' sulle linee, ne' negli arrivi, ne' nei pilastri delle bestie. Resta vuoto solo il ramo fuori stagione.
     // c.vuotoTimely === false torna alla forma vecchia.
-    if (c.vuotoTimely !== false && c.monthBranch) {
-      var mE0 = WX[c.monthBranch], diStag = function (b) { var e = WX[b]; return e === mE0 || GEN[mE0] === e; };
+    var mE0 = c.monthBranch ? WX[c.monthBranch] : null, diStag = function (b) { var e = WX[b]; return !!mE0 && (e === mE0 || GEN[mE0] === e); };
+    if (c.vuotoTimely !== false && c.vuotoTimely !== 'arrivo' && c.monthBranch) {
       R = Object.assign({}, R, {
         linee: R.linee.map(function (L) { return (L.vuoto && diStag(L.ramo)) ? Object.assign({}, L, { vuoto: false, vuotoDiStagione: true }) : L; }),
         vuoti: (R.vuoti || []).filter(function (b) { return !diStag(b); })
@@ -553,6 +553,9 @@
     var troppoFuori = function (L) { var e = WX[L.ramo]; return !!mE && (KE[mE] === e || KE[e] === mE); };
     var arrForte = function (b) { var e = WX[b]; return !!mE && (e === mE || GEN[mE] === e); };
     var vuotoVero = function (b) { return vuoti.indexOf(b) >= 0 && !(dB && CLASH[dB] === b); };          // il giorno che clasha fa uscire dal vuoto
+    // variante 'arrivo' (Edu, 11/10/2026, prova: "Per fare uscire dal vuoto potrebbe bastare che la linea vuota sia l'arrivo"):
+    // solo l'ARRIVO vuoto di stagione esce dal vuoto; le linee ferme vuote restano vuote anche di stagione.
+    var arrVuoto = function (b) { return vuotoVero(b) && !(c.vuotoTimely === 'arrivo' && diStag(b)); };
     var campo = function (pos) { return (pos <= 3) === (R.shi <= 3) ? 'S' : 'Y'; };
     var segnoNutri = function (L) { return (L.par === 'P' || L.par === 'B') ? -1 : 1; };                    // nutrire una P/B la rovescia
     var vuotaInMezzo = function (a, b) { for (var q = Math.min(a, b) + 1; q < Math.max(a, b); q++) if (R.linee[q - 1].vuoto) return true; return false; };
@@ -621,14 +624,14 @@
     }
     var sedeMossa = function (k) { return chi.filter(function (m) { return m.pos === POS[k]; })[0]; };
     // la sede che si muove per diventare vuota e' scartata: vince l'altra
-    var scart = ['S', 'Y'].filter(function (k) { var m = sedeMossa(k); return m && vuotoVero(m.arr); });
+    var scart = ['S', 'Y'].filter(function (k) { var m = sedeMossa(k); return m && arrVuoto(m.arr); });
     // la sede fuori gioco e' sostituita da una linea del suo campo che si muove (Edu, 10/10/2026, USDJPY 02/10/2024 s143:
     // "se la sede è fuori gioco, se c'è una linea mobile del proprio campo a muoversi si prende quella. Qui L3 si muove per
     // controllare Y e fa vincere la propria squadra"). Se il sostituto colpisce l'altra sede (controlla, clasha, punisce,
     // drena) vince il campo della sede fuori gioco; se la nutre vince l'altra. Senza sostituto: vince l'altra sede.
     var sostituto = function (k) {
       var O = SEDE[ALTRA[k]], eO = WX[O.ramo];
-      var m = chi.filter(function (x) { return x.pos !== POS[k] && campo(x.pos) === k && x.arr && !vuotoVero(x.arr) && !x.retro; })[0];
+      var m = chi.filter(function (x) { return x.pos !== POS[k] && campo(x.pos) === k && x.arr && !arrVuoto(x.arr) && !x.retro; })[0];
       if (!m || O.vuoto) return null;
       var aE = WX[m.arr];
       // nell'ordine di Edu (combinare, clashare, generare) lo scontro col clash viene prima: USDJPY 10/08/2026 s157 ("L1 si
@@ -661,7 +664,7 @@
     // Y"): se la bestia di un pilastro cade su una linea del campo della sede fuori gioco (non inservibile), vince quel campo.
     // Perimetro DI CLAUDE: tutti e quattro i pilastri col ramo non vuoto. c.bestieLato === false spegne.
     if (scart.length === 1 && c.bestieLato !== false) {
-      var kx = scart[0], altriMossi = chi.filter(function (m) { return !vuotoVero(m.arr); }).length;
+      var kx = scart[0], altriMossi = chi.filter(function (m) { return !arrVuoto(m.arr); }).length;
       if (!altriMossi) {
         // Bestie dal lato della sede fuori gioco (Edu, 10/10/2026): possono prendere anche la sede stessa; pilastri in ordine
         // (anno, mese, giorno, ora) col ramo NON vuoto (Edu: "Hai ragione sul ramo vuoto della bestia dell'anno, non va usato.
@@ -721,7 +724,7 @@
     var nutri = function (k, testo, qualsiasi) { if (bloccata[k]) return; pt[k] += qualsiasi ? 1 : segnoNutri(SEDE[k]); nutrito[k] = true; if (!qualsiasi) nutritoDaAltri[k] = true; dire(testo); };
     chi.forEach(function (m) {
       var aE = WX[m.arr], dE = WX[m.dep], kM = m.pos === R.shi ? 'S' : m.pos === R.ying ? 'Y' : null;
-      if (vuotoVero(m.arr) && !kM) return;                     // la mobile non sede che arriva nel vuoto non agisce
+      if (arrVuoto(m.arr) && !kM) return;                     // la mobile non sede che arriva nel vuoto non agisce
       if (kM) {
         // la sede che si muove: generata indietro, controllata indietro, ritirata
         if (m.incArr) dire('l\'arrivo ' + m.arr + ' è incompatibile: non agisce su ' + NOME[kM]);
