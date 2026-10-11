@@ -828,6 +828,7 @@
         casoMut: casoMut, casoLabel: CASO_LABEL[casoMut] || '', effEl: effEl,
         progressione: progressione,
         movimentoNullo: movimentoNullo, motivoNullo: motivoNullo, arrivoTenuto: arrivoTenuto,
+        arrUscitoDalVuoto: (_arrTimelyOn && vuoti.indexOf(ramoArr) >= 0 && !_arrV) || false,   // l'arrivo vuoto di stagione uscito dal vuoto (11/10/2026)
         trigBloccato: trigBloccato, trigTrasf: trigTrasf, trigAltroTrasf: trigAltroTrasf,
         // S52: i sei rami dell'esagramma trasformato con tutte le linee che girano
         futuro: [1,2,3,4,5,6].map(ramoTrasfA),
@@ -2906,6 +2907,33 @@
     return Object.keys(cl).length < 2;
   }
 
+  // R86 — L'ARRIVO USCITO DAL VUOTO SOSTIENE LA SEDE ACCANTO (Edu, 11/10/2026, S56, USDCHF 15/06/2022 s99:
+  // "Visto che l'arrivo di L1 è timely, non è vuoto e va a supportare Y che gli sta proprio vicino. S è untimely.
+  // Non segue"). L'arrivo della mobile uscito dal vuoto perche' di stagione non va a clashare lontano (§68): sostiene la
+  // sede (Shi o Ying) che sta ACCANTO alla mobile, se e' del suo stesso elemento o se la genera, e quella sede vince
+  // quando l'altra e' fuori stagione. Perimetro DI CLAUDE: accanto = linea adiacente alla mobile; sostiene = stesso
+  // elemento o la genera; l'altra sede untimely = non dello stesso elemento del mese ne' generata dal mese; la sede
+  // sostenuta non vuota. Prima della §68. VIA86=off spegne.
+  LY_VIE.push({ id:'R86_ARRSOSTEGNO', sezione:'§68', nome:'The arrival freed from the void supports the seat beside it',
+    dottrina:'Edu (11/10/2026, USDCHF 15/06/2022 s99): "the arrival of L1 is timely, it is not void and goes to support Y right beside it. S is untimely. Not follow." The mobile arrival freed from the void by its timeliness does not clash afar: it supports the adjacent seat (same element, or it generates it); that seat wins when the other seat is out of season.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIA86==='off') return null;
+      if (!R.mutante.arrUscitoDalVuoto || R.mutante.movimentoNullo) return null;
+      var mE2 = R.monthEl || (ctx && ctx.monthBranch ? WX[ctx.monthBranch] : null); if (!mE2) return null;
+      var aE2 = WX[R.mutante.ramoArr], pos2 = R.mutante.pos;
+      var sedi2 = [R.shi, R.ying].filter(function (p) { return Math.abs(p - pos2) === 1; });
+      for (var i2 = 0; i2 < sedi2.length; i2++) {
+        var T2 = R.linee[sedi2[i2] - 1], e2 = WX[T2.ramo];
+        if (T2.vuoto) continue;
+        if (!(aE2 === e2 || GEN[aE2] === e2)) continue;
+        var O2 = R.linee[(sedi2[i2] === R.shi ? R.ying : R.shi) - 1], eO2 = WX[O2.ramo];
+        if (eO2 === mE2 || GEN[mE2] === eO2) continue;   // l'altra sede di stagione: la via tace
+        state.why = 'The arrival <b>' + R.mutante.ramoArr + '</b> is timely, freed from the void, and supports <b>' +
+          (sedi2[i2] === R.shi ? 'S' : 'Y') + ' ' + T2.par + ' ' + T2.ramo + '</b> right beside it; the other seat is untimely.';
+        return sedi2[i2] <= 3 ? 'SHORT' : 'LONG';
+      }
+      return null;
+    } });
   LY_VIE.push({ id:'R32_68', sezione:'§68', nome:'Arrival clash read by the Yong Shen (who is hit, who hits)',
     dottrina:'Edu (17/08): "it depends" — the Yong Shen (spirit of the focus) tells how to read. Metaphor: a crowd gathered → you stop there (gathering: the qi stays); a runner crossing the street → you look where he goes (follow the arrival). When the arrival ONLY clashes one full fixed line (no combination): a clashed P gives way → seat OPPOSITE to the clashed line (35 cards, 74% opposite); a clashed G or C holds the blow → seat of the clashed line (G 13 cards 77%, C 25 cards 64%); otherwise, if the mobile is a W, the qi goes where the W goes → seat of the clashed line (33 cards, 61%). B/W clashed by a non-W mobile: no rule. Last in the thermometer.',
     test: function (R, ctx, state) {
@@ -3720,7 +3748,7 @@
     B62:1, R51_111:1, R70_131:1, R39_99:1, R39_97:1, R27_63:1, R16_50f:1, R24_56:1,
     R54_114:2, R13_52:2, R59_120:2, R60_121:2, R54_115:2, R37_94:2, R66_127:2, R38_96:2, R26_59:2, R23_55:2,
     R61_122:2, R41_101:2, R42_102:2, R43_103:2, R44_104:2, R45_105:2, R46_106:2, R8_49:2, R9_51:2, R5:2, R1:2,
-    R14_50de:2, R17_50g:2, R18_50h:2, R21_50k:2, R32_68:2, R63_124:2,
+    R14_50de:2, R17_50g:2, R18_50h:2, R21_50k:2, R86_ARRSOSTEGNO:2, R32_68:2, R63_124:2,
     R71_133:3, R6:3, R64_125:3, R31_67:3, R19_50i:3, R20_50j:3, R56_117:3,
     R25_58:4, R29_65:4, R33_69:4, R11_53c:4, R12_53d:4, R7_54b:4, R30_66:4, R49_109:4, R67_128:4, R65_126:4,
     R2:4, R3:4, R4:4, R22_50kbis:4, M18:4,
