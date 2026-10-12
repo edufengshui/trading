@@ -691,7 +691,9 @@
       // ogni competizione con l'altra sede (scontro col clash compreso). MA il vuoto non riceve: la sede nel vuoto della
       // data (anche di stagione: USDJPY 21/10/2024 s149, la Ying Chou vuota timely non riceve il Fuoco di L2, che infatti
       // va in competizione con lo Shi) non puo' essere generata, e la linea passa alla competizione.
-      if (GEN[aE] === WX[SEDE[k].ramo] && !SEDE[k].vuoto && !SEDE[k].vuotoDiStagione && vuoti.indexOf(SEDE[k].ramo) < 0)
+      // CONFERMATO (Edu, 12/10/2026): "se è vuota e ferma non riceve anche se timely" — la sede vuota che pero' si
+      // MUOVE timely e' uscita dal vuoto (vuotoDiStagione) e riceve.
+      if (GEN[aE] === WX[SEDE[k].ramo] && !SEDE[k].vuoto && vuoti.indexOf(SEDE[k].ramo) < 0)
         return { vince: k, t: 'L' + m.pos + ' si muove in ' + m.arr + ' per generare la propria sede: vince il suo campo' };
       // nell'ordine di Edu (combinare, clashare, generare) lo scontro col clash viene prima: USDJPY 10/08/2026 s157 ("L1 si
       // muove per clashare L4 ... essendo L4 molto più forte vince lo scontro facendo vincere Y")
