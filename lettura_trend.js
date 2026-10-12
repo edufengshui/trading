@@ -918,6 +918,35 @@
           return vince(kSoc, 'la bestia ' + pS[0] + ' soccorre ' + NOME[kSoc] + ': ' + pS[2] + ' fa da ponte e porta la forza di ' + NOME[ALTRA[kSoc]] + ' verso ' + NOME[kSoc] + ', che vince', 4);
       }
     }
+    // IL FLUSSO DEL QI DELLA DATA RENDE LA SEDE VIBRANTE (Edu, 12/10/2026, S56, USDJPY 04/01/2024 s142: "Il flusso
+    // del Qi in questa carta va da metallo dell'ora, all'acqua del mese, al legno del giorno e dell'anno. Questo rende
+    // la S vibrante che vince contro Y. L5 che si muove non aggiunge o toglie niente"): quando nessun movimento agisce,
+    // gli elementi dei pilastri della data in catena di generazione (un solo inizio, tutti gli elementi nella catena)
+    // generano, dall'ultimo anello, l'elemento di una sede: quella sede e' vibrante e vince. Il vuoto non riceve:
+    // la sede nel vuoto della data non vibra. PERIMETRO DI CLAUDE: la catena deve avere un solo inizio e percorrere
+    // tutti gli elementi della data; se l'anello finale non genera nessuna sede (o tutte e due), tace.
+    // c.flussoVibra === false spegne.
+    if (!mosso.v && c.flussoVibra !== false) {
+      var fv = (function () {
+        var ramiD = [c.yearBranch, c.monthBranch, dB, c.oraBranch].filter(Boolean);
+        var elsD = []; ramiD.forEach(function (b) { var e = WX[b]; if (e && elsD.indexOf(e) < 0) elsD.push(e); });
+        if (elsD.length < 2) return null;
+        var inizi = elsD.filter(function (e) { return !elsD.some(function (x) { return x !== e && GEN[x] === e; }); });
+        if (inizi.length !== 1) return null;
+        var cur = inizi[0], visti = [cur];
+        while (elsD.indexOf(GEN[cur]) >= 0 && visti.indexOf(GEN[cur]) < 0) { cur = GEN[cur]; visti.push(cur); }
+        if (visti.length !== elsD.length) return null;                     // la catena non percorre tutta la data
+        var fin = GEN[cur];
+        var hit = ['S', 'Y'].filter(function (k) { return WX[SEDE[k].ramo] === fin && !SEDE[k].vuoto; });
+        if (hit.length !== 1) return null;
+        // come per le bestie e il confronto da fermo: la vibrazione non vince contro una sede molto di stagione
+        // (stesso elemento del mese) — EURUSD 30/09/2026 s113: la catena genera la Ying ma lo Shi Shen E' il ramo
+        // del mese, molto piu' forte, e per Edu vince lui (segue).
+        if (mE && WX[SEDE[ALTRA[hit[0]]].ramo] === mE) return null;
+        return { k: hit[0], catena: visti.join(' → '), fin: fin };
+      })();
+      if (fv) return vince(fv.k, 'il flusso del Qi della data (' + fv.catena + ') genera ' + NOME[fv.k] + ': vibrante, vince', 4);
+    }
     if (!mosso.v && c.confrontoFermo !== false) {
       var _eS = WX[S.ramo], _eY = WX[Y.ramo];
       // PERIMETRO DI CLAUDE (stretto, 12/10/2026, dalla misura): il confronto da fermo si apre solo quando l'aiuto
