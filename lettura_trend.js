@@ -894,6 +894,20 @@
     if (_p.S !== _p.Y) { out.principio = 2; return chiudi(); }
 
     // ---------------- PRINCIPIO 4: LA FORZA FERMA, SOLO SE NESSUN MOVIMENTO DECIDE ----------------
+    // IL CONFRONTO DIRETTO DELLE SEDI FERME (Edu, 12/10/2026, S56, GBPUSD 21/09/2023 s123: "L5 cannot move to help Y
+    // and S controls Y. Follow"): quando NESSUN movimento ha agito (la mobile sospesa o legata non aiuta il suo campo),
+    // le sedi si confrontano direttamente da ferme: chi controlla l'altra vince — prima della forza di calendario
+    // (li' la Ying era 'molto piu' forte' nel mese e nel giorno, ma lo Shi Mao Legno controlla la Ying Xu Terra e vince).
+    // PERIMETRO DI CLAUDE, da confermare: simmetrico (anche la Ying che controlla lo Shi vince); solo se nessun
+    // movimento ha mosso i punti. c.confrontoFermo === false spegne.
+    if (!mosso.v && c.confrontoFermo !== false) {
+      var _eS = WX[S.ramo], _eY = WX[Y.ramo];
+      // come per le bestie: il controllo non vince contro una sede molto di stagione (stesso elemento del mese) —
+      // e' il caso di GBPUSD 15/12/2022 s124, dove la Ying Zi E' il ramo del mese e vince coi pilastri nonostante
+      // lo Shi Terra la controlli.
+      if (KE[_eS] === _eY && !(mE && _eY === mE)) return vince('S', 'nessun movimento aiuta la Ying, e lo Shi la controlla da fermo: vince', 4);
+      if (KE[_eY] === _eS && !(mE && _eS === mE)) return vince('Y', 'nessun movimento aiuta lo Shi, e la Ying lo controlla da ferma: vince', 4);
+    }
     if (mosso.v) dire('i movimenti si pareggiano: decide la forza ferma');
     out.principio = 4;
     var fermo = { S: 0, Y: 0 };
