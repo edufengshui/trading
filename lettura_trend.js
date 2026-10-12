@@ -539,9 +539,15 @@
     // come vuoto — ne' sulle linee, ne' negli arrivi, ne' nei pilastri delle bestie. Resta vuoto solo il ramo fuori stagione.
     // c.vuotoTimely === false torna alla forma vecchia.
     var mE0 = c.monthBranch ? WX[c.monthBranch] : null, diStag = function (b) { var e = WX[b]; return !!mE0 && (e === mE0 || GEN[mE0] === e); };
+    // PRECISATO (Edu, 12/10/2026, S56, da USDJPY 21/10/2024 s149): "Se la linea è vuota ma timely e si muove (includendo
+    // l'arrivo) non è più vuota. Ma una linea timely ferma rimane vuota". Quindi escono dal vuoto di stagione solo le linee
+    // che si MUOVONO (la mobile e le incompatibili che girano) e gli arrivi (il filtro su R.vuoti, che governa gli arrivi e
+    // i rami dei pilastri); le linee FERME vuote restano vuote anche di stagione.
     if (c.vuotoTimely !== false && c.vuotoTimely !== 'arrivo' && c.monthBranch) {
+      var _futV = (R.mutante && R.mutante.futuro) || [];
+      var _siMuove = function (L) { return L.pos === R.mutante.pos || ((R.incompatibili || []).indexOf(L.pos) >= 0 && _futV[L.pos - 1] && _futV[L.pos - 1] !== L.ramo); };
       R = Object.assign({}, R, {
-        linee: R.linee.map(function (L) { return (L.vuoto && diStag(L.ramo)) ? Object.assign({}, L, { vuoto: false, vuotoDiStagione: true }) : L; }),
+        linee: R.linee.map(function (L) { return (L.vuoto && diStag(L.ramo) && _siMuove(L)) ? Object.assign({}, L, { vuoto: false, vuotoDiStagione: true }) : L; }),
         vuoti: (R.vuoti || []).filter(function (b) { return !diStag(b); })
       });
     }
