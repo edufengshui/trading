@@ -918,6 +918,36 @@
           return vince(kSoc, 'la bestia ' + pS[0] + ' soccorre ' + NOME[kSoc] + ': ' + pS[2] + ' fa da ponte e porta la forza di ' + NOME[ALTRA[kSoc]] + ' verso ' + NOME[kSoc] + ', che vince', 4);
       }
     }
+    // IL TRIGONO DELLA BESTIA SOPPRIME LA SEDE (Edu, 12/10/2026, S56, USDJPY 15/04/2024 s153: "S riceve autopenalità
+    // dal suo stesso movimento e non può vincere il confronto con Y, però la bestia dell'ora interviene sulla linea e
+    // crea un trigono di acqua insieme a L1 che sopprime Y"): quando nessun movimento decide, la bestia di un pilastro
+    // che cade su una linea NON vuota chiude il trigono (tre armonie) col ramo del pilastro e il ramo di un'altra linea
+    // non vuota: l'elemento del trigono che CONTROLLA una sede la sopprime, e vince l'altra. Non sopprime una sede
+    // molto di stagione (stesso elemento del mese). PERIMETRO DI CLAUDE: pilastri in ordine anno-mese-giorno-ora,
+    // rami del trigono tutti distinti. c.trigonoBestia === false spegne.
+    if (!mosso.v && c.trigonoBestia !== false) {
+      var TRIG3 = [[['申','子','辰'],'Water'],[['亥','卯','未'],'Wood'],[['寅','午','戌'],'Fire'],[['巳','酉','丑'],'Metal']];
+      var pilT = [['dell\'anno', c.yearStem, c.yearBranch], ['del mese', c.monthStem, c.monthBranch], ['del giorno', c.dayStem, dB], ['dell\'ora', c.hourStem, c.oraBranch]].filter(function (p) { return p[1] && p[2]; });
+      var esito = null;
+      for (var ti = 0; ti < pilT.length && !esito; ti++) {
+        var pT = pilT[ti];
+        var lB = R.linee.filter(function (Lx) { return !Lx.vuoto && Lx.bestia && Lx.bestia.cn && BESTIA_STELO[pT[1]] === Lx.bestia.cn; })[0];
+        if (!lB) continue;
+        // PERIMETRO (dalla misura, 12/10/2026): di default la bestia deve cadere su una SEDE, come nella carta di Edu
+        // (li' su L3, lo Shi stesso): sulla sede 50% su 24, su una linea semplice 37% su 38. c.trigonoBestia==='tutte'
+        // riapre a ogni linea.
+        if (c.trigonoBestia !== 'tutte' && lB.pos !== R.shi && lB.pos !== R.ying) continue;
+        var grT = TRIG3.filter(function (t) { return t[0].indexOf(pT[2]) >= 0 && t[0].indexOf(lB.ramo) >= 0 && pT[2] !== lB.ramo; })[0];
+        if (!grT) continue;
+        var terzoT = grT[0].filter(function (b) { return b !== pT[2] && b !== lB.ramo; })[0];
+        var lT = R.linee.filter(function (Lx) { return !Lx.vuoto && Lx.pos !== lB.pos && Lx.ramo === terzoT; })[0];
+        if (!lT) continue;
+        var soppressa = ['S', 'Y'].filter(function (k) { return KE[grT[1]] === WX[SEDE[k].ramo] && !(mE && WX[SEDE[k].ramo] === mE); })[0];
+        if (!soppressa) continue;
+        esito = vince(ALTRA[soppressa], 'la bestia ' + pT[0] + ' cade su L' + lB.pos + ' e chiude il trigono ' + ({Water:'d\'Acqua',Wood:'di Legno',Fire:'di Fuoco',Metal:'di Metallo'})[grT[1]] + ' con ' + pT[2] + ' e L' + lT.pos + ': sopprime ' + NOME[soppressa] + ', vince ' + NOME[ALTRA[soppressa]], 4);
+      }
+      if (esito) return esito;
+    }
     // IL FLUSSO DEL QI DELLA DATA RENDE LA SEDE VIBRANTE (Edu, 12/10/2026, S56, USDJPY 04/01/2024 s142: "Il flusso
     // del Qi in questa carta va da metallo dell'ora, all'acqua del mese, al legno del giorno e dell'anno. Questo rende
     // la S vibrante che vince contro Y. L5 che si muove non aggiunge o toglie niente"): quando nessun movimento agisce,
