@@ -784,14 +784,21 @@
             !arrVuoto(R.mutante.ramoArr) && R.mutante.movimentoNullo && /hidden line/.test(R.mutante.motivoNullo || ''))
           so3 = sostituto(vfk[0], { pos: R.mutante.pos, dep: R.mutante.ramoDep, arr: R.mutante.ramoArr, retro: false, incArr: false, mobile: true });
         // SENZA SOCCORSO, LA VUOTA FERMA PERDE (Edu, 12/10/2026, S56, EURUSD 08/06/2023 s107: "Y è vuoto, la bestia
-        // dell'anno viene in soccorso ma non può fare niente per aiutare. L6 si muove per penalizzarsi. S vince"):
-        // la sede vuota e ferma e' fuori gioco; il sostituto puo' parlare per lei, ma la bestia non puo' versarle
-        // forza (il vuoto non riceve). Se nessun soccorso la raggiunge, vince l'altra sede — come la via d) del
-        // fuori gioco. c.vuotaPerde === false spegne.
-        // solo quando NIENT'ALTRO agisce (li' l'unica mobile si muoveva per penalizzarsi): se un movimento vivo c'e',
-        // la carta si legge dai movimenti (EURUSD 26/08/2026 s116: L1 si muove per diventare la tomba dello Shi).
-        if (!so3 && c.vuotaPerde !== false && chi.length === 0)
-          return vince(ALTRA[vfk[0]], NOME[vfk[0]] + ' è vuot' + (vfk[0] === 'S' ? 'o' : 'a') + ' e ferm' + (vfk[0] === 'S' ? 'o' : 'a') + ' e nessun soccorso la raggiunge (il vuoto non riceve): vince l\'altra sede', 1);
+        // dell'anno viene in soccorso ma non può fare niente per aiutare. L6 si muove per penalizzarsi. S vince").
+        // CORRETTO DA EDU (12/10/2026): "la bestia FA USCIRE DAL VUOTO, ma in questo caso la bestia dell'anno Gui Mao
+        // è legno che genera C Si, ma non serve perché S vince sempre". Quindi: la bestia di un pilastro che cade
+        // sulla sede vuota, col ramo del pilastro che la GENERA, la fa uscire dal vuoto — e la carta si legge normale
+        // (li' la Ying rinata genera lo Shi, e S vince comunque). Se NESSUNA bestia la fa uscire e nessun sostituto
+        // parla per lei, la vuota ferma e' sola: vince l'altra sede, come la via d) del fuori gioco.
+        // Solo quando NIENT'ALTRO agisce (se un movimento vivo c'e', la carta si legge dai movimenti: EURUSD
+        // 26/08/2026 s116, la tomba dello Shi). c.vuotaPerde === false spegne.
+        if (!so3 && c.vuotaPerde !== false && chi.length === 0) {
+          var kV = vfk[0], LV = SEDE[kV];
+          var pilV = [['dell\'anno', c.yearStem, c.yearBranch], ['del mese', c.monthStem, c.monthBranch], ['del giorno', c.dayStem, dB], ['dell\'ora', c.hourStem, c.oraBranch]].filter(function (p) { return p[1] && p[2]; });
+          var salva = pilV.filter(function (p) { return LV.bestia && LV.bestia.cn && BESTIA_STELO[p[1]] === LV.bestia.cn && GEN[WX[p[2]]] === WX[LV.ramo]; })[0];
+          if (salva) dire('la bestia ' + salva[0] + ' cade su ' + NOME[kV] + ' e ' + salva[2] + ' l' + (kV === 'S' ? 'o' : 'a') + ' genera: esce dal vuoto');
+          else return vince(ALTRA[kV], NOME[kV] + ' è vuot' + (kV === 'S' ? 'o' : 'a') + ' e ferm' + (kV === 'S' ? 'o' : 'a') + ' e nessuna bestia l' + (kV === 'S' ? 'o' : 'a') + ' fa uscire dal vuoto: vince l\'altra sede', 1);
+        }
         if (so3) { dire(NOME[vfk[0]] + ' è vuot' + (vfk[0] === 'S' ? 'o' : 'a') + ' e ferm' + (vfk[0] === 'S' ? 'o' : 'a') + ': non parla da sol' + (vfk[0] === 'S' ? 'o' : 'a')); return vince(so3.vince, so3.t, 1); } }
     }
     if (elim.length === 1) return vince(ALTRA[elim[0]], NOME[elim[0]] + ' (una ' + SEDE[elim[0]].par + ') non è di stagione ed è clashat' + (elim[0] === 'S' ? 'o' : 'a') + ' dal giorno ' + dB + ': eliminat' + (elim[0] === 'S' ? 'o' : 'a') + ', vince l\'altra sede', 1);
