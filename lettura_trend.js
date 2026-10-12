@@ -937,7 +937,20 @@
     out.principio = 4;
     var fermo = { S: 0, Y: 0 };
     // la Ying che genera lo Shi nutre il trend (non se bloccata)
-    if (!bloccata.Y && GEN[WX[Y.ramo]] === WX[S.ramo]) { fermo.S += segnoNutri(S); dire('la Ying genera lo Shi: il trend è nutrito'); }
+    // MA CON LA GENERAZIONE ARRIVA ANCHE LA PENALITA' (Edu, 12/10/2026, S56, EURUSD 25/06/2020 s112: "Y è untimely ma è
+    // il Tai Sui ed è anche sostenuta dal giorno Hai quindi ha forza. Il giorno Wu la clasha ma non la annulla quanto la
+    // fa balzare a generare S. Il problema è che con la generazione arriva anche la penalità: Y penalizza S che non può
+    // vincere"): se la Ying che genera lo Shi lo PUNISCE anche (li' Zi punisce Mao), il nutrimento porta la penalità e
+    // lo Shi non può vincere: il punto va alla Ying. Il clash sulla generatrice forte non la annulla: la fa balzare.
+    if (!bloccata.Y && GEN[WX[Y.ramo]] === WX[S.ramo]) {
+      // PERIMETRO dalla coppia di carte s112: la penalita' viaggia col BALZO — solo se il mese o il giorno CLASHANO la
+      // Ying generatrice (il clash non la annulla: la fa balzare, e il balzo porta la penalita'). Senza clash la
+      // generazione e' calma e nutre e basta (EURUSD 05/10/2026 s112: stessa coppia Zi->Mao, nessun clash dal mese o
+      // dal giorno, e il nutrimento vince).
+      var _balzo = (mE && CLASH[c.monthBranch] === Y.ramo) || (dB && CLASH[dB] === Y.ramo);
+      if (c.nutrePena !== false && PENA[Y.ramo] === S.ramo && _balzo) { fermo.Y += 1; dire('il clash fa balzare la Ying a generare lo Shi, ma col nutrimento arriva la penalità: lo Shi non può vincere'); }
+      else { fermo.S += segnoNutri(S); dire('la Ying genera lo Shi: il trend è nutrito'); }
+    }
     // il mese G che si combina con lo Shi gli garantisce la vittoria
     var palE = null;
     R.linee.forEach(function (Lx) { if (palE) return; var ex = WX[Lx.ramo];
