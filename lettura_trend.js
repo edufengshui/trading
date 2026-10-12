@@ -902,11 +902,18 @@
     // movimento ha mosso i punti. c.confrontoFermo === false spegne.
     if (!mosso.v && c.confrontoFermo !== false) {
       var _eS = WX[S.ramo], _eY = WX[Y.ramo];
+      // PERIMETRO DI CLAUDE (stretto, 12/10/2026, dalla misura): il confronto da fermo si apre solo quando l'aiuto
+      // IMPEDITO stava nel campo della sede controllata — come nella carta di Edu, dove L5 (campo della Ying) e'
+      // sospesa dal giorno e la Ying controllata perde. La mobile e' impedita se legata, nulla o ritirata.
+      // c.confrontoFermo === 'tutto' riapre la forma larga (ogni carta senza movimenti efficaci).
+      var _mobBloccata = !!legata(dep) || R.mutante.movimentoNullo || R.mutante.progressione === 'retrocedente';
+      var _campoMob = campo(mob.pos);
+      var _apre = function (perdente) { return c.confrontoFermo === 'tutto' || (_mobBloccata && _campoMob === perdente); };
       // come per le bestie: il controllo non vince contro una sede molto di stagione (stesso elemento del mese) —
       // e' il caso di GBPUSD 15/12/2022 s124, dove la Ying Zi E' il ramo del mese e vince coi pilastri nonostante
       // lo Shi Terra la controlli.
-      if (KE[_eS] === _eY && !(mE && _eY === mE)) return vince('S', 'nessun movimento aiuta la Ying, e lo Shi la controlla da fermo: vince', 4);
-      if (KE[_eY] === _eS && !(mE && _eS === mE)) return vince('Y', 'nessun movimento aiuta lo Shi, e la Ying lo controlla da ferma: vince', 4);
+      if (KE[_eS] === _eY && !(mE && _eY === mE) && _apre('Y')) return vince('S', 'il movimento che doveva aiutare la Ying è impedito, e lo Shi la controlla da fermo: vince', 4);
+      if (KE[_eY] === _eS && !(mE && _eS === mE) && _apre('S')) return vince('Y', 'il movimento che doveva aiutare lo Shi è impedito, e la Ying lo controlla da ferma: vince', 4);
     }
     if (mosso.v) dire('i movimenti si pareggiano: decide la forza ferma');
     out.principio = 4;
