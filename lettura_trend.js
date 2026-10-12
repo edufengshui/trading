@@ -685,6 +685,14 @@
       var m = mForza || chi.filter(function (x) { return x.pos !== POS[k] && campo(x.pos) === k && x.arr && !arrVuoto(x.arr) && !x.retro; })[0];
       if (!m || O.vuoto) return null;
       var aE = WX[m.arr];
+      // LA LINEA CHE SI MUOVE AIUTA PRIMA DI TUTTO IL PROPRIO CAMPO (Edu, 12/10/2026, S56: "Quando una linea si muove
+      // cerca di aiutare il proprio campo a vincere la battaglia. Se generando la propria sede vince, bene, altrimenti
+      // si mette in competizione con l'altra sede"): se l'arrivo genera la propria sede, il suo campo vince, prima di
+      // ogni competizione con l'altra sede (scontro col clash compreso). MA il vuoto non riceve: la sede nel vuoto della
+      // data (anche di stagione: USDJPY 21/10/2024 s149, la Ying Chou vuota timely non riceve il Fuoco di L2, che infatti
+      // va in competizione con lo Shi) non puo' essere generata, e la linea passa alla competizione.
+      if (GEN[aE] === WX[SEDE[k].ramo] && !SEDE[k].vuoto && !SEDE[k].vuotoDiStagione && vuoti.indexOf(SEDE[k].ramo) < 0)
+        return { vince: k, t: 'L' + m.pos + ' si muove in ' + m.arr + ' per generare la propria sede: vince il suo campo' };
       // nell'ordine di Edu (combinare, clashare, generare) lo scontro col clash viene prima: USDJPY 10/08/2026 s157 ("L1 si
       // muove per clashare L4 ... essendo L4 molto più forte vince lo scontro facendo vincere Y")
       var fL0 = function (b) { var e = WX[b]; if (!mE) return 0; return e === mE ? 2 : GEN[mE] === e ? 1 : GEN[e] === mE ? -1 : KE[mE] === e ? -2 : KE[e] === mE ? -1 : 0; };
