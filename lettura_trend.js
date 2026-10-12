@@ -775,6 +775,21 @@
       // di Xu, eppure "Y è vuoto"): per PARLARE il vuoto resta vuoto, come per ricevere il flusso; e' il movimento che
       // esce dal vuoto di stagione, non la voce della sede ferma. Il giorno che clasha il ramo la libera.
       var vuotaFerma = function (k) { return (SEDE[k].vuoto || SEDE[k].vuotoDiStagione || R.vuoti.indexOf(SEDE[k].ramo) >= 0) && !(dB && CLASH[dB] === SEDE[k].ramo) && !sedeMossa(k); };
+      // SPAZZATA DAL DOPPIO CLASH MA SALVATA DALLA BESTIA: VINCE (Edu, 12/10/2026, S56, EURJPY 25/01/2024 s160:
+      // "Both day and moving line clashes Y so it seems it's wiped away, however the year beast comes and introduce
+      // wood which saves Y. And wins"): la sede vuota e ferma clashata DUE volte — dal giorno e dall'arrivo della
+      // mobile (qui il clash del giorno non la libera: in due la spazzano) — sembra finita; ma se la bestia di un
+      // pilastro cade su di lei e il ramo del pilastro la GENERA, quel soffio la salva, e la salvata VINCE.
+      // c.salvataDoppioClash === false spegne.
+      if (c.salvataDoppioClash !== false && dB && R.mutante.ramoArr) {
+        var kDC = ['S', 'Y'].filter(function (k) { var L = SEDE[k]; return (L.vuoto || L.vuotoDiStagione) && !sedeMossa(k) && CLASH[dB] === L.ramo && CLASH[R.mutante.ramoArr] === L.ramo && R.mutante.pos !== POS[k]; })[0];
+        if (kDC) {
+          var LDC = SEDE[kDC];
+          var pilDC = [['dell\'anno', c.yearStem, c.yearBranch], ['del mese', c.monthStem, c.monthBranch], ['del giorno', c.dayStem, dB], ['dell\'ora', c.hourStem, c.oraBranch]].filter(function (p) { return p[1] && p[2]; });
+          var salvaDC = pilDC.filter(function (p) { return LDC.bestia && LDC.bestia.cn && BESTIA_STELO[p[1]] === LDC.bestia.cn && GEN[WX[p[2]]] === WX[LDC.ramo]; })[0];
+          if (salvaDC) return vince(kDC, 'il giorno e l\'arrivo della mobile clashano ' + NOME[kDC] + ': sembra spazzat' + (kDC === 'S' ? 'o' : 'a') + ' via, ma la bestia ' + salvaDC[0] + ' porta ' + salvaDC[2] + ' che l' + (kDC === 'S' ? 'o' : 'a') + ' genera: salvat' + (kDC === 'S' ? 'o' : 'a') + ', vince', 1);
+        }
+      }
       var vfk = ['S', 'Y'].filter(function (k) { return vuotaFerma(k) && !vuotaFerma(ALTRA[k]); });
       if (vfk.length === 1) { var so3 = sostituto(vfk[0]);
         // la voce della sede vuota non e' tolta dal legame della mobile con la sua linea nascosta (Edu, 12/10/2026,
