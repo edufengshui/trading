@@ -926,7 +926,19 @@
     // molto di stagione (stesso elemento del mese). PERIMETRO DI CLAUDE: pilastri in ordine anno-mese-giorno-ora,
     // rami del trigono tutti distinti. c.trigonoBestia === false spegne.
     if (!mosso.v && c.trigonoBestia !== false) {
-      var TRIG3 = [[['申','子','辰'],'Water'],[['亥','卯','未'],'Wood'],[['寅','午','戌'],'Fire'],[['巳','酉','丑'],'Metal']];
+      // E' UN INTERVENTO DI SOCCORSO (Edu, 12/10/2026: "Certo, è un intervento di soccorso perché S si stava facendo
+      // male da sola con il suo stesso movimento. Cerchiamo sempre di far vincere la S e solo se non ci riusciamo
+      // vediamo cosa Y riesce a fare per vincere lui"): il trigono scatta SOLO per la sede che si fa male da sola col
+      // suo stesso movimento (la sede mobile o incompatibile con l'autopenalità del suo ramo), e la bestia sopprime
+      // l'ALTRA sede per salvarla. Senza una sede che si fa male, il trigono non interviene.
+      // la sede si fa male da sola quando il suo movimento arriva sul suo stesso ramo autopunitivo (自刑: li' lo Shi
+      // Chen, incompatibile, arriva in Chen — il movimento e' tutto autopenalita').
+      var kMale = ['S', 'Y'].filter(function (k) {
+        var L = SEDE[k]; if (!AUTOP[L.ramo]) return false;
+        if (R.mutante.pos === POS[k] && R.mutante.ramoArr === L.ramo) return true;
+        return (R.incompatibili || []).indexOf(POS[k]) >= 0 && (R.mutante.futuro || [])[POS[k] - 1] === L.ramo;
+      })[0];
+      var TRIG3 = kMale ? [[['申','子','辰'],'Water'],[['亥','卯','未'],'Wood'],[['寅','午','戌'],'Fire'],[['巳','酉','丑'],'Metal']] : [];
       var pilT = [['dell\'anno', c.yearStem, c.yearBranch], ['del mese', c.monthStem, c.monthBranch], ['del giorno', c.dayStem, dB], ['dell\'ora', c.hourStem, c.oraBranch]].filter(function (p) { return p[1] && p[2]; });
       var esito = null;
       for (var ti = 0; ti < pilT.length && !esito; ti++) {
@@ -943,7 +955,7 @@
         var lT = R.linee.filter(function (Lx) { return !Lx.vuoto && Lx.pos !== lB.pos && Lx.ramo === terzoT; })[0];
         if (!lT) continue;
         var soppressa = ['S', 'Y'].filter(function (k) { return KE[grT[1]] === WX[SEDE[k].ramo] && !(mE && WX[SEDE[k].ramo] === mE); })[0];
-        if (!soppressa) continue;
+        if (!soppressa || soppressa === kMale) continue;                    // il soccorso e' per chi si fa male: sopprime l'altra
         esito = vince(ALTRA[soppressa], 'la bestia ' + pT[0] + ' cade su L' + lB.pos + ' e chiude il trigono ' + ({Water:'d\'Acqua',Wood:'di Legno',Fire:'di Fuoco',Metal:'di Metallo'})[grT[1]] + ' con ' + pT[2] + ' e L' + lT.pos + ': sopprime ' + NOME[soppressa] + ', vince ' + NOME[ALTRA[soppressa]], 4);
       }
       if (esito) return esito;
