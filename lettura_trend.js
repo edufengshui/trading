@@ -674,9 +674,9 @@
     // "se la sede è fuori gioco, se c'è una linea mobile del proprio campo a muoversi si prende quella. Qui L3 si muove per
     // controllare Y e fa vincere la propria squadra"). Se il sostituto colpisce l'altra sede (controlla, clasha, punisce,
     // drena) vince il campo della sede fuori gioco; se la nutre vince l'altra. Senza sostituto: vince l'altra sede.
-    var sostituto = function (k) {
+    var sostituto = function (k, mForza) {
       var O = SEDE[ALTRA[k]], eO = WX[O.ramo];
-      var m = chi.filter(function (x) { return x.pos !== POS[k] && campo(x.pos) === k && x.arr && !arrVuoto(x.arr) && !x.retro; })[0];
+      var m = mForza || chi.filter(function (x) { return x.pos !== POS[k] && campo(x.pos) === k && x.arr && !arrVuoto(x.arr) && !x.retro; })[0];
       if (!m || O.vuoto) return null;
       var aE = WX[m.arr];
       // nell'ordine di Edu (combinare, clashare, generare) lo scontro col clash viene prima: USDJPY 10/08/2026 s157 ("L1 si
@@ -688,6 +688,9 @@
         if (dd <= -3) return { vince: k, t: 'L' + m.pos + ' prende il posto di ' + NOME[k] + ' e vince lo scontro con L' + Tc.pos }; }
       if (KE[aE] === eO || CLASH[m.arr] === O.ramo || PENA[m.arr] === O.ramo || GEN[eO] === aE) return { vince: k, t: 'L' + m.pos + ' si muove in ' + m.arr + ' e prende il posto di ' + NOME[k] + ': ' + (KE[aE] === eO ? 'controlla' : CLASH[m.arr] === O.ramo ? 'clasha' : PENA[m.arr] === O.ramo ? 'punisce' : 'drena') + ' ' + NOME[ALTRA[k]] + ', vince il suo campo' };
       if (GEN[aE] === eO) return { vince: ALTRA[k], t: 'L' + m.pos + ' prende il posto di ' + NOME[k] + ' ma nutre ' + NOME[ALTRA[k]] + ': vince l\'altra sede' };
+      // il confronto si perde anche dall'altro lato (Edu, 12/10/2026, USDJPY 21/10/2024 s149: "si muove per diventare Wu
+      // ma perde il confronto con S"): se l'ALTRA sede controlla l'arrivo del sostituto, il sostituto perde il confronto.
+      if (KE[eO] === aE) return { vince: ALTRA[k], t: 'L' + m.pos + ' si muove in ' + m.arr + ' e parla per ' + NOME[k] + ', ma ' + NOME[ALTRA[k]] + ' lo controlla: perde il confronto, vince l\'altra sede' };
       return null;
     };
     // tutte e due le sedi fuori gioco (una scartata nel vuoto e l'altra vuota, o tutte e due): intervengono le bestie dei
@@ -745,6 +748,27 @@
     // la sede G/W fuori stagione clashata dal giorno e' eliminata (ferma o mobile; non l'incompatibile che gira)
     var elim = ['S', 'Y'].filter(function (k) { var L = SEDE[k]; return !L.vuoto && (L.par === 'G' || L.par === 'W') && dB && CLASH[dB] === L.ramo && !timely(L) && inc.indexOf(POS[k]) < 0; });
     if (elim.length === 1 && c.sostituto !== false) { var so2 = sostituto(elim[0]); if (so2) { dire(NOME[elim[0]] + ' è eliminat' + (elim[0] === 'S' ? 'o' : 'a') + ' dal clash del giorno: fuori gioco'); return vince(so2.vince, so2.t, 1); } }
+    // LA SEDE VUOTA FERMA NON PARLA DA SOLA: LA MOBILE DEL SUO CAMPO PARLA PER LEI (Edu, 12/10/2026, USDJPY 21/10/2024
+    // s149: "Y è vuoto quindi L2 parla per lui, si muove per diventare Wu ma perde il confronto con S"). La sede vuota e
+    // ferma e' fuori gioco come le scartate: se nel suo campo si muove una linea, quella parla per lei e si confronta con
+    // l'altra sede (stesso confronto del sostituto). PERIMETRO DI CLAUDE, da confermare: solo se il sostituto c'e' e il
+    // confronto decide; senza sostituto o con confronto muto la carta resta alla lettura di prima (la forza ferma del
+    // principio 4 gia' copre la linea piu' forte nel campo vuoto). c.sostVuota === false spegne.
+    if (c.sostVuota !== false && scart.length === 0 && elim.length === 0) {
+      // la sede ferma nel vuoto della data non parla da sola NEMMENO se di stagione (li' la Ying Chou e' Terra nel mese
+      // di Xu, eppure "Y è vuoto"): per PARLARE il vuoto resta vuoto, come per ricevere il flusso; e' il movimento che
+      // esce dal vuoto di stagione, non la voce della sede ferma. Il giorno che clasha il ramo la libera.
+      var vuotaFerma = function (k) { return (SEDE[k].vuoto || SEDE[k].vuotoDiStagione || R.vuoti.indexOf(SEDE[k].ramo) >= 0) && !(dB && CLASH[dB] === SEDE[k].ramo) && !sedeMossa(k); };
+      var vfk = ['S', 'Y'].filter(function (k) { return vuotaFerma(k) && !vuotaFerma(ALTRA[k]); });
+      if (vfk.length === 1) { var so3 = sostituto(vfk[0]);
+        // la voce della sede vuota non e' tolta dal legame della mobile con la sua linea nascosta (Edu, 12/10/2026,
+        // USDJPY 21/10/2024 s149: li' L2 e' legata alla propria nascosta Yin eppure "L2 parla per lui"): se fra i
+        // movimenti non c'e' un sostituto, la mobile del campo ferma SOLO da quel legame parla lo stesso.
+        if (!so3 && R.mutante.pos && campo(R.mutante.pos) === vfk[0] && R.mutante.pos !== POS[vfk[0]] && R.mutante.ramoArr &&
+            !arrVuoto(R.mutante.ramoArr) && R.mutante.movimentoNullo && /hidden line/.test(R.mutante.motivoNullo || ''))
+          so3 = sostituto(vfk[0], { pos: R.mutante.pos, dep: R.mutante.ramoDep, arr: R.mutante.ramoArr, retro: false, incArr: false, mobile: true });
+        if (so3) { dire(NOME[vfk[0]] + ' è vuot' + (vfk[0] === 'S' ? 'o' : 'a') + ' e ferm' + (vfk[0] === 'S' ? 'o' : 'a') + ': non parla da sol' + (vfk[0] === 'S' ? 'o' : 'a')); return vince(so3.vince, so3.t, 1); } }
+    }
     if (elim.length === 1) return vince(ALTRA[elim[0]], NOME[elim[0]] + ' (una ' + SEDE[elim[0]].par + ') non è di stagione ed è clashat' + (elim[0] === 'S' ? 'o' : 'a') + ' dal giorno ' + dB + ': eliminat' + (elim[0] === 'S' ? 'o' : 'a') + ', vince l\'altra sede', 1);
     // la sede combinata e controllata dal giorno e' bloccata — salvo il flusso dello stelo del giorno, forte nella data
     var bloccata = { S: false, Y: false };
