@@ -900,6 +900,24 @@
     // (li' la Ying era 'molto piu' forte' nel mese e nel giorno, ma lo Shi Mao Legno controlla la Ying Xu Terra e vince).
     // PERIMETRO DI CLAUDE, da confermare: simmetrico (anche la Ying che controlla lo Shi vince); solo se nessun
     // movimento ha mosso i punti. c.confrontoFermo === false spegne.
+    // IL SOCCORSO DELLA BESTIA COL PONTE (Edu, 12/10/2026, S56, EURUSD 08/07/2021 s117: "S non può arrivare quindi
+    // rimane la partenza W Xu. Y non può neanche partire, allora arriva la bestia dell'ora in soccorso. Shen metallo fa
+    // da ponte fra S e Y e fa vincere Y"): quando nessun movimento agisce, la bestia di un pilastro (ramo non vuoto)
+    // che cade su una sede la soccorre: se il ramo di quel pilastro fa da ponte di generazione dall'altra sede alla
+    // soccorsa (altra -> ponte -> soccorsa), la forza dell'altra fluisce nella soccorsa e la fa vincere — li' anche
+    // contro il controllo dello Shi e la sua stagione piena. PERIMETRO DI CLAUDE: pilastri in ordine
+    // anno-mese-giorno-ora, vince il primo che soccorre. c.soccorsoPonte === false spegne.
+    if (!mosso.v && c.soccorsoPonte !== false) {
+      var pilSoc = [['dell\'anno', c.yearStem, c.yearBranch], ['del mese', c.monthStem, c.monthBranch], ['del giorno', c.dayStem, dB], ['dell\'ora', c.hourStem, c.oraBranch]].filter(function (p) { return p[1] && p[2] && vuoti.indexOf(p[2]) < 0; });
+      for (var siP = 0; siP < pilSoc.length; siP++) {
+        var pS = pilSoc[siP], peS = WX[pS[2]], kSoc = null;
+        ['S', 'Y'].forEach(function (k) { var L = SEDE[k]; if (L.bestia && L.bestia.cn && BESTIA_STELO[pS[1]] === L.bestia.cn) kSoc = k; });
+        if (!kSoc) continue;
+        var ASoc = SEDE[ALTRA[kSoc]];
+        if (GEN[WX[ASoc.ramo]] === peS && GEN[peS] === WX[SEDE[kSoc].ramo])
+          return vince(kSoc, 'la bestia ' + pS[0] + ' soccorre ' + NOME[kSoc] + ': ' + pS[2] + ' fa da ponte e porta la forza di ' + NOME[ALTRA[kSoc]] + ' verso ' + NOME[kSoc] + ', che vince', 4);
+      }
+    }
     if (!mosso.v && c.confrontoFermo !== false) {
       var _eS = WX[S.ramo], _eY = WX[Y.ramo];
       // PERIMETRO DI CLAUDE (stretto, 12/10/2026, dalla misura): il confronto da fermo si apre solo quando l'aiuto
