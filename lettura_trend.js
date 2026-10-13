@@ -561,7 +561,13 @@
     var vuotoVero = function (b) { return vuoti.indexOf(b) >= 0 && !(dB && CLASH[dB] === b); };          // il giorno che clasha fa uscire dal vuoto
     // variante 'arrivo' (Edu, 11/10/2026, prova: "Per fare uscire dal vuoto potrebbe bastare che la linea vuota sia l'arrivo"):
     // solo l'ARRIVO vuoto di stagione esce dal vuoto; le linee ferme vuote restano vuote anche di stagione.
-    var arrVuoto = function (b) { return vuotoVero(b) && !(c.vuotoTimely === 'arrivo' && diStag(b)); };
+    // LA BESTIA COMPATIBILE FA ARRIVARE LA LINEA NEL VUOTO (Edu, 16/09/2026, "Tutte e tre giuste", dottrina del motore di
+    // lettura MLSTATOMOV, USDCAD 16/03/2020): sulla linea che si muove verso un arrivo vuoto siede la bestia di un pilastro
+    // (ramo non vuoto) COMPATIBILE con la linea — stesso elemento, la genera, o la linea la genera — oppure il cui ramo
+    // COMBINA l'arrivo vuoto: la linea parte e arriva. Portata nel metodo del trend il 13/10/2026 (GBPUSD 08/09/2022).
+    // c.bestiaArriva === true la accende (spenta). _arrLibero si riempie quando si conoscono le linee che si muovono.
+    var _arrLibero = {};
+    var arrVuoto = function (b) { return vuotoVero(b) && !_arrLibero[b] && !(c.vuotoTimely === 'arrivo' && diStag(b)); };
     var campo = function (pos) { return (pos <= 3) === (R.shi <= 3) ? 'S' : 'Y'; };
     var segnoNutri = function (L) { return (L.par === 'P' || L.par === 'B') ? -1 : 1; };                    // nutrire una P/B la rovescia
     var vuotaInMezzo = function (a, b) { for (var q = Math.min(a, b) + 1; q < Math.max(a, b); q++) if (R.linee[q - 1].vuoto) return true; return false; };
@@ -607,6 +613,15 @@
       if (lg) { dire('l\'incompatibile L' + p + ' è combinata alla partenza dal ' + lg + ': non gira'); return; }
       chi.push({ pos: p, dep: L.ramo, arr: a, retro: RETRO[L.ramo] === a, incArr: false, mobile: false });
     });
+    if (c.bestiaArriva === true) {   // SPENTA: rompe USDCAD 26/11/2021 e USDJPY 10/08/2026, carte lette da Edu col metodo
+      var pilBA = [c.yearStem, c.monthStem, c.dayStem, c.hourStem].map(function (st, i) { return [st, [c.yearBranch, c.monthBranch, dB, c.oraBranch][i]]; }).filter(function (p) { return p[0] && p[1] && vuoti.indexOf(p[1]) < 0; });
+      chi.forEach(function (m) {
+        if (!m.arr || !vuotoVero(m.arr)) return;
+        var Lm = R.linee[m.pos - 1], eL = WX[m.dep];
+        var bA = pilBA.filter(function (p) { var eb = WX[p[1]]; return Lm.bestia && Lm.bestia.cn && BESTIA_STELO[p[0]] === Lm.bestia.cn && (eb === eL || GEN[eb] === eL || GEN[eL] === eb || COMBINA[p[1]] === m.arr); })[0];
+        if (bA) { _arrLibero[m.arr] = true; dire('L' + m.pos + ' andrebbe nel vuoto ' + m.arr + ', ma la bestia di ' + bA[0] + bA[1] + ' siede sulla linea e la aiuta: arriva'); }
+      });
+    }
     // confusione totale di un trigramma: troppa confusione
     if (fut.length) for (var tg = 0; tg < 2; tg++) {
       var tr = tg === 0 ? [1, 2, 3] : [4, 5, 6];
@@ -1134,6 +1149,12 @@
         else if (vB && !vA) presaL2 = { vince: ALTRA[kx2], t: 'la bestia ' + p[0] + ' prende L' + Lx.pos + ': ' + chiA + ' perde il confronto con ' + NOME[ALTRA[kx2]] };
       });
       if (presaL2 && !presaL2.nulla) { dire(NOME[kx2] + ' è vuot' + (kx2 === 'S' ? 'o' : 'a') + ', ferm' + (kx2 === 'S' ? 'o' : 'a') + ' e nessun movimento agisce: intervengono le bestie dal suo lato'); return vince(presaL2.vince, presaL2.t, 1); }
+    }
+    // PROVA DI CLAUDE (spenta): la bestia possiede la sede vuota abbandonata se serve a farla vincere il confronto
+    if (!mosso.v && _vuotaAbbandonata && c.vuotaPerde !== false && c.possessoConfronto === true) {
+      var kPC = _vuotaAbbandonata, LPC = SEDE[kPC], ePCo = WX[SEDE[ALTRA[kPC]].ramo];
+      var pPC = [[c.yearStem, c.yearBranch], [c.monthStem, c.monthBranch], [c.dayStem, dB], [c.hourStem, c.oraBranch]].filter(function (p) { return p[0] && p[1] && vuoti.indexOf(p[1]) < 0 && LPC.bestia && LPC.bestia.cn && BESTIA_STELO[p[0]] === LPC.bestia.cn && (WX[p[1]] === WX[LPC.ramo] || GEN[WX[p[1]]] === WX[LPC.ramo]); });
+      if (pPC.length) { var ePC = WX[LPC.ramo]; if (GEN[ePCo] === ePC || KE[ePC] === ePCo) return vince(kPC, 'possesso: vince il confronto', 1); }
     }
     if (!mosso.v && _vuotaAbbandonata && c.vuotaPerde !== false)
       return vince(ALTRA[_vuotaAbbandonata], NOME[_vuotaAbbandonata] + ' è vuot' + (_vuotaAbbandonata === 'S' ? 'o' : 'a') + ' e ferm' + (_vuotaAbbandonata === 'S' ? 'o' : 'a') + ', nessuna bestia l' + (_vuotaAbbandonata === 'S' ? 'o' : 'a') + ' fa uscire dal vuoto e nessun movimento agisce: vince l\'altra sede', 1);
