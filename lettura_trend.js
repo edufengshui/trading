@@ -935,6 +935,27 @@
     // (li' la Ying era 'molto piu' forte' nel mese e nel giorno, ma lo Shi Mao Legno controlla la Ying Xu Terra e vince).
     // PERIMETRO DI CLAUDE, da confermare: simmetrico (anche la Ying che controlla lo Shi vince); solo se nessun
     // movimento ha mosso i punti. c.confrontoFermo === false spegne.
+    // LA SEDE FERMA CLASHATA DAL GIORNO SI SVEGLIA E FA LA SFIDA (Edu, 13/10/2026, S56, USDJPY 24/07/2023 s141:
+    // "S clashato dal giorno avanza da Chou a Chen e vince contro Y. L2 non cambia il risultato"): quando nessun
+    // movimento agisce, la sede FERMA e non vuota clashata dal giorno si sveglia (暗動) e va al ramo della sua
+    // posizione nell'esagramma trasformato completo (la dottrina della ferma clashata di EURJPY 30/09/2026); col
+    // ramo d'arrivo fa la sfida con l'altra sede, con la grammatica del confronto: chi controlla vince, chi viene
+    // generato vince (li' Chen Terra generato dalla Ying Wu Fuoco: lo Shi vince). Se il giorno clasha tutte e due
+    // le sedi, tace. c.sveglioSfida === false spegne.
+    if (!mosso.v && c.sveglioSfida !== false && dB && (R.mutante.futuro || []).length) {
+      var kSv = ['S', 'Y'].filter(function (k) { var L = SEDE[k]; return R.mutante.pos !== POS[k] && (R.incompatibili || []).indexOf(POS[k]) < 0 && !L.vuoto && !L.vuotoDiStagione && CLASH[dB] === L.ramo; });
+      if (kSv.length === 1) {
+        var kS1 = kSv[0], arrSv = (R.mutante.futuro || [])[POS[kS1] - 1];
+        if (arrSv && arrSv !== SEDE[kS1].ramo && vuoti.indexOf(arrSv) < 0) {
+          var eSv = WX[arrSv], oSv = SEDE[ALTRA[kS1]], eOv = WX[oSv.ramo];
+          dire(NOME[kS1] + ' ferm' + (kS1 === 'S' ? 'o' : 'a') + ' è clashat' + (kS1 === 'S' ? 'o' : 'a') + ' dal giorno: si sveglia e va in ' + arrSv);
+          if (KE[eSv] === eOv) return vince(kS1, 'sveglio in ' + arrSv + ', controlla ' + NOME[ALTRA[kS1]] + ': vince', 2);
+          if (KE[eOv] === eSv) return vince(ALTRA[kS1], NOME[ALTRA[kS1]] + ' controlla l\'arrivo ' + arrSv + ' della sveglia: vince', 2);
+          if (GEN[eOv] === eSv) return vince(kS1, 'l\'arrivo ' + arrSv + ' è generato da ' + NOME[ALTRA[kS1]] + ': chi viene generato vince', 2);
+          if (GEN[eSv] === eOv) return vince(ALTRA[kS1], 'l\'arrivo ' + arrSv + ' genera ' + NOME[ALTRA[kS1]] + ': chi viene generato vince', 2);
+        }
+      }
+    }
     // IL GEMITO NUTRE LA NASCOSTA, CHE FA LA SFIDA (Edu, 13/10/2026, S56, NZDUSD 13/03/2025 s57: "L3 in autopenalità
     // non si può usare. L2 Yin forte che però genera la nascosta P w che perde la sfida con Y"): la sede mobile che
     // arriva sul proprio stesso ramo (伏吟, il gemito) non agisce fuori: la sua forza scorre nella propria NASCOSTA,
