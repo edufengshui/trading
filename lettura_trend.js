@@ -809,8 +809,14 @@
             // anche la mobile del campo SOSPESA DAL GIORNO parla per la sede vuota (Edu, 13/10/2026, GBPUSD 17/05/2022
             // s123: "una linea mobile del suo campo può fare la differenza. Qui L5 si muove e vince contro S" — L5 W
             // Zi col giorno Wu sulla partenza, arrivo Si generato dallo Shi Mao: vince il campo della Ying)
-            (c.sostSospesa !== false && /suspended by the day/.test(R.mutante.motivoNullo || ''))))
-          so3 = sostituto(vfk[0], { pos: R.mutante.pos, dep: R.mutante.ramoDep, arr: R.mutante.ramoArr, retro: false, incArr: false, mobile: true });
+            // ...ma solo se una BESTIA se ne impadronisce e la fa muovere (Edu, 13/10/2026: "La bestia dell'ora si
+            // impadronisce della linea e la fa muovere"): senza bestia vale la regola del 17/09 — la mobile clashata
+            // alla partenza non puo' muoversi. PERIMETRO DI CLAUDE: le bestie del giorno e dell'ora (i pilastri che
+            // toccano le linee). c.sostSospesa === 'senzaBestia' riapre la forma larga, === false spegne.
+            (c.sostSospesa !== false && /suspended by the day/.test(R.mutante.motivoNullo || '') &&
+             (c.sostSospesa === 'senzaBestia' || [c.dayStem, c.hourStem].some(function (st) { return st && mob.bestia && mob.bestia.cn && BESTIA_STELO[st] === mob.bestia.cn; })))))
+          { so3 = sostituto(vfk[0], { pos: R.mutante.pos, dep: R.mutante.ramoDep, arr: R.mutante.ramoArr, retro: false, incArr: false, mobile: true });
+            if (so3 && /suspended by the day/.test(R.mutante.motivoNullo || '')) dire('la bestia ' + ([c.dayStem, c.hourStem].map(function (st, i) { return st && mob.bestia && BESTIA_STELO[st] === mob.bestia.cn ? (i ? 'dell\'ora' : 'del giorno') : null; }).filter(Boolean)[0] || 'di un pilastro') + ' si impadronisce di L' + R.mutante.pos + ', sospesa, e la fa muovere'); }
         // SENZA SOCCORSO, LA VUOTA FERMA PERDE (Edu, 12/10/2026, S56, EURUSD 08/06/2023 s107: "Y è vuoto, la bestia
         // dell'anno viene in soccorso ma non può fare niente per aiutare. L6 si muove per penalizzarsi. S vince").
         // CORRETTO DA EDU (12/10/2026): "la bestia FA USCIRE DAL VUOTO, ma in questo caso la bestia dell'anno Gui Mao
