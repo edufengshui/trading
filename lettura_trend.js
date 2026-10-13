@@ -840,13 +840,19 @@
         if (!so3 && c.vuotaPerde !== false) {
           var kV = vfk[0], LV = SEDE[kV];
           var pilV = [['dell\'anno', c.yearStem, c.yearBranch], ['del mese', c.monthStem, c.monthBranch], ['del giorno', c.dayStem, dB], ['dell\'ora', c.hourStem, c.oraBranch]].filter(function (p) { return p[1] && p[2]; });
-          var salva = pilV.filter(function (p) { return LV.bestia && LV.bestia.cn && BESTIA_STELO[p[1]] === LV.bestia.cn && GEN[WX[p[2]]] === WX[LV.ramo]; })[0];
+          // ALLARGATA DA EDU (13/10/2026, USDCAD 04/07/2023 s132: "S esce dal vuoto grazie alla bestia del giorno e
+          // dell'ora che prendono possesso della linea" — giorno e ora Gui Hai, Acqua come lo Shi Zi): la bestia di un
+          // pilastro col ramo NON vuoto dello STESSO elemento della sede ne prende possesso e la fa uscire dal vuoto,
+          // come quella che la genera — MA SOLO SE SERVE ("se questo si rivela necessario"): qui resta spenta
+          // (c.possessoStesso === 'sempre' la accende ovunque: 5 giuste in meno), e il possesso si usa dove la sede
+          // deve ricevere un'azione che altrimenti il vuoto le toglierebbe (il trigono delle linee che si muovono).
+          var salva = pilV.filter(function (p) { return LV.bestia && LV.bestia.cn && BESTIA_STELO[p[1]] === LV.bestia.cn && vuoti.indexOf(p[2]) < 0 && (GEN[WX[p[2]]] === WX[LV.ramo] || (c.possessoStesso === 'sempre' && WX[p[2]] === WX[LV.ramo])); })[0];
           // CORRETTO DA EDU (13/10/2026): la bestia fa muovere la linea "solo se è già una linea mobile oppure è
           // clashata dal giorno o dall'ora". La sede vuota e FERMA non clashata (qui siamo in quel caso: la clashata dal
           // giorno o dall'ora esce dal vuoto e non arriva qui) non viene mossa dalla bestia: resta la sola via della
           // bestia il cui ramo la genera (esce dal vuoto, s107). c.bestiaPrende === 'larga' riapre la forma larga.
           var presaV = !salva && c.bestiaPrende === 'larga' && pilV.filter(function (p) { return LV.bestia && LV.bestia.cn && BESTIA_STELO[p[1]] === LV.bestia.cn; })[0];
-          if (salva) dire('la bestia ' + salva[0] + ' cade su ' + NOME[kV] + ' e ' + salva[2] + ' l' + (kV === 'S' ? 'o' : 'a') + ' genera: esce dal vuoto');
+          if (salva) dire('la bestia ' + salva[0] + ' cade su ' + NOME[kV] + ' e ' + salva[2] + (GEN[WX[salva[2]]] === WX[LV.ramo] ? ' l' + (kV === 'S' ? 'o' : 'a') + ' genera' : ', dello stesso elemento, ne prende possesso') + ': esce dal vuoto');
           else if (presaV) dire('la bestia ' + presaV[0] + ' prende possesso di ' + NOME[kV] + ' vuot' + (kV === 'S' ? 'o' : 'a') + ' e l' + (kV === 'S' ? 'o' : 'a') + ' fa muovere: non è abbandonat' + (kV === 'S' ? 'o' : 'a'));
           if (!salva && !presaV) _vuotaAbbandonata = kV;   // il verdetto arriva solo se i movimenti non agiscono (vedi la catena quieta)
         }
@@ -863,6 +869,34 @@
       bloccata[k0] = true; dire(NOME[k0] + ' è bloccat' + (k0 === 'S' ? 'o' : 'a') + ' dal giorno ' + dB + ' che lo combina e lo controlla: fuori dal confronto');
     }
 
+    // IL TRIGONO DELLE LINEE CHE SI MUOVONO GENERA UNA SEDE (Edu, 13/10/2026, S56, USDCAD 04/07/2023 s132: "L4 ed L6 formano
+    // un trigono di metallo che genera S"): le partenze e gli arrivi di due o piu' linee che si muovono (la mobile, anche
+    // sospesa dal giorno sull'arrivo — li' L6 You -> Si, arrivo clashato dal giorno Hai — e le incompatibili che girano:
+    // L4 Chou -> You) chiudono un trigono pieno (三合); se il suo elemento genera una sede, vince quella sede (li' Metallo
+    // -> lo Shi Zi Acqua, uscito dal vuoto perche' le bestie del giorno e dell'ora ne prendono possesso). La sede vuota e
+    // ferma abbandonata non riceve. Non vale con la mobile combinata alla partenza dal giorno. c.trigonoMobili === false spegne.
+    if (c.trigonoMobili !== false) {
+      var linTM = chi.map(function (m) { return [m.pos, m.dep, m.arr]; });
+      if (!lm && dep && arr && !chi.some(function (m) { return m.pos === mob.pos; })) linTM.push([mob.pos, dep, arr]);
+      var TRTM = [[['申','子','辰'],'Water'],[['亥','卯','未'],'Wood'],[['寅','午','戌'],'Fire'],[['巳','酉','丑'],'Metal']];
+      var gTM = null;
+      TRTM.some(function (t) {
+        var chiT = {}; t[0].forEach(function (b) { linTM.forEach(function (x) { if (x[1] === b || x[2] === b) (chiT[b] = chiT[b] || {})[x[0]] = 1; }); });
+        if (Object.keys(chiT).length < 3) return false;
+        var linee = {}; Object.keys(chiT).forEach(function (b) { Object.keys(chiT[b]).forEach(function (q) { linee[q] = 1; }); });
+        if (Object.keys(linee).length < 2) return false;
+        // la sede vuota abbandonata non riceve, salvo che la bestia di un pilastro (ramo non vuoto, stesso elemento o
+        // che la genera) ne prenda possesso: qui serve, e la fa uscire dal vuoto (Edu, 13/10/2026, USDCAD 04/07/2023)
+        var possTM = function (k) { var L = SEDE[k]; return c.possessoStesso !== false && [[c.yearStem, c.yearBranch, 'dell\'anno'], [c.monthStem, c.monthBranch, 'del mese'], [c.dayStem, dB, 'del giorno'], [c.hourStem, c.oraBranch, 'dell\'ora']].filter(function (p) { return p[0] && p[1] && vuoti.indexOf(p[1]) < 0 && L.bestia && L.bestia.cn && BESTIA_STELO[p[0]] === L.bestia.cn && (WX[p[1]] === WX[L.ramo] || GEN[WX[p[1]]] === WX[L.ramo]); }).map(function (p) { return p[2]; }); };
+        var kG = ['S', 'Y'].filter(function (k) { return GEN[t[1]] === WX[SEDE[k].ramo] && (_vuotaAbbandonata !== k || possTM(k).length) && !bloccata[k]; });
+        if (kG.length !== 1) return false;
+        var pz = _vuotaAbbandonata === kG[0] ? possTM(kG[0]) : [];
+        if (pz.length) dire('la bestia ' + pz.join(' e ') + ' prende possesso ' + (kG[0] === 'S' ? 'dello Shi vuoto' : 'della Ying vuota') + ' e l' + (kG[0] === 'S' ? 'o' : 'a') + ' fa uscire dal vuoto: serve a ricevere il trigono');
+        gTM = [kG[0], 'le linee che si muovono (L' + Object.keys(linee).join(', L') + ') chiudono il trigono ' + t[0].join('') + ' di ' + ({Water:'Acqua',Wood:'Legno',Fire:'Fuoco',Earth:'Terra',Metal:'Metallo'})[t[1]] + ', che genera ' + NOME[kG[0]] + ': vince'];
+        return true;
+      });
+      if (gTM) return vince(gTM[0], gTM[1], 2);
+    }
     // ---------------- PRINCIPI 2 e 3: COSA FA IL MOVIMENTO, E SE IL COLPO RIESCE ----------------
     var nutrito = { S: false, Y: false }, punita = { S: false, Y: false };
     var difende = function (L, a, verbo) {                     // principio 3: la sede di stagione si difende, tranne da un arrivo forte
