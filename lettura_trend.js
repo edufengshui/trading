@@ -774,7 +774,10 @@
       // la sede ferma nel vuoto della data non parla da sola NEMMENO se di stagione (li' la Ying Chou e' Terra nel mese
       // di Xu, eppure "Y è vuoto"): per PARLARE il vuoto resta vuoto, come per ricevere il flusso; e' il movimento che
       // esce dal vuoto di stagione, non la voce della sede ferma. Il giorno che clasha il ramo la libera.
-      var vuotaFerma = function (k) { return (SEDE[k].vuoto || SEDE[k].vuotoDiStagione || R.vuoti.indexOf(SEDE[k].ramo) >= 0) && !(dB && CLASH[dB] === SEDE[k].ramo) && !sedeMossa(k); };
+      // il clash che libera dal vuoto viene da qualunque pilastro della data, non solo dal giorno (Edu, 13/10/2026,
+      // EURJPY 23/07/2024 s170: "S è clashato dall'ora ed esce dal vuoto")
+      var _clashData = function (b) { return [dB, c.oraBranch, c.monthBranch, c.yearBranch].some(function (p) { return p && CLASH[p] === b; }); };
+      var vuotaFerma = function (k) { return (SEDE[k].vuoto || SEDE[k].vuotoDiStagione || R.vuoti.indexOf(SEDE[k].ramo) >= 0) && !_clashData(SEDE[k].ramo) && !sedeMossa(k); };
       // IL DOPPIO CLASH (Edu, 13/10/2026, S56: "Il clash la libera dal vuoto, ma due clash se la linea è timely la
       // fanno attivare"): UN clash libera la vuota dal vuoto; DUE clash — dal giorno e dall'arrivo della mobile —
       // ATTIVANO la linea se e' timely, la SPAZZANO se e' untimely. La spazzata puo' essere salvata solo dalla bestia
@@ -867,7 +870,15 @@
         }
       } else {
         // la mobile (o l'incompatibile) che non e' una sede
-        if (m.retro) { dire('L' + m.pos + ' retrocede: non condiziona le sedi'); return; }
+        if (m.retro) {
+          // LA G/W NON SEDE CHE RETROCEDE PORTA VIA IL VANTAGGIO DEL SUO CAMPO (dottrina LY di Edu, USDCHF 07/08/2024
+          // "L3 retrocede e fa perdere"; applicata al trend da EURJPY 23/07/2024 s170, Edu 13/10/2026: "Y non vince ed
+          // L2 retrocede"): la mobile G o W che si ritira fa perdere la sede del suo campo. P/B e C restano mute
+          // (perimetro: la B/P che retrocede "porta via la perdita" vale per le sedi, non cablata qui per le non sedi).
+          // c.retroPorta === false spegne.
+          var LRet = R.linee[m.pos - 1];
+          if (c.retroPorta !== false && LRet && (LRet.par === 'G' || LRet.par === 'W')) { colpisci(campo(m.pos), 1, 'L' + m.pos + ', una ' + LRet.par + ', retrocede: porta via il vantaggio del suo campo'); return; }
+          dire('L' + m.pos + ' retrocede: non condiziona le sedi'); return; }
         var genSe = GEN[aE] === dE;
         if (genSe && timely(R.linee[m.pos - 1])) {               // gia' forte e generata indietro: rafforza il suo campo
           var kc = campo(m.pos), C = SEDE[kc];
