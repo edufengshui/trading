@@ -580,7 +580,10 @@
     if (troppoFuori(S) && troppoFuori(Y)) { dire('Shi e Ying tutti e due troppo fuori stagione: il metodo tace'); return out; }
     // chi si muove: la mobile (se non e' legata alla partenza dal mese o dal giorno) e le incompatibili che girano
     var dep = R.mutante.ramoDep, arr = R.mutante.ramoArr, fut = R.mutante.futuro || [];
-    var legata = function (b) { return COMBINA[b] === c.monthBranch ? 'mese' : (dB && COMBINA[b] === dB) ? 'giorno' : null; };
+    // SOLO IL GIORNO CHE COMBINA IMPEDISCE ALLA LINEA DI MUOVERSI (Edu, 13/10/2026: "il mese che combina non impedisce
+    // alla linea di muoversi, solo il giorno") — vale per la mobile e per l'incompatibile. c.legaMese === true torna
+    // alla forma vecchia (anche il mese lega).
+    var legata = function (b) { return (dB && COMBINA[b] === dB) ? 'giorno' : (c.legaMese === true && COMBINA[b] === c.monthBranch) ? 'mese' : null; };
     var chi = [];
     var lm = legata(dep);
     // LA SEDE MOBILE ROTTA DAL MESE NON SI MUOVE (Edu, 11/10/2026, S56, EURUSD 17/06/2020 s112: "As Y cannot move
@@ -599,10 +602,9 @@
       // ferma (Edu, 18/09/2026: "se l'incompatibile e' combinata due volte, il legame e' troppo forte e rimane ferma";
       // 13/10/2026, EURJPY 07/08/2024 s158: "S si muove per diventare Chen", con lo Shi Wu combinato dal solo mese Wei).
       // c.incLegataUna === false torna alla forma vecchia (combinata una volta = non gira).
-      var preseInc = [dB, c.monthBranch, c.yearBranch, c.oraBranch].filter(function (b) { return b && COMBINA[b] === L.ramo; }).length;
-      // PERIMETRO DI CLAUDE, da confermare: la combinazione del GIORNO la tiene ferma anche da sola (AUDUSD 05/10/2026
-      // s69, lo Shi Chou combinato dal giorno Zi, lettura di Edu che non gira); quella del solo mese no (s158).
-      if (lg && (c.incLegataUna === false || preseInc >= 2 || (dB && COMBINA[dB] === L.ramo))) { dire('l\'incompatibile L' + p + ' è combinata alla partenza ' + (preseInc >= 2 ? 'due volte' : 'dal ' + lg) + ': non gira'); return; }
+      // solo la combinazione del GIORNO la tiene ferma (Edu, 13/10/2026; AUDUSD 05/10/2026 s69 ferma col giorno Zi;
+      // EURJPY 07/08/2024 s158 gira col solo mese Wei)
+      if (lg) { dire('l\'incompatibile L' + p + ' è combinata alla partenza dal ' + lg + ': non gira'); return; }
       chi.push({ pos: p, dep: L.ramo, arr: a, retro: RETRO[L.ramo] === a, incArr: false, mobile: false });
     });
     // confusione totale di un trigramma: troppa confusione
