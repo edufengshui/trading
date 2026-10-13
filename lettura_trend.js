@@ -770,6 +770,7 @@
     // l'altra sede (stesso confronto del sostituto). PERIMETRO DI CLAUDE, da confermare: solo se il sostituto c'e' e il
     // confronto decide; senza sostituto o con confronto muto la carta resta alla lettura di prima (la forza ferma del
     // principio 4 gia' copre la linea piu' forte nel campo vuoto). c.sostVuota === false spegne.
+    var _vuotaAbbandonata = null;
     if (c.sostVuota !== false && scart.length === 0 && elim.length === 0) {
       // la sede ferma nel vuoto della data non parla da sola NEMMENO se di stagione (li' la Ying Chou e' Terra nel mese
       // di Xu, eppure "Y è vuoto"): per PARLARE il vuoto resta vuoto, come per ricevere il flusso; e' il movimento che
@@ -798,6 +799,7 @@
         }
       }
       var vfk = ['S', 'Y'].filter(function (k) { return !attivata[k] && vuotaFerma(k) && !vuotaFerma(ALTRA[k]); });
+      _vuotaAbbandonata = null;
       if (vfk.length === 1) { var so3 = sostituto(vfk[0]);
         // la voce della sede vuota non e' tolta dal legame della mobile con la sua linea nascosta (Edu, 12/10/2026,
         // USDJPY 21/10/2024 s149: li' L2 e' legata alla propria nascosta Yin eppure "L2 parla per lui"): se fra i
@@ -814,12 +816,12 @@
         // parla per lei, la vuota ferma e' sola: vince l'altra sede, come la via d) del fuori gioco.
         // Solo quando NIENT'ALTRO agisce (se un movimento vivo c'e', la carta si legge dai movimenti: EURUSD
         // 26/08/2026 s116, la tomba dello Shi). c.vuotaPerde === false spegne.
-        if (!so3 && c.vuotaPerde !== false && chi.length === 0) {
+        if (!so3 && c.vuotaPerde !== false) {
           var kV = vfk[0], LV = SEDE[kV];
           var pilV = [['dell\'anno', c.yearStem, c.yearBranch], ['del mese', c.monthStem, c.monthBranch], ['del giorno', c.dayStem, dB], ['dell\'ora', c.hourStem, c.oraBranch]].filter(function (p) { return p[1] && p[2]; });
           var salva = pilV.filter(function (p) { return LV.bestia && LV.bestia.cn && BESTIA_STELO[p[1]] === LV.bestia.cn && GEN[WX[p[2]]] === WX[LV.ramo]; })[0];
           if (salva) dire('la bestia ' + salva[0] + ' cade su ' + NOME[kV] + ' e ' + salva[2] + ' l' + (kV === 'S' ? 'o' : 'a') + ' genera: esce dal vuoto');
-          else return vince(ALTRA[kV], NOME[kV] + ' è vuot' + (kV === 'S' ? 'o' : 'a') + ' e ferm' + (kV === 'S' ? 'o' : 'a') + ' e nessuna bestia l' + (kV === 'S' ? 'o' : 'a') + ' fa uscire dal vuoto: vince l\'altra sede', 1);
+          else _vuotaAbbandonata = kV;   // il verdetto arriva solo se i movimenti non agiscono (vedi la catena quieta)
         }
         if (so3) { dire(NOME[vfk[0]] + ' è vuot' + (vfk[0] === 'S' ? 'o' : 'a') + ' e ferm' + (vfk[0] === 'S' ? 'o' : 'a') + ': non parla da sol' + (vfk[0] === 'S' ? 'o' : 'a')); return vince(so3.vince, so3.t, 1); } }
     }
@@ -984,6 +986,11 @@
         }
       }
     }
+    // LA VUOTA ABBANDONATA PERDE QUANDO I MOVIMENTI NON AGISCONO (Edu, s107 08/06/2023: la mobile che si penalizzava
+    // da sola non salvava la Ying vuota; EURUSD 26/08/2026 s116: la tomba dello Shi, un movimento che AGISCE, tiene la
+    // carta ai movimenti). Il paletto giusto non e' 'nessuna mobile' ma 'nessun movimento che agisce' (mosso.v).
+    if (!mosso.v && _vuotaAbbandonata && c.vuotaPerde !== false)
+      return vince(ALTRA[_vuotaAbbandonata], NOME[_vuotaAbbandonata] + ' è vuot' + (_vuotaAbbandonata === 'S' ? 'o' : 'a') + ' e ferm' + (_vuotaAbbandonata === 'S' ? 'o' : 'a') + ', nessuna bestia l' + (_vuotaAbbandonata === 'S' ? 'o' : 'a') + ' fa uscire dal vuoto e nessun movimento agisce: vince l\'altra sede', 1);
     // IL VICINO VIBRANTE DANNEGGIA LA SEDE UNTIMELY (Edu, 13/10/2026, S56, EURUSD 15/02/2024 s107: "Il problema per S
     // in questa carta è che S è untimely e L1 è molto vibrante e clashato dal giorno (la cui bestia occupa la stessa
     // posizione) e, data la vicinanza, questa linea danneggia irremediabilmente S che non può vincere"): quando nessun
