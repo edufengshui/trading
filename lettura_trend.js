@@ -1013,6 +1013,33 @@
         }
       }
     }
+    // LA COMBINAZIONE TOTALE DEL TRIGRAMMA, PORTATA DAL LY (Edu, 05/10/2026, USDCAD 14/08/2026 s139: le tre coppie
+    // linea/futuro di un trigramma sono tutte 六合 e una sua linea si muove -> il trigramma e' bloccato e non puo'
+    // vincere; S53, USDCAD 18/03/2020: "agisce solo quando non ci sono movimenti di linee piu' netti" -> qui, solo se
+    // nessun movimento ha agito). Vince la sede dell'altro trigramma. Col trigramma ALTO bloccato e la sede del basso
+    // vuota (Edu, USDJPY 06/09/2022 s140: "il trigramma inferiore sta messo peggio, chi decide e' la linea piu' forte
+    // dell'esagramma") decide la linea piu' forte (di stagione, sul ramo del mese o del giorno), col suo campo.
+    // Cablata da Claude dal LY il 13/10/2026 (EURUSD 31/01/2024 s108). c.combTot === false spegne.
+    if (!mosso.v && c.combTot !== false && (R.mutante.futuro || []).length) {
+      var FcT = R.mutante.futuro, mosT = [R.mutante.pos].concat(R.incompatibili || []), bloT = [];
+      [[1, 2, 3], [4, 5, 6]].forEach(function (tr) {
+        if (!tr.some(function (q) { return mosT.indexOf(q) >= 0; })) return;
+        if (tr.every(function (q) { return COMBINA[R.linee[q - 1].ramo] === FcT[q - 1]; })) bloT.push(tr[0]);
+      });
+      if (bloT.length === 1) {
+        var kBl = campo(bloT[0]), kLib = ALTRA[kBl];
+        dire('il trigramma ' + (bloT[0] === 4 ? 'alto' : 'basso') + ' e il suo trasformato sono in combinazione totale e una sua linea si muove: è bloccato, ' + NOME[kBl] + ' non può vincere');
+        if (bloT[0] === 4 && (SEDE[kLib].vuoto || SEDE[kLib].vuotoDiStagione)) {
+          var fzT = R.linee.map(function (Lx) { if (Lx.vuoto) return -9; var ex = WX[Lx.ramo], f = ex === mE ? 2 : GEN[mE] === ex ? 1 : -9; if (f < 0) return -9; if (Lx.ramo === c.monthBranch) f++; if (dB && (Lx.ramo === dB || dEl === ex)) f++; return f; });
+          var mxT = Math.max.apply(null, fzT);
+          if (mxT > 0 && fzT.filter(function (v) { return v === mxT; }).length === 1 && campo(R.linee[fzT.indexOf(mxT)].pos) !== kBl) {   // la piu' forte nel trigramma bloccato e' bloccata anche lei
+            var LT0 = R.linee[fzT.indexOf(mxT)];
+            return vince(campo(LT0.pos), 'il basso sta messo peggio (' + NOME[kLib] + ' vuot' + (kLib === 'S' ? 'o' : 'a') + '): decide la linea più forte, L' + LT0.pos + ' ' + LT0.ramo, 1);
+          }
+        }
+        return vince(kLib, 'il trigramma di ' + NOME[kBl] + ' è bloccato dalla combinazione totale: vince ' + NOME[kLib], 1);
+      }
+    }
     // LA VUOTA ABBANDONATA PERDE QUANDO I MOVIMENTI NON AGISCONO (Edu, s107 08/06/2023: la mobile che si penalizzava
     // da sola non salvava la Ying vuota; EURUSD 26/08/2026 s116: la tomba dello Shi, un movimento che AGISCE, tiene la
     // carta ai movimenti). Il paletto giusto non e' 'nessuna mobile' ma 'nessun movimento che agisce' (mosso.v).
