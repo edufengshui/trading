@@ -1006,6 +1006,30 @@
     // LA VUOTA ABBANDONATA PERDE QUANDO I MOVIMENTI NON AGISCONO (Edu, s107 08/06/2023: la mobile che si penalizzava
     // da sola non salvava la Ying vuota; EURUSD 26/08/2026 s116: la tomba dello Shi, un movimento che AGISCE, tiene la
     // carta ai movimenti). Il paletto giusto non e' 'nessuna mobile' ma 'nessun movimento che agisce' (mosso.v).
+    // PRIMA DI DARLA PER PERSA, LE BESTIE DAL SUO LATO (dottrina di Edu, USDCAD 26/11/2021 s126: "Le due linee sono
+    // inservibili, non c'è altro che si muove per cui intervengono le bestie sul lato S perché Y è comunque funzionale"):
+    // la sede vuota e ferma e' inservibile e nessun movimento agisce, quindi intervengono le bestie dal suo lato con la
+    // stessa grammatica della via c) — pilastri in ordine col ramo non vuoto, la nativa generata resta, altrimenti la
+    // linea diventa il ramo del pilastro; chi viene generato vince, chi controlla vince; bestie in disaccordo non
+    // aiutano; non vincono contro una sede molto di stagione. Applicata da Claude dal corpus (EURJPY 30/07/2024 s166).
+    if (!mosso.v && _vuotaAbbandonata && c.vuotaPerde !== false && c.bestieLatoVuota === true) {   // SPENTA: estensione di Claude, non chiude la carta
+      var kx2 = _vuotaAbbandonata, inserv2 = chi.map(function (m) { return m.pos; });
+      var pilL2 = [['dell\'anno', c.yearStem, c.yearBranch], ['del mese', c.monthStem, c.monthBranch], ['del giorno', c.dayStem, dB], ['dell\'ora', c.hourStem, c.oraBranch]].filter(function (p) { return p[1] && p[2] && vuoti.indexOf(p[2]) < 0; });
+      var presaL2 = null, eAltra2 = WX[SEDE[ALTRA[kx2]].ramo];
+      pilL2.forEach(function (p) {
+        if (presaL2) return;
+        var Lx = R.linee.filter(function (L) { return campo(L.pos) === kx2 && inserv2.indexOf(L.pos) < 0 && L.pos !== POS[kx2] && L.bestia && L.bestia.cn === BESTIA_STELO[p[1]]; })[0];
+        if (!Lx) return;
+        var eP = WX[p[2]], eN = WX[Lx.ramo], nativa = GEN[eP] === eN, eA = nativa ? eN : eP, chiA = nativa ? 'la nativa ' + Lx.ramo + ', generata da ' + p[2] + ',' : 'L' + Lx.pos + ', diventata ' + p[2] + ',';
+        var tutti = pilL2.filter(function (q) { return Lx.bestia.cn === BESTIA_STELO[q[1]]; });
+        if (tutti.some(function (q) { return GEN[WX[q[2]]] === eN; }) && tutti.some(function (q) { return KE[WX[q[2]]] === eN; })) { dire('su L' + Lx.pos + ' cadono bestie in disaccordo: non aiutano'); presaL2 = { nulla: true }; return; }
+        var vA = GEN[eAltra2] === eA || KE[eA] === eAltra2, vB = GEN[eA] === eAltra2 || KE[eAltra2] === eA;
+        if (vA && !vB && eAltra2 === mE) { dire(NOME[ALTRA[kx2]] + ' è molto di stagione: la bestia non basta'); presaL2 = { nulla: true }; return; }
+        if (vA && !vB) presaL2 = { vince: kx2, t: 'la bestia ' + p[0] + ' prende L' + Lx.pos + ': ' + chiA + ' vince il confronto con ' + NOME[ALTRA[kx2]] };
+        else if (vB && !vA) presaL2 = { vince: ALTRA[kx2], t: 'la bestia ' + p[0] + ' prende L' + Lx.pos + ': ' + chiA + ' perde il confronto con ' + NOME[ALTRA[kx2]] };
+      });
+      if (presaL2 && !presaL2.nulla) { dire(NOME[kx2] + ' è vuot' + (kx2 === 'S' ? 'o' : 'a') + ', ferm' + (kx2 === 'S' ? 'o' : 'a') + ' e nessun movimento agisce: intervengono le bestie dal suo lato'); return vince(presaL2.vince, presaL2.t, 1); }
+    }
     if (!mosso.v && _vuotaAbbandonata && c.vuotaPerde !== false)
       return vince(ALTRA[_vuotaAbbandonata], NOME[_vuotaAbbandonata] + ' è vuot' + (_vuotaAbbandonata === 'S' ? 'o' : 'a') + ' e ferm' + (_vuotaAbbandonata === 'S' ? 'o' : 'a') + ', nessuna bestia l' + (_vuotaAbbandonata === 'S' ? 'o' : 'a') + ' fa uscire dal vuoto e nessun movimento agisce: vince l\'altra sede', 1);
     // IL VICINO VIBRANTE DANNEGGIA LA SEDE UNTIMELY (Edu, 13/10/2026, S56, EURUSD 15/02/2024 s107: "Il problema per S
