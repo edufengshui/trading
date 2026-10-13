@@ -805,7 +805,11 @@
         // USDJPY 21/10/2024 s149: li' L2 e' legata alla propria nascosta Yin eppure "L2 parla per lui"): se fra i
         // movimenti non c'e' un sostituto, la mobile del campo ferma SOLO da quel legame parla lo stesso.
         if (!so3 && R.mutante.pos && campo(R.mutante.pos) === vfk[0] && R.mutante.pos !== POS[vfk[0]] && R.mutante.ramoArr &&
-            !arrVuoto(R.mutante.ramoArr) && R.mutante.movimentoNullo && /hidden line/.test(R.mutante.motivoNullo || ''))
+            !arrVuoto(R.mutante.ramoArr) && R.mutante.movimentoNullo && (/hidden line/.test(R.mutante.motivoNullo || '') ||
+            // anche la mobile del campo SOSPESA DAL GIORNO parla per la sede vuota (Edu, 13/10/2026, GBPUSD 17/05/2022
+            // s123: "una linea mobile del suo campo può fare la differenza. Qui L5 si muove e vince contro S" — L5 W
+            // Zi col giorno Wu sulla partenza, arrivo Si generato dallo Shi Mao: vince il campo della Ying)
+            (c.sostSospesa !== false && /suspended by the day/.test(R.mutante.motivoNullo || ''))))
           so3 = sostituto(vfk[0], { pos: R.mutante.pos, dep: R.mutante.ramoDep, arr: R.mutante.ramoArr, retro: false, incArr: false, mobile: true });
         // SENZA SOCCORSO, LA VUOTA FERMA PERDE (Edu, 12/10/2026, S56, EURUSD 08/06/2023 s107: "Y è vuoto, la bestia
         // dell'anno viene in soccorso ma non può fare niente per aiutare. L6 si muove per penalizzarsi. S vince").
