@@ -775,14 +775,18 @@
       // di Xu, eppure "Y è vuoto"): per PARLARE il vuoto resta vuoto, come per ricevere il flusso; e' il movimento che
       // esce dal vuoto di stagione, non la voce della sede ferma. Il giorno che clasha il ramo la libera.
       var vuotaFerma = function (k) { return (SEDE[k].vuoto || SEDE[k].vuotoDiStagione || R.vuoti.indexOf(SEDE[k].ramo) >= 0) && !(dB && CLASH[dB] === SEDE[k].ramo) && !sedeMossa(k); };
-      // SPAZZATA DAL DOPPIO CLASH MA SALVATA DALLA BESTIA: VINCE (Edu, 12/10/2026, S56, EURJPY 25/01/2024 s160:
-      // "Both day and moving line clashes Y so it seems it's wiped away, however the year beast comes and introduce
-      // wood which saves Y. And wins"): la sede vuota e ferma clashata DUE volte — dal giorno e dall'arrivo della
-      // mobile (qui il clash del giorno non la libera: in due la spazzano) — sembra finita; ma se la bestia di un
-      // pilastro cade su di lei e il ramo del pilastro la GENERA, quel soffio la salva, e la salvata VINCE.
-      // c.salvataDoppioClash === false spegne.
+      // IL DOPPIO CLASH (Edu, 13/10/2026, S56: "Il clash la libera dal vuoto, ma due clash se la linea è timely la
+      // fanno attivare"): UN clash libera la vuota dal vuoto; DUE clash — dal giorno e dall'arrivo della mobile —
+      // ATTIVANO la linea se e' timely, la SPAZZANO se e' untimely. La spazzata puo' essere salvata solo dalla bestia
+      // di un pilastro il cui ramo la genera, e la salvata VINCE (EURJPY 25/01/2024 s160: la Ying Wu untimely nel mese
+      // di Chou, spazzata da giorno e mobile, salvata dal Legno dell'anno, vince). PERIMETRO DI CLAUDE: 'attivata'
+      // per ora significa che non e' trattata come vuota ferma (resta in gioco); la forma piena dell'attivazione
+      // aspetta una carta di Edu. c.salvataDoppioClash === false spegne.
+      var attivata = {};
       if (c.salvataDoppioClash !== false && dB && R.mutante.ramoArr) {
-        var kDC = ['S', 'Y'].filter(function (k) { var L = SEDE[k]; return (L.vuoto || L.vuotoDiStagione) && !sedeMossa(k) && CLASH[dB] === L.ramo && CLASH[R.mutante.ramoArr] === L.ramo && R.mutante.pos !== POS[k]; })[0];
+        var kDC2 = ['S', 'Y'].filter(function (k) { var L = SEDE[k]; return (L.vuoto || L.vuotoDiStagione) && !sedeMossa(k) && CLASH[dB] === L.ramo && CLASH[R.mutante.ramoArr] === L.ramo && R.mutante.pos !== POS[k]; })[0];
+        var kDC = kDC2 && !timely(SEDE[kDC2]) ? kDC2 : null;
+        if (kDC2 && timely(SEDE[kDC2])) { attivata[kDC2] = true; dire('due clash su ' + NOME[kDC2] + ' timely: si attiva, esce dal vuoto'); }
         if (kDC) {
           var LDC = SEDE[kDC];
           var pilDC = [['dell\'anno', c.yearStem, c.yearBranch], ['del mese', c.monthStem, c.monthBranch], ['del giorno', c.dayStem, dB], ['dell\'ora', c.hourStem, c.oraBranch]].filter(function (p) { return p[1] && p[2]; });
@@ -790,7 +794,7 @@
           if (salvaDC) return vince(kDC, 'il giorno e l\'arrivo della mobile clashano ' + NOME[kDC] + ': sembra spazzat' + (kDC === 'S' ? 'o' : 'a') + ' via, ma la bestia ' + salvaDC[0] + ' porta ' + salvaDC[2] + ' che l' + (kDC === 'S' ? 'o' : 'a') + ' genera: salvat' + (kDC === 'S' ? 'o' : 'a') + ', vince', 1);
         }
       }
-      var vfk = ['S', 'Y'].filter(function (k) { return vuotaFerma(k) && !vuotaFerma(ALTRA[k]); });
+      var vfk = ['S', 'Y'].filter(function (k) { return !attivata[k] && vuotaFerma(k) && !vuotaFerma(ALTRA[k]); });
       if (vfk.length === 1) { var so3 = sostituto(vfk[0]);
         // la voce della sede vuota non e' tolta dal legame della mobile con la sua linea nascosta (Edu, 12/10/2026,
         // USDJPY 21/10/2024 s149: li' L2 e' legata alla propria nascosta Yin eppure "L2 parla per lui"): se fra i
