@@ -1006,6 +1006,17 @@
     // LA VUOTA ABBANDONATA PERDE QUANDO I MOVIMENTI NON AGISCONO (Edu, s107 08/06/2023: la mobile che si penalizzava
     // da sola non salvava la Ying vuota; EURUSD 26/08/2026 s116: la tomba dello Shi, un movimento che AGISCE, tiene la
     // carta ai movimenti). Il paletto giusto non e' 'nessuna mobile' ma 'nessun movimento che agisce' (mosso.v).
+    // LA NASCOSTA FA DA PONTE E DIFENDE LA SEDE VUOTA (Edu, 13/10/2026, S56, EURJPY 30/07/2024 s166: "S è vuota quindi la
+    // sua difesa contro Y va affidata a qualcos'altro nel suo campo. L1 ha la nascosta Zi che fa da ponte fra Y ed L1 ed
+    // aiuta S a vincere"): prima di dare per persa la sede vuota e ferma, si cerca nel suo campo una linea non vuota con
+    // una NASCOSTA che fa da ponte di generazione dall'altra sede a quella linea (altra -> nascosta -> linea: li' Shen
+    // Metallo -> Zi Acqua -> Yin Legno). La forza dell'altra sede scorre nel campo della vuota, che vince.
+    // c.pontNascosta === false spegne.
+    if (!mosso.v && _vuotaAbbandonata && c.vuotaPerde !== false && c.pontNascosta !== false) {
+      var kPN = _vuotaAbbandonata, eAPN = WX[SEDE[ALTRA[kPN]].ramo];
+      var LPN = R.linee.filter(function (L) { return campo(L.pos) === kPN && L.pos !== POS[kPN] && !L.vuoto && L.fushen && L.fushen.b && GEN[eAPN] === WX[L.fushen.b] && GEN[WX[L.fushen.b]] === WX[L.ramo]; })[0];
+      if (LPN) return vince(kPN, NOME[kPN] + ' è vuot' + (kPN === 'S' ? 'o' : 'a') + ': la difende L' + LPN.pos + ' del suo campo, la cui nascosta ' + LPN.fushen.b + ' fa da ponte fra ' + NOME[ALTRA[kPN]] + ' e L' + LPN.pos + ': vince il campo di ' + NOME[kPN], 1);
+    }
     // PRIMA DI DARLA PER PERSA, LE BESTIE DAL SUO LATO (dottrina di Edu, USDCAD 26/11/2021 s126: "Le due linee sono
     // inservibili, non c'è altro che si muove per cui intervengono le bestie sul lato S perché Y è comunque funzionale"):
     // la sede vuota e ferma e' inservibile e nessun movimento agisce, quindi intervengono le bestie dal suo lato con la
