@@ -935,6 +935,23 @@
     // (li' la Ying era 'molto piu' forte' nel mese e nel giorno, ma lo Shi Mao Legno controlla la Ying Xu Terra e vince).
     // PERIMETRO DI CLAUDE, da confermare: simmetrico (anche la Ying che controlla lo Shi vince); solo se nessun
     // movimento ha mosso i punti. c.confrontoFermo === false spegne.
+    // IL GEMITO NUTRE LA NASCOSTA, CHE FA LA SFIDA (Edu, 13/10/2026, S56, NZDUSD 13/03/2025 s57: "L3 in autopenalità
+    // non si può usare. L2 Yin forte che però genera la nascosta P w che perde la sfida con Y"): la sede mobile che
+    // arriva sul proprio stesso ramo (伏吟, il gemito) non agisce fuori: la sua forza scorre nella propria NASCOSTA,
+    // se il suo elemento la genera. La nascosta attivata fa la sfida con l'altra sede: chi controlla vince — se
+    // l'altra sede controlla la nascosta, vince l'altra; se la nascosta controlla l'altra sede, vince il campo della
+    // sede gemente. c.gemitoNascosta === false spegne.
+    if (!mosso.v && c.gemitoNascosta !== false && R.mutante.ramoArr) {
+      var kGem = ['S', 'Y'].filter(function (k) { return R.mutante.pos === POS[k] && R.mutante.ramoArr === SEDE[k].ramo && SEDE[k].fushen && SEDE[k].fushen.b; })[0];
+      if (kGem) {
+        var fuE = WX[SEDE[kGem].fushen.b], oGem = SEDE[ALTRA[kGem]];
+        if (GEN[WX[SEDE[kGem].ramo]] === fuE) {
+          dire(NOME[kGem] + ' si muove per restare ' + SEDE[kGem].ramo + ': il gemito nutre la sua nascosta ' + SEDE[kGem].fushen.b);
+          if (KE[WX[oGem.ramo]] === fuE) return vince(ALTRA[kGem], 'la nascosta ' + SEDE[kGem].fushen.b + ' perde la sfida con ' + NOME[ALTRA[kGem]] + ', che la controlla: vince', 2);
+          if (KE[fuE] === WX[oGem.ramo]) return vince(kGem, 'la nascosta ' + SEDE[kGem].fushen.b + ' vince la sfida con ' + NOME[ALTRA[kGem]] + ', che controlla', 2);
+        }
+      }
+    }
     // IL VICINO VIBRANTE DANNEGGIA LA SEDE UNTIMELY (Edu, 13/10/2026, S56, EURUSD 15/02/2024 s107: "Il problema per S
     // in questa carta è che S è untimely e L1 è molto vibrante e clashato dal giorno (la cui bestia occupa la stessa
     // posizione) e, data la vicinanza, questa linea danneggia irremediabilmente S che non può vincere"): quando nessun
