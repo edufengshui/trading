@@ -831,9 +831,11 @@
           var kV = vfk[0], LV = SEDE[kV];
           var pilV = [['dell\'anno', c.yearStem, c.yearBranch], ['del mese', c.monthStem, c.monthBranch], ['del giorno', c.dayStem, dB], ['dell\'ora', c.hourStem, c.oraBranch]].filter(function (p) { return p[1] && p[2]; });
           var salva = pilV.filter(function (p) { return LV.bestia && LV.bestia.cn && BESTIA_STELO[p[1]] === LV.bestia.cn && GEN[WX[p[2]]] === WX[LV.ramo]; })[0];
-          // la bestia della linea, se esiste nella data, ne prende possesso e la fa muovere (Edu, 13/10/2026): anche
-          // senza la generazione del ramo, la sede vuota presa da una bestia non e' abbandonata. c.bestiaPrende=false spegne.
-          var presaV = !salva && c.bestiaPrende !== false && pilV.filter(function (p) { return LV.bestia && LV.bestia.cn && BESTIA_STELO[p[1]] === LV.bestia.cn; })[0];
+          // CORRETTO DA EDU (13/10/2026): la bestia fa muovere la linea "solo se è già una linea mobile oppure è
+          // clashata dal giorno o dall'ora". La sede vuota e FERMA non clashata (qui siamo in quel caso: la clashata dal
+          // giorno o dall'ora esce dal vuoto e non arriva qui) non viene mossa dalla bestia: resta la sola via della
+          // bestia il cui ramo la genera (esce dal vuoto, s107). c.bestiaPrende === 'larga' riapre la forma larga.
+          var presaV = !salva && c.bestiaPrende === 'larga' && pilV.filter(function (p) { return LV.bestia && LV.bestia.cn && BESTIA_STELO[p[1]] === LV.bestia.cn; })[0];
           if (salva) dire('la bestia ' + salva[0] + ' cade su ' + NOME[kV] + ' e ' + salva[2] + ' l' + (kV === 'S' ? 'o' : 'a') + ' genera: esce dal vuoto');
           else if (presaV) dire('la bestia ' + presaV[0] + ' prende possesso di ' + NOME[kV] + ' vuot' + (kV === 'S' ? 'o' : 'a') + ' e l' + (kV === 'S' ? 'o' : 'a') + ' fa muovere: non è abbandonat' + (kV === 'S' ? 'o' : 'a'));
           if (!salva && !presaV) _vuotaAbbandonata = kV;   // il verdetto arriva solo se i movimenti non agiscono (vedi la catena quieta)
