@@ -594,7 +594,15 @@
       chi.push({ pos: mob.pos, dep: dep, arr: arr, retro: R.mutante.progressione === 'retrocedente', incArr: R.mutante.casoMut === -5, mobile: true });
     inc.forEach(function (p) {
       var L = R.linee[p - 1], a = fut[p - 1]; if (!L || !a || a === L.ramo) return;
-      var lg = legata(L.ramo); if (lg) { dire('l\'incompatibile L' + p + ' è combinata alla partenza dal ' + lg + ': non gira'); return; }
+      var lg = legata(L.ramo);
+      // l'incompatibile combinata alla partenza da UN SOLO ramo della data gira lo stesso; solo combinata due volte resta
+      // ferma (Edu, 18/09/2026: "se l'incompatibile e' combinata due volte, il legame e' troppo forte e rimane ferma";
+      // 13/10/2026, EURJPY 07/08/2024 s158: "S si muove per diventare Chen", con lo Shi Wu combinato dal solo mese Wei).
+      // c.incLegataUna === false torna alla forma vecchia (combinata una volta = non gira).
+      var preseInc = [dB, c.monthBranch, c.yearBranch, c.oraBranch].filter(function (b) { return b && COMBINA[b] === L.ramo; }).length;
+      // PERIMETRO DI CLAUDE, da confermare: la combinazione del GIORNO la tiene ferma anche da sola (AUDUSD 05/10/2026
+      // s69, lo Shi Chou combinato dal giorno Zi, lettura di Edu che non gira); quella del solo mese no (s158).
+      if (lg && (c.incLegataUna === false || preseInc >= 2 || (dB && COMBINA[dB] === L.ramo))) { dire('l\'incompatibile L' + p + ' è combinata alla partenza ' + (preseInc >= 2 ? 'due volte' : 'dal ' + lg) + ': non gira'); return; }
       chi.push({ pos: p, dep: L.ramo, arr: a, retro: RETRO[L.ramo] === a, incArr: false, mobile: false });
     });
     // confusione totale di un trigramma: troppa confusione
@@ -1006,6 +1014,29 @@
     // LA VUOTA ABBANDONATA PERDE QUANDO I MOVIMENTI NON AGISCONO (Edu, s107 08/06/2023: la mobile che si penalizzava
     // da sola non salvava la Ying vuota; EURUSD 26/08/2026 s116: la tomba dello Shi, un movimento che AGISCE, tiene la
     // carta ai movimenti). Il paletto giusto non e' 'nessuna mobile' ma 'nessun movimento che agisce' (mosso.v).
+    // LA LINEA PIU' FORTE DELL'ESAGRAMMA DIFENDE IL CAMPO VUOTO (Edu, 13/10/2026, S56, EURJPY 07/08/2024 s158: "Il campo
+    // di Y vuoto viene difeso dalla linea più forte dell'esagramma che è L4, attiva perché clashata dal giorno. S si muove
+    // per diventare Chen che genera L4, neanche L1 che si muove può fare niente per opporsi. Y vince"): se la linea piu'
+    // forte dell'esagramma (stagione nel mese, il ramo del mese, il giorno) sta nel campo della sede vuota e ferma ed e'
+    // attiva — clashata dal giorno o dall'ora — la difende e si confronta con l'altra sede (col suo arrivo, se si muove):
+    // chi viene generato vince, chi controlla vince. c.piuForteDifende === false spegne.
+    if (_vuotaAbbandonata && c.vuotaPerde !== false && c.piuForteDifende !== false && mE) {
+      var kPF = _vuotaAbbandonata;
+      // la linea piu' forte e' cercata fra le linee ATTIVE (clashate dal GIORNO) di stagione: li' L4 You,
+      // Metallo nel mese Wei e clashata dal giorno Mao (la Wei di L5, pur di stagione, e' ferma e non conta)
+      var fzPF = R.linee.map(function (Lx) { if (Lx.vuoto || !(dB && CLASH[dB] === Lx.ramo)) return -9; var ex = WX[Lx.ramo], f = ex === mE ? 2 : GEN[mE] === ex ? 1 : -9; if (f < 0) return -9; if (Lx.ramo === c.monthBranch) f++; if (dB && (Lx.ramo === dB || dEl === ex)) f++; return f; });
+      var mxPF = Math.max.apply(null, fzPF);
+      if (mxPF > 0 && fzPF.filter(function (v) { return v === mxPF; }).length === 1) {
+        var LPF = R.linee[fzPF.indexOf(mxPF)];
+        if (campo(LPF.pos) === kPF && LPF.pos !== POS[kPF]) {
+          var mAlt = chi.filter(function (m) { return m.pos === POS[ALTRA[kPF]]; })[0];
+          var bAlt = mAlt && !arrVuoto(mAlt.arr) ? mAlt.arr : SEDE[ALTRA[kPF]].ramo, eAlt = WX[bAlt], eD = WX[LPF.ramo];
+          var chiAlt = NOME[ALTRA[kPF]] + (mAlt ? ', che si muove in ' + bAlt + ',' : '');
+          if (GEN[eAlt] === eD || KE[eD] === eAlt) return vince(kPF, 'il campo vuoto di ' + NOME[kPF] + ' è difeso da L' + LPF.pos + ', la linea più forte, attiva perché clashata: ' + chiAlt + (GEN[eAlt] === eD ? ' la genera' : ' è controllato da lei') + ', vince il campo di ' + NOME[kPF], 1);
+          if (GEN[eD] === eAlt || KE[eAlt] === eD) return vince(ALTRA[kPF], 'il campo vuoto di ' + NOME[kPF] + ' è difeso da L' + LPF.pos + ', la linea più forte, ma ' + chiAlt + (GEN[eD] === eAlt ? ' è generato da lei' : ' la controlla') + ': vince ' + NOME[ALTRA[kPF]], 1);
+        }
+      }
+    }
     // LA NASCOSTA FA DA PONTE E DIFENDE LA SEDE VUOTA (Edu, 13/10/2026, S56, EURJPY 30/07/2024 s166: "S è vuota quindi la
     // sua difesa contro Y va affidata a qualcos'altro nel suo campo. L1 ha la nascosta Zi che fa da ponte fra Y ed L1 ed
     // aiuta S a vincere"): prima di dare per persa la sede vuota e ferma, si cerca nel suo campo una linea non vuota con
