@@ -811,12 +811,13 @@
             // Zi col giorno Wu sulla partenza, arrivo Si generato dallo Shi Mao: vince il campo della Ying)
             // ...ma solo se una BESTIA se ne impadronisce e la fa muovere (Edu, 13/10/2026: "La bestia dell'ora si
             // impadronisce della linea e la fa muovere"): senza bestia vale la regola del 17/09 — la mobile clashata
-            // alla partenza non puo' muoversi. PERIMETRO DI CLAUDE: le bestie del giorno e dell'ora (i pilastri che
-            // toccano le linee). c.sostSospesa === 'senzaBestia' riapre la forma larga, === false spegne.
+            // alla partenza non puo' muoversi. Edu, 13/10/2026: "La bestia della linea se esiste nella data può prendere
+            // possesso di una linea vuota o di una linea bloccata e farla muovere se questo aiuta a sbloccare la
+            // situazione" — la bestia di QUALUNQUE pilastro. c.sostSospesa === 'senzaBestia' riapre, === false spegne.
             (c.sostSospesa !== false && /suspended by the day/.test(R.mutante.motivoNullo || '') &&
-             (c.sostSospesa === 'senzaBestia' || [c.dayStem, c.hourStem].some(function (st) { return st && mob.bestia && mob.bestia.cn && BESTIA_STELO[st] === mob.bestia.cn; })))))
+             (c.sostSospesa === 'senzaBestia' || [c.yearStem, c.monthStem, c.dayStem, c.hourStem].some(function (st) { return st && mob.bestia && mob.bestia.cn && BESTIA_STELO[st] === mob.bestia.cn; })))))
           { so3 = sostituto(vfk[0], { pos: R.mutante.pos, dep: R.mutante.ramoDep, arr: R.mutante.ramoArr, retro: false, incArr: false, mobile: true });
-            if (so3 && /suspended by the day/.test(R.mutante.motivoNullo || '')) dire('la bestia ' + ([c.dayStem, c.hourStem].map(function (st, i) { return st && mob.bestia && BESTIA_STELO[st] === mob.bestia.cn ? (i ? 'dell\'ora' : 'del giorno') : null; }).filter(Boolean)[0] || 'di un pilastro') + ' si impadronisce di L' + R.mutante.pos + ', sospesa, e la fa muovere'); }
+            if (so3 && /suspended by the day/.test(R.mutante.motivoNullo || '')) dire('la bestia ' + ([c.yearStem, c.monthStem, c.dayStem, c.hourStem].map(function (st, i) { return st && mob.bestia && BESTIA_STELO[st] === mob.bestia.cn ? ['dell\'anno', 'del mese', 'del giorno', 'dell\'ora'][i] : null; }).filter(Boolean)[0] || 'di un pilastro') + ' si impadronisce di L' + R.mutante.pos + ', bloccata, e la fa muovere'); }
         // SENZA SOCCORSO, LA VUOTA FERMA PERDE (Edu, 12/10/2026, S56, EURUSD 08/06/2023 s107: "Y è vuoto, la bestia
         // dell'anno viene in soccorso ma non può fare niente per aiutare. L6 si muove per penalizzarsi. S vince").
         // CORRETTO DA EDU (12/10/2026): "la bestia FA USCIRE DAL VUOTO, ma in questo caso la bestia dell'anno Gui Mao
@@ -830,8 +831,12 @@
           var kV = vfk[0], LV = SEDE[kV];
           var pilV = [['dell\'anno', c.yearStem, c.yearBranch], ['del mese', c.monthStem, c.monthBranch], ['del giorno', c.dayStem, dB], ['dell\'ora', c.hourStem, c.oraBranch]].filter(function (p) { return p[1] && p[2]; });
           var salva = pilV.filter(function (p) { return LV.bestia && LV.bestia.cn && BESTIA_STELO[p[1]] === LV.bestia.cn && GEN[WX[p[2]]] === WX[LV.ramo]; })[0];
+          // la bestia della linea, se esiste nella data, ne prende possesso e la fa muovere (Edu, 13/10/2026): anche
+          // senza la generazione del ramo, la sede vuota presa da una bestia non e' abbandonata. c.bestiaPrende=false spegne.
+          var presaV = !salva && c.bestiaPrende !== false && pilV.filter(function (p) { return LV.bestia && LV.bestia.cn && BESTIA_STELO[p[1]] === LV.bestia.cn; })[0];
           if (salva) dire('la bestia ' + salva[0] + ' cade su ' + NOME[kV] + ' e ' + salva[2] + ' l' + (kV === 'S' ? 'o' : 'a') + ' genera: esce dal vuoto');
-          else _vuotaAbbandonata = kV;   // il verdetto arriva solo se i movimenti non agiscono (vedi la catena quieta)
+          else if (presaV) dire('la bestia ' + presaV[0] + ' prende possesso di ' + NOME[kV] + ' vuot' + (kV === 'S' ? 'o' : 'a') + ' e l' + (kV === 'S' ? 'o' : 'a') + ' fa muovere: non è abbandonat' + (kV === 'S' ? 'o' : 'a'));
+          if (!salva && !presaV) _vuotaAbbandonata = kV;   // il verdetto arriva solo se i movimenti non agiscono (vedi la catena quieta)
         }
         if (so3) { dire(NOME[vfk[0]] + ' è vuot' + (vfk[0] === 'S' ? 'o' : 'a') + ' e ferm' + (vfk[0] === 'S' ? 'o' : 'a') + ': non parla da sol' + (vfk[0] === 'S' ? 'o' : 'a')); return vince(so3.vince, so3.t, 1); } }
     }
