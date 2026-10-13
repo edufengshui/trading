@@ -551,6 +551,19 @@
         vuoti: (R.vuoti || []).filter(function (b) { return !diStag(b); })
       });
     }
+    // L'ORA RIEMPIE IL VUOTO (Edu, 13/10/2026, S56, USDCHF 09/05/2022 s98: "Poiché l'ora è Chou, S non è vuoto"): la linea
+    // che porta il ramo dell'ora non e' vuota. Perimetro stretto, come sulla carta: solo la SEDE (Shi o Ying) e solo se di
+    // stagione nel mese (li' Chou Terra nel mese Si). Va contro "dal vuoto si esce solo col clash" (08/09) e "il ramo vuoto
+    // che e' anche il ramo del mese E dell'anno e' riempito" (14/09): segnalato a Edu. Misura al cablaggio: 14 carte
+    // cambiano, 4 migliorano e 10 peggiorano. c.oraRiempie === false spegne; === 'linee' tutte le linee di stagione;
+    // === 'sempre' anche fuori stagione; === 'tutto' toglie il ramo dell'ora anche dai vuoti degli arrivi.
+    if (c.oraRiempie !== false && c.oraBranch) {
+      var _oB = c.oraBranch;
+      R = Object.assign({}, R, {
+        linee: R.linee.map(function (L) { return (L.vuoto && L.ramo === _oB && (c.oraRiempie === 'linee' || c.oraRiempie === 'sempre' || L.pos === R.shi || L.pos === R.ying) && (c.oraRiempie === 'sempre' || diStag(L.ramo))) ? Object.assign({}, L, { vuoto: false, vuotoDiStagione: false, riempitaDallOra: true }) : L; }),
+        vuoti: c.oraRiempie === 'tutto' ? (R.vuoti || []).filter(function (b) { return b !== _oB; }) : R.vuoti
+      });
+    }
     var S = R.linee[R.shi - 1], Y = R.linee[R.ying - 1], mob = R.linee[R.mutante.pos - 1];
     var SEDE = { S: S, Y: Y }, POS = { S: R.shi, Y: R.ying }, NOME = { S: 'lo Shi', Y: 'la Ying' }, ALTRA = { S: 'Y', Y: 'S' };
     var mE = c.monthBranch ? WX[c.monthBranch] : null, dB = c.dayBranch, dEl = dB ? WX[dB] : null;
@@ -718,7 +731,7 @@
       // va in competizione con lo Shi) non puo' essere generata, e la linea passa alla competizione.
       // CONFERMATO (Edu, 12/10/2026): "se è vuota e ferma non riceve anche se timely" — la sede vuota che pero' si
       // MUOVE timely e' uscita dal vuoto (vuotoDiStagione) e riceve.
-      if (GEN[aE] === WX[SEDE[k].ramo] && !SEDE[k].vuoto && vuoti.indexOf(SEDE[k].ramo) < 0)
+      if (GEN[aE] === WX[SEDE[k].ramo] && !SEDE[k].vuoto && (SEDE[k].riempitaDallOra || vuoti.indexOf(SEDE[k].ramo) < 0))
         return { vince: k, t: 'L' + m.pos + ' si muove in ' + m.arr + ' per generare la propria sede: vince il suo campo' };
       // nell'ordine di Edu (combinare, clashare, generare) lo scontro col clash viene prima: USDJPY 10/08/2026 s157 ("L1 si
       // muove per clashare L4 ... essendo L4 molto più forte vince lo scontro facendo vincere Y")
@@ -803,7 +816,7 @@
       // il clash che libera dal vuoto viene SOLO dal giorno e dall'ora (Edu, 13/10/2026, EURJPY 23/07/2024 s170:
       // "S è clashato dall'ora ed esce dal vuoto"; e correzione: "No, solo dal giorno e dall'ora" — non da mese o anno)
       var _clashData = function (b) { return [dB, c.oraBranch].some(function (p) { return p && CLASH[p] === b; }); };
-      var vuotaFerma = function (k) { return (SEDE[k].vuoto || SEDE[k].vuotoDiStagione || R.vuoti.indexOf(SEDE[k].ramo) >= 0) && !_clashData(SEDE[k].ramo) && !sedeMossa(k); };
+      var vuotaFerma = function (k) { return !SEDE[k].riempitaDallOra && (SEDE[k].vuoto || SEDE[k].vuotoDiStagione || R.vuoti.indexOf(SEDE[k].ramo) >= 0) && !_clashData(SEDE[k].ramo) && !sedeMossa(k); };
       // IL DOPPIO CLASH (Edu, 13/10/2026, S56: "Il clash la libera dal vuoto, ma due clash se la linea è timely la
       // fanno attivare"): UN clash libera la vuota dal vuoto; DUE clash — dal giorno e dall'arrivo della mobile —
       // ATTIVANO la linea se e' timely, la SPAZZANO se e' untimely. La spazzata puo' essere salvata solo dalla bestia
@@ -1011,7 +1024,13 @@
           if (!L.vuoto && TOMBA[e] === m.arr) colpisci(k, 1, 'L' + m.pos + ' si muove per diventare la tomba di ' + NOME[k]);
           if (!L.vuoto && TRINE[m.arr] && TRINE[m.arr].indexOf(L.ramo) >= 0 && L.ramo !== m.arr) {
             var t3 = TRINE[m.arr].filter(function (b) { return b !== m.arr && b !== L.ramo; })[0];
-            if (t3 === c.monthBranch || t3 === dB) { pt[k] += segnoNutri(L); dire('l\'arrivo ' + m.arr + ' chiude il trigono con ' + NOME[k] + ' e il ' + (t3 === c.monthBranch ? 'mese' : 'giorno')); }
+            // Edu, 13/10/2026, S56, USDCHF 09/05/2022 s98: "L5 avanza per diventare una forte You la quale sostiene la parte
+            // contraria formando un trigono di metallo con L1 e S ... Il trigono di metallo drena Y": il terzo ramo puo' essere
+            // anche una LINEA non vuota (li' L1 Si), e il trigono sostiene la sede che ne fa parte qualunque sia il suo
+            // carattere (nel metodo del trend i caratteri non contano: li' lo Shi e' una P). c.trigonoSede === false torna
+            // alla forma vecchia (solo mese/giorno, P/B rovesciata).
+            var t3L = c.trigonoSede !== false && R.linee.filter(function (Lx) { return Lx.ramo === t3 && Lx.pos !== m.pos && Lx.pos !== L.pos && !Lx.vuoto; })[0];
+            if (t3 === c.monthBranch || t3 === dB || t3L) { pt[k] += c.trigonoSede !== false ? 1 : segnoNutri(L); dire('l\'arrivo ' + m.arr + ' chiude il trigono con ' + NOME[k] + ' e ' + (t3 === c.monthBranch ? 'il mese' : t3 === dB ? 'il giorno' : 'L' + t3L.pos) + (c.trigonoSede !== false && GEN[WX[SEDE[ALTRA[k]].ramo]] === WX[m.arr] ? ', e drena ' + NOME[ALTRA[k]] : '')); }
           }
         });
         // lo scontro: l'arrivo clasha una linea ferma dell'altro trigramma, vince il piu' forte nel mese e il suo campo

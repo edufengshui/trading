@@ -610,5 +610,17 @@
   "dayBranch": "卯",
   "ema": "down",
   "atteso": "LONG"
+ },
+ {
+  "cross": "USDCHF",
+  "date": "2022-05-09",
+  "seed": 98,
+  "yearStem": "壬",
+  "yearBranch": "寅",
+  "monthBranch": "巳",
+  "dayStem": "壬",
+  "dayBranch": "戌",
+  "ema": "up",
+  "atteso": "LONG"
  }
 ]
