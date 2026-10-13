@@ -824,6 +824,19 @@
         }
       }
       var vfk = ['S', 'Y'].filter(function (k) { return !attivata[k] && vuotaFerma(k) && !vuotaFerma(ALTRA[k]); });
+      // LA SEDE MOLTO TIMELY NUTRITA DALLA LINEA ACCANTO CHE SI MUOVE NON E' VUOTA (Edu, 13/10/2026, S56, GBPUSD 08/09/2022
+      // s115: "Poiché S è molto timely e la linea immediatamente superiore si muove per generarla non può essere
+      // considerata vuota e vince"): la sede vuota e ferma, di stagione nel mese e sostenuta dal giorno (stesso elemento
+      // o generata: li' lo Shi Hai Acqua nel mese You e col giorno Zi), con la linea IMMEDIATAMENTE accanto che si muove
+      // (mobile o incompatibile, anche verso il vuoto) e col suo elemento la genera (li' L4 Shen Metallo -> Hai): non e'
+      // vuota, e vince. c.vicinaGenera === false spegne.
+      if (c.vicinaGenera !== false && vfk.length === 1) {
+        var kVG = vfk[0], LVG = SEDE[kVG], eVG = WX[LVG.ramo];
+        var moltoT = timely(LVG) && !!dEl && (dEl === eVG || GEN[dEl] === eVG);
+        var movVG = [{ pos: R.mutante.pos, dep: dep, legata: !!lm }].concat((R.incompatibili || []).map(function (q) { return { pos: q, dep: R.linee[q - 1].ramo, legata: !!legata(R.linee[q - 1].ramo) }; }));
+        var vic = moltoT && movVG.filter(function (m) { return m.pos && !m.legata && Math.abs(m.pos - POS[kVG]) === 1 && GEN[WX[m.dep]] === eVG; })[0];
+        if (vic) return vince(kVG, NOME[kVG] + ' è vuot' + (kVG === 'S' ? 'o' : 'a') + ' e ferm' + (kVG === 'S' ? 'o' : 'a') + ', ma è molto di stagione (il mese e il giorno ' + dB + ') e L' + vic.pos + ', la linea accanto, si muove e l' + (kVG === 'S' ? 'o' : 'a') + ' genera: non è vuot' + (kVG === 'S' ? 'o' : 'a') + ', vince', 1);
+      }
       _vuotaAbbandonata = null;
       if (vfk.length === 1) { var so3 = sostituto(vfk[0]);
         // la voce della sede vuota non e' tolta dal legame della mobile con la sua linea nascosta (Edu, 12/10/2026,
