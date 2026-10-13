@@ -598,5 +598,17 @@
   "dayBranch": "子",
   "ema": "down",
   "atteso": "SHORT"
+ },
+ {
+  "cross": "USDCHF",
+  "date": "2020-06-29",
+  "seed": 94,
+  "yearStem": "庚",
+  "yearBranch": "子",
+  "monthBranch": "午",
+  "dayStem": "癸",
+  "dayBranch": "卯",
+  "ema": "down",
+  "atteso": "LONG"
  }
 ]

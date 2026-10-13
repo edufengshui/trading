@@ -824,6 +824,29 @@
         }
       }
       var vfk = ['S', 'Y'].filter(function (k) { return !attivata[k] && vuotaFerma(k) && !vuotaFerma(ALTRA[k]); });
+      // IL RADUNO STAGIONALE TIENE LA SEDE FUORI DAL VUOTO (Edu, 13/10/2026, S56, USDCHF 29/06/2020 s94: "L5, L6 e il mese
+      // formano il raduno di fuoco generato anche dal giorno. Y è troppo timely per essere vuoto"): la sede vuota e ferma
+      // il cui ramo chiude un raduno stagionale (三會: 寅卯辰 Legno, 巳午未 Fuoco, 申酉戌 Metallo, 亥子丑 Acqua) con altre
+      // linee non vuote e i rami della data (almeno una linea e un pilastro), raduno di stagione nel mese (stesso elemento
+      // o generato) E GENERATO DAL GIORNO o del suo elemento (li' Mao Legno genera il Fuoco; su EURUSD 08/06/2023 s107,
+      // stesso raduno 巳午未 col giorno You Metallo, Edu legge la Ying vuota che perde), non e' vuota e vince.
+      // c.radunoVuota === false spegne; c.radunoVuota === 'senzaGiorno' toglie la condizione del giorno.
+      if (c.radunoVuota !== false && vfk.length === 1) {
+        var kRV = vfk[0], LRV = SEDE[kRV];
+        var HUI = [[['寅','卯','辰'],'Wood'],[['巳','午','未'],'Fire'],[['申','酉','戌'],'Metal'],[['亥','子','丑'],'Water']];
+        var hui = HUI.filter(function (h) { return h[0].indexOf(LRV.ramo) >= 0; })[0];
+        if (hui && mE && (hui[1] === mE || GEN[mE] === hui[1]) && (c.radunoVuota === 'senzaGiorno' || (dEl && (dEl === hui[1] || GEN[dEl] === hui[1])))) {
+          var pilRV = [c.yearBranch, c.monthBranch, dB, c.oraBranch].filter(Boolean);
+          var altri = hui[0].filter(function (b) { return b !== LRV.ramo; });
+          var daLinea = function (b) { return R.linee.filter(function (L) { return L.pos !== POS[kRV] && L.ramo === b && !L.vuoto && vuoti.indexOf(b) < 0; })[0]; };
+          var inD = function (b) { return pilRV.indexOf(b) >= 0 && vuoti.indexOf(b) < 0; };
+          var okRV = altri.every(function (b) { return daLinea(b) || inD(b); }) &&
+            ((daLinea(altri[0]) && inD(altri[1])) || (daLinea(altri[1]) && inD(altri[0])));
+          var pres = altri.map(function (b, i) { var L = daLinea(b), Lo = daLinea(altri[1 - i]); return (inD(b) && Lo) ? 'data' : L ? 'L' + L.pos : 'data'; });
+          if (okRV)
+            return vince(kRV, NOME[kRV] + ' è vuot' + (kRV === 'S' ? 'o' : 'a') + ' e ferm' + (kRV === 'S' ? 'o' : 'a') + ', ma il suo ramo chiude il raduno ' + hui[0].join('') + ' (' + altri.map(function (b, i) { return b + ' ' + (pres[i] === 'data' ? 'nella data' : 'su ' + pres[i]); }).join(', ') + '), di stagione: troppo forte per essere vuot' + (kRV === 'S' ? 'o' : 'a') + ', vince', 1);
+        }
+      }
       // LA SEDE MOLTO TIMELY NUTRITA DALLA LINEA ACCANTO CHE SI MUOVE NON E' VUOTA (Edu, 13/10/2026, S56, GBPUSD 08/09/2022
       // s115: "Poiché S è molto timely e la linea immediatamente superiore si muove per generarla non può essere
       // considerata vuota e vince"): la sede vuota e ferma, di stagione nel mese e sostenuta dal giorno (stesso elemento
