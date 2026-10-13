@@ -774,9 +774,9 @@
       // la sede ferma nel vuoto della data non parla da sola NEMMENO se di stagione (li' la Ying Chou e' Terra nel mese
       // di Xu, eppure "Y è vuoto"): per PARLARE il vuoto resta vuoto, come per ricevere il flusso; e' il movimento che
       // esce dal vuoto di stagione, non la voce della sede ferma. Il giorno che clasha il ramo la libera.
-      // il clash che libera dal vuoto viene da qualunque pilastro della data, non solo dal giorno (Edu, 13/10/2026,
-      // EURJPY 23/07/2024 s170: "S è clashato dall'ora ed esce dal vuoto")
-      var _clashData = function (b) { return [dB, c.oraBranch, c.monthBranch, c.yearBranch].some(function (p) { return p && CLASH[p] === b; }); };
+      // il clash che libera dal vuoto viene SOLO dal giorno e dall'ora (Edu, 13/10/2026, EURJPY 23/07/2024 s170:
+      // "S è clashato dall'ora ed esce dal vuoto"; e correzione: "No, solo dal giorno e dall'ora" — non da mese o anno)
+      var _clashData = function (b) { return [dB, c.oraBranch].some(function (p) { return p && CLASH[p] === b; }); };
       var vuotaFerma = function (k) { return (SEDE[k].vuoto || SEDE[k].vuotoDiStagione || R.vuoti.indexOf(SEDE[k].ramo) >= 0) && !_clashData(SEDE[k].ramo) && !sedeMossa(k); };
       // IL DOPPIO CLASH (Edu, 13/10/2026, S56: "Il clash la libera dal vuoto, ma due clash se la linea è timely la
       // fanno attivare"): UN clash libera la vuota dal vuoto; DUE clash — dal giorno e dall'arrivo della mobile —
