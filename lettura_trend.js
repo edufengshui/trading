@@ -935,6 +935,23 @@
     // (li' la Ying era 'molto piu' forte' nel mese e nel giorno, ma lo Shi Mao Legno controlla la Ying Xu Terra e vince).
     // PERIMETRO DI CLAUDE, da confermare: simmetrico (anche la Ying che controlla lo Shi vince); solo se nessun
     // movimento ha mosso i punti. c.confrontoFermo === false spegne.
+    // IL VICINO VIBRANTE DANNEGGIA LA SEDE UNTIMELY (Edu, 13/10/2026, S56, EURUSD 15/02/2024 s107: "Il problema per S
+    // in questa carta è che S è untimely e L1 è molto vibrante e clashato dal giorno (la cui bestia occupa la stessa
+    // posizione) e, data la vicinanza, questa linea danneggia irremediabilmente S che non può vincere"): quando nessun
+    // movimento agisce, la linea ferma vuota ma TIMELY, clashata dal giorno E con la bestia del giorno sopra (doppio
+    // tocco del giorno: liberata e caricata, molto vibrante), se sta ACCANTO a una sede UNTIMELY il cui elemento essa
+    // controlla, la danneggia irrimediabilmente: quella sede non puo' vincere, vince l'altra.
+    // c.vicinoVibrante === false spegne.
+    if (!mosso.v && c.vicinoVibrante !== false && dB) {
+      for (var vvI = 0; vvI < 6; vvI++) {
+        var LV2 = R.linee[vvI]; if (!LV2) continue;
+        if (LV2.pos === R.mutante.pos || !(LV2.vuoto || LV2.vuotoDiStagione)) continue;
+        if (!timely(LV2) || CLASH[dB] !== LV2.ramo) continue;
+        if (!(LV2.bestia && LV2.bestia.cn && BESTIA_STELO[c.dayStem] === LV2.bestia.cn)) continue;
+        var kVic = ['S', 'Y'].filter(function (k) { return Math.abs(POS[k] - LV2.pos) === 1 && KE[WX[LV2.ramo]] === WX[SEDE[k].ramo] && !timely(SEDE[k]); })[0];
+        if (kVic) return vince(ALTRA[kVic], 'L' + LV2.pos + ' è molto vibrante (il giorno la clasha e la sua bestia la occupa): da vicino danneggia irrimediabilmente ' + NOME[kVic] + ' untimely, che non può vincere', 4);
+      }
+    }
     // IL SOCCORSO DELLA BESTIA COL PONTE (Edu, 12/10/2026, S56, EURUSD 08/07/2021 s117: "S non può arrivare quindi
     // rimane la partenza W Xu. Y non può neanche partire, allora arriva la bestia dell'ora in soccorso. Shen metallo fa
     // da ponte fra S e Y e fa vincere Y"): quando nessun movimento agisce, la bestia di un pilastro (ramo non vuoto)
