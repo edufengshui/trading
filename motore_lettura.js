@@ -2652,7 +2652,9 @@ function creaMotore(LYM) {
         // EURJPY 23/06/2025 (Claude col metodo, da validare): se una bestia sopra la linea la
         // COMBINA (qui il mese 壬午 sulla Ying 未: 午未合), la linea e' impigliata e non parte:
         // il malus non va nel vuoto, resta e fa perdere. Stessa logica di MLIMPIGLIO col giorno.
-        !(C.suLinea[pos] || []).some(function (Q) { return COMBINA[Q.ramo] === dep; })) {
+        // Edu, 13/10/2026: "Anche nel LY normale il mese non può fermare la linea" — la bestia del MESE che combina
+        // la partenza non la impiglia. MLIMPIGLIOMESE=on torna a prima.
+        !(C.suLinea[pos] || []).some(function (Q) { return COMBINA[Q.ramo] === dep && (Q.nome !== 'mese' || ENV.MLIMPIGLIOMESE === 'on'); })) {
       racconto.push('L' + pos + ' (' + (pos === R.shi ? 'lo Shi' : 'la Ying') + ') è un ' + PAR_IT[mob.par] +
         ' e si muove in ' + arr + ', nel vuoto: il suo malus va nel vuoto e la sua squadra non può perdere');
       return fine(sede(pos), 'il malus della sede va nel vuoto: la sua squadra non può perdere', 'T0v il malus nel vuoto');
