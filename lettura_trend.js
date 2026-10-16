@@ -961,6 +961,21 @@
       });
       if (gTM) return vince(gTM[0], gTM[1], 2);
     }
+    // LO SHI MOBILE CON L'ARRIVO CLASHATO DAL GIORNO RESTA ATTIVO E VINCE (Edu, 16/10/2026, S57, "Confermo"; dottrina del
+    // movimento del 16/09: "se una linea si muove ma il suo arrivo è clashato ... solo l'arrivo è annullato ma la partenza è
+    // ancora attiva"). Trovata dall'inventario: su 42 carte lo Shi vince 31 volte (73,8%; 2020-23 e 2024-26 tutti e due
+    // sopra il 60%), il metodo di prima ne prendeva 26 per vie diverse. Eccezione dalla lettura di Edu di EURUSD 08/07/2021
+    // s117 ("rimane la partenza W Xu ... la bestia dell'ora in soccorso. Shen metallo fa da ponte fra S e Y e fa vincere
+    // Y"): se la bestia di un pilastro cade sulla Ying e il suo ramo fa da ponte (lo Shi lo genera, lui genera la Ying), la
+    // forza dello Shi passa alla Ying e vince lei. Solo la mobile vera, non l'incompatibile (56% su 23). c.shiArrivoClashato
+    // === false spegne.
+    if (c.shiArrivoClashato !== false && dB && R.mutante.pos === R.shi && R.mutante.ramoArr && CLASH[dB] === R.mutante.ramoArr && !lm) {
+      var eSc = WX[S.ramo], eYc = WX[Y.ramo];
+      var ponteSc = [[c.yearStem, c.yearBranch, 'dell\'anno'], [c.monthStem, c.monthBranch, 'del mese'], [c.dayStem, dB, 'del giorno'], [c.hourStem, c.oraBranch, 'dell\'ora']].filter(function (p) {
+        return p[0] && p[1] && vuoti.indexOf(p[1]) < 0 && Y.bestia && Y.bestia.cn === BESTIA_STELO[p[0]] && GEN[eSc] === WX[p[1]] && GEN[WX[p[1]]] === eYc; })[0];
+      if (ponteSc) return vince('Y', 'lo Shi si muove ma il giorno ' + dB + ' clasha l\'arrivo ' + R.mutante.ramoArr + ': resta la partenza ' + S.ramo + '; la bestia ' + ponteSc[2] + ' cade sulla Ying e ' + ponteSc[1] + ' fa da ponte: la forza dello Shi passa alla Ying, vince', 2);
+      return vince('S', 'lo Shi si muove ma il giorno ' + dB + ' clasha l\'arrivo ' + R.mutante.ramoArr + ': l\'arrivo è annullato, la partenza ' + S.ramo + ' resta attiva e vince', 2);
+    }
     // ---------------- PRINCIPI 2 e 3: COSA FA IL MOVIMENTO, E SE IL COLPO RIESCE ----------------
     var nutrito = { S: false, Y: false }, punita = { S: false, Y: false };
     var difende = function (L, a, verbo) {                     // principio 3: la sede di stagione si difende, tranne da un arrivo forte
