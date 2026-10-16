@@ -125,6 +125,15 @@
       });
     });
     // sede scartata nel vuoto: vince l'altra, salvo un sostituto del suo campo (sotto)
+    // I DUE ANIMALI SULLA BILANCIA (Edu, 16/10/2026: "quando devi decidere tu come va un trade, fra i punti da considerare
+    // che possono far pendere l'ago della bilancia da una parte e dall'altra, metti questi due animali"): il Serpente morto
+    // (死) sulla Shi, sulla Ying o sulla mobile pesa contro il trend (la Ying); l'Uccello Rosso in crescita (相) sulla
+    // mobile pesa per il trend (lo Shi). Un punto ciascuno, come gli altri motivi. opz.dueAnimali === false spegne.
+    if (opz.dueAnimali !== false) inv.linee.forEach(function (x) {
+      var conta = x.sede || (muove[x.pos] && muove[x.pos].tipo === 'mobile');
+      if (x.bestia === '螣蛇' && conta && x.stagione === '死') punti('Y', 1, 'il Serpente è morto su ' + nl(x) + ': l\'azione si attorciglia, pende contro il trend');
+      if (x.bestia === '朱雀' && muove[x.pos] && muove[x.pos].tipo === 'mobile' && x.stagione === '相') punti('S', 1, 'l\'Uccello Rosso in crescita sulla mobile ' + nl(x) + ': pende per il trend');
+    });
     var kSc = Object.keys(sedeScartata);
     if (kSc.length === 1 && pt.S === pt.Y) return vince(ALTRA[kSc[0]], NOME[kSc[0]] + ' è fuori gioco: vince l\'altra sede', 2);
     if (pt.S > pt.Y) return vince('S', 'il movimento avvantaggia lo Shi (' + pt.S + ' contro ' + pt.Y + ')', 2);
