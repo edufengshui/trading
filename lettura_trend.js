@@ -596,7 +596,21 @@
     }
 
     // ---------------- PRINCIPIO 1: CHI ESCE DAL GIOCO ----------------
+    // IL SERPENTE MORTO SULLE LINEE CHE CONTANO: IL TREND NON TIENE (§81, Edu 20/08/2026: "Il Serpente non indica una
+    // direzione: indica che l'azione è attorcigliata. Quando è debole su una linea che conta, il movimento non regge e il
+    // trend non tiene"). Il Serpente (螣蛇) seduto sullo Shi, sulla Ying o sulla mobile, in 死 nel mese (controllato dal
+    // mese) -> vince la Ying. Portato nel metodo del trend il 16/10/2026 (S57, Edu: "Tempo fa avevamo parlato
+    // dell'importanza del serpente nel trend"). Misura all'ingresso: 326 carte, non segue il 64,1% (2020-23 67%, 2024-26
+    // 60%). c.serpenteMorto === false spegne; === 'prima' lo mette prima del fuori gioco.
+    var _serpMorto = (function () {
+      if (c.serpenteMorto === false || !mE) return null;
+      var Ls = R.linee.filter(function (L) { return L.bestia && L.bestia.cn === '螣蛇'; })[0];
+      if (!Ls || !(Ls.pos === R.shi || Ls.pos === R.ying || (c.serpenteMobile === true && Ls.pos === R.mutante.pos))) return null;   // sulla mobile non sede: spento, rovescia USDJPY 21/10/2024 e USDCHF 09/05/2022 lette da Edu (c.serpenteMobile === true lo accende: +14 giuste)
+      return KE[mE] === WX[Ls.ramo] ? Ls : null;
+    })();
+    if (_serpMorto && c.serpenteMorto === 'prima') return vince('Y', 'il Serpente siede su L' + _serpMorto.pos + ' ed è morto nel mese (死): l\'azione è attorcigliata, il trend non tiene', 1);
     if (troppoFuori(S) && troppoFuori(Y)) { dire('Shi e Ying tutti e due troppo fuori stagione: il metodo tace'); return out; }
+    if (_serpMorto) return vince('Y', 'il Serpente siede su L' + _serpMorto.pos + ' ed è morto nel mese (死): l\'azione è attorcigliata, il trend non tiene', 1);
     // chi si muove: la mobile (se non e' legata alla partenza dal mese o dal giorno) e le incompatibili che girano
     var dep = R.mutante.ramoDep, arr = R.mutante.ramoArr, fut = R.mutante.futuro || [];
     // SOLO IL GIORNO CHE COMBINA IMPEDISCE ALLA LINEA DI MUOVERSI (Edu, 13/10/2026: "il mese che combina non impedisce
