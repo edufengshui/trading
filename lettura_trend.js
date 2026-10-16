@@ -604,6 +604,7 @@
     // alla forma vecchia (anche il mese lega).
     var legata = function (b) { return (dB && COMBINA[b] === dB) ? 'giorno' : (c.legaMese === true && COMBINA[b] === c.monthBranch) ? 'mese' : null; };
     var chi = [];
+    var _sedeFermaDoppio = null;
     var lm = legata(dep);
     // LA SEDE MOBILE ROTTA DAL MESE NON SI MUOVE (Edu, 11/10/2026, S56, EURUSD 17/06/2020 s112: "As Y cannot move
     // there's no possible competition"): la sede mobile con la partenza clashata dal mese (月破, rotta dal mese) non puo'
@@ -624,6 +625,15 @@
       // solo la combinazione del GIORNO la tiene ferma (Edu, 13/10/2026; AUDUSD 05/10/2026 s69 ferma col giorno Zi;
       // EURJPY 07/08/2024 s158 gira col solo mese Wei)
       if (lg) { dire('l\'incompatibile L' + p + ' è combinata alla partenza dal ' + lg + ': non gira'); return; }
+      // IL DOPPIO LEGAME FERMA ANCHE L'INCOMPATIBILE (Edu, 16/10/2026, S57, GBPUSD 13/12/2021 s132: "Y non può muoversi e L2
+      // che avanza lo attacca pure. S è timely e vince"): il giorno colpisce la partenza (clash o punizione) E tiene l'arrivo
+      // (lo combina) — o lo speculare, combina la partenza e clasha l'arrivo — e la linea non parte, incompatibile o no (il
+      // doppio legame del 27/08, NZDUSD 22/06/2023). Li' la Ying Chou: il giorno Wei la clasha e la punisce, e combina
+      // l'arrivo Wu. c.incDoppioLegame === false spegne.
+      if (c.incDoppioLegame !== false && dB && ((CLASH[dB] === L.ramo || PENA[dB] === L.ramo) && COMBINA[dB] === a || (COMBINA[dB] === L.ramo && CLASH[dB] === a))) {
+        dire('l\'incompatibile L' + p + ' è presa due volte dal giorno ' + dB + ' (alla partenza ' + L.ramo + ' e all\'arrivo ' + a + '): non può muoversi');
+        if (p === R.shi || p === R.ying) _sedeFermaDoppio = p === R.shi ? 'S' : 'Y';
+        return; }
       chi.push({ pos: p, dep: L.ramo, arr: a, retro: RETRO[L.ramo] === a, incArr: false, mobile: false });
     });
     if (c.bestiaArriva === true) {   // SPENTA: rompe USDCAD 26/11/2021 e USDJPY 10/08/2026, carte lette da Edu col metodo
@@ -960,6 +970,13 @@
         return true;
       });
       if (gTM) return vince(gTM[0], gTM[1], 2);
+    }
+    // LA SEDE FERMATA DAL DOPPIO LEGAME CONTRO LA SEDE DI STAGIONE (Edu, 16/10/2026, GBPUSD 13/12/2021: "Y non può muoversi ...
+    // S è timely e vince"): la sede incompatibile che il giorno prende due volte non si muove; se e' fuori stagione e
+    // l'altra sede e' di stagione, vince l'altra. c.incDoppioLegame === false spegne.
+    if (_sedeFermaDoppio && c.incDoppioLegame !== false) {
+      var kF = _sedeFermaDoppio, kA = ALTRA[kF];
+      if (!timely(SEDE[kF]) && timely(SEDE[kA]) && !SEDE[kA].vuoto) return vince(kA, NOME[kF] + ' non può muoversi ed è fuori stagione; ' + NOME[kA] + ' è di stagione: vince', 2);
     }
     // LO SHI MOBILE CON L'ARRIVO CLASHATO DAL GIORNO RESTA ATTIVO E VINCE (Edu, 16/10/2026, S57, "Confermo"; dottrina del
     // movimento del 16/09: "se una linea si muove ma il suo arrivo è clashato ... solo l'arrivo è annullato ma la partenza è

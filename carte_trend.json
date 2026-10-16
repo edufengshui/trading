@@ -622,5 +622,17 @@
   "dayBranch": "戌",
   "ema": "up",
   "atteso": "LONG"
+ },
+ {
+  "cross": "GBPUSD",
+  "date": "2021-12-13",
+  "seed": 132,
+  "yearStem": "辛",
+  "yearBranch": "丑",
+  "monthBranch": "子",
+  "dayStem": "乙",
+  "dayBranch": "未",
+  "ema": "down",
+  "atteso": "SHORT"
  }
 ]
