@@ -1082,6 +1082,9 @@ function livelloTreSistemi(e) {
   // 7-13 i gradini S57 rimasti, 50-55% (12 e 13 sotto il 50%). Totale 2.440 · 79,2% · +84.455 pip.
   // SCALA=S57 rimette la piramide S57, SCALA=PIRAMIDE_LY la piramide LY intera.
   if (scalaScelta === 'S57') scalaScelta = 'PIRAMIDE_S57';
+  // PIRAMIDE PB IN USO DAL 17/10/2026 (Edu: "Si"): il default 'PIRAMIDE' e' la piramide PB; SCALA=S58 rimette la S58.
+  if (scalaScelta === 'PIRAMIDE') scalaScelta = 'PIRAMIDE_PB';
+  if (scalaScelta === 'S58') scalaScelta = 'PIRAMIDE';
   // PIRAMIDE PB (S58, 17/10/2026, SCALA=PIRAMIDE_PB): costruita come la LY con anche la voce PBF (sistema PB per forma,
   // livello_pb.js). Backtest: 1 D=LYF=PBF 1.471 · 94,1% · cantina 466 · 68,0% · 2 DLR=LYF=PBF 138 · 86,2% · 3 DLR=D=LYF 117 · 79,5% ·
   // 4 DLR=D=PBF 315 · 73,0% · 5 PB=LY=LYF 119 · 72,3% · 6 LY=D=PBF 226 · 65,9% · 7 MT=LYF 122 · 60,7% · 8 PB=PBF 145 · 57,9% ·
@@ -1224,7 +1227,7 @@ function renderReportTreSistemi() {
 
   var spente = Object.keys(lyToggles).filter(function (k) { return lyToggles[k] === false; }).length;
   var nota = '<div style="padding:6px 14px;font-size:12px;background:rgba(227,179,65,.08);border-bottom:1px solid rgba(255,255,255,.08)">' +
-    '<b>Piramide</b> (dal 17/10/2026, S58): <b>1</b> Da Liu Ren, sistema D e sistema LY per forma concordi (92,7% su 1.002 carte del backtest) · poi la cantina · <b>2</b> Plum Blossom, D e LY per forma (89,8%) · <b>3</b> Lettura S47, D e LY per forma (87,3%) · <b>4-13</b> la piramide S57 sulle carte rimaste (dal 66% al 46%). <b>Dal vivo 29/09-16/10</b> (misura_vivo.js): piramide 61 trade, 61%, +849 pip (punta 19 · 63% · +296); trend semplice 55%, +426; cantina 45%, −116. Piramide S57 con SCALA=S57. ' +
+    '<b>Piramide</b> (dal 17/10/2026, S58 · piramide PB): <b>1</b> sistema D, sistema LY per forma e sistema PB per forma concordi (94,1% su 1.471 carte del backtest) · poi la cantina · <b>2-10</b> il sistema migliore sulle carte rimaste (dall\'86,2% al 50,8%). <b>Dal vivo 29/09-16/10</b> (misura_vivo.js): piramide 74 trade, 65%, +896 pip (punta 34 · 74% · +635); trend semplice 55%, +426; cantina 44%, −114. Piramide precedente con SCALA=S58, quella del mattino con SCALA=S57. ' +
     'Scala <b>A → B → C → D</b> (S57A): <b>A</b> attuale, DLR e metodo del trend concordi (68%) · <b>B</b> PB, DLR e Lettura S47 concordi (65%) · <b>C</b> attuale, DLR e sistema D concordi (68%) · <b>D</b> LY, attuale e DLR concordi (62%). <b>In cantina</b> le carte con PB, LY e DLR tutti concordi (il vecchio A: dal vivo 27%, fuori campione 46%): si mostrano e si registrano, non si tradano. Tutto il resto è fermo.' +
     (spente ? ' <b style="color:#e3b341">Nota: a schermo hai ' + spente + ' via' + (spente > 1 ? ' spente' : ' spenta') +
       ' — il report le ignora e le usa comunque accese.</b>' : '') + '</div>';
