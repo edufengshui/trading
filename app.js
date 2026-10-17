@@ -1100,7 +1100,7 @@ function livelloTreSistemi(e) {
   // Backtest: 1 LYF=PBF=DLRF 1.073 · 97,2% · cantina 571 · 68,7% · 2 D=LYF=DLRF 132 · 90,9% · 3 D=LYF=PBF 439 · 88,8% ·
   // 4 D=PBF=DLRF 320 · 88,4% · 5 DLR=LYF=DLRF 115 · 70,4% · 6 LYF=DLRF 100 · 70,0% · 7 DLR=PBF 215 · 70,7% · 8 LY=DLRF 103 · 66,0% ·
   // 9 Lettura=metodo 113 · 60,2% · 10 LY=attuale=Lettura 107 · 47,7%. Totale 2.717 · 85,6% · +110.567 pip.
-  if (scalaScelta === 'PIRAMIDE' || scalaScelta === 'PIRAMIDE_LY' || scalaScelta === 'PIRAMIDE_S57' || scalaScelta === 'PIRAMIDE_PB' || scalaScelta === 'PIRAMIDE_DLR') {
+  if (scalaScelta === 'PIRAMIDE' || scalaScelta === 'PIRAMIDE_LY' || scalaScelta === 'PIRAMIDE_S57' || scalaScelta === 'PIRAMIDE_PB' || scalaScelta === 'PIRAMIDE_DLR' || scalaScelta === 'DLR_CANTINA') {
     var VV = { PB: pb, LY: ly, AT: at, DLR: dlr, LETT: lett, MT: e.mtDir || null, D: e.dDir || null, LYF: e.lyfDir || null, PBF: e.pbfDir || null, DLRF: e.dlrfDir || null };
     var NOMI = { PB: 'Plum Blossom', LY: 'Liu Yao', AT: 'sistema attuale', DLR: 'Da Liu Ren', LETT: 'Lettura S47', MT: 'metodo del trend', D: 'sistema D', LYF: 'sistema LY per forma', PBF: 'sistema PB per forma', DLRF: 'sistema DLR per forma' };
     var conc = function (c) { var d = VV[c[0]]; return d && c.every(function (k) { return VV[k] === d; }) ? d : null; };
@@ -1108,8 +1108,12 @@ function livelloTreSistemi(e) {
     var PIR = [['D', 'DLR', 'MT'], 'cantina', ['AT', 'DLR', 'D'], ['DLR', 'LETT', 'D'], ['PB', 'DLR', 'D'], ['LETT', 'MT', 'D'],
                ['PB', 'MT', 'D'], ['PB', 'AT', 'D'], ['DLR', 'D'], ['LY', 'LETT', 'D'], ['PB', 'D']];
     if (scalaScelta === 'PIRAMIDE') PIR = [['DLR', 'D', 'LYF'], 'cantina', ['PB', 'D', 'LYF'], ['LETT', 'D', 'LYF']].concat(PIR.filter(function (c) { return c !== 'cantina'; }));
-    if (scalaScelta === 'PIRAMIDE_DLR') PIR = [['LYF', 'PBF', 'DLRF'], 'cantina', ['D', 'LYF', 'DLRF'], ['D', 'LYF', 'PBF'], ['D', 'PBF', 'DLRF'], ['DLR', 'LYF', 'DLRF'],
+    // CANTINA ABOLITA NELLA PIRAMIDE DLR (Edu, 17/10/2026: "Se migliora il sistema generale, si"): le carte PB = LY = DLR
+    // scendono nei gradini 2-10 invece di restare ferme. Backtest 3.268 · 84,9% · +131.515 pip (con la cantina 2.717 · 85,6% ·
+    // +110.567); dal vivo 29/09-16/10 80 trade · 66% · +1.145 (con la cantina 68 · 66% · +938). SCALA=DLR_CANTINA la rimette.
+    if (scalaScelta === 'PIRAMIDE_DLR' || scalaScelta === 'DLR_CANTINA') PIR = [['LYF', 'PBF', 'DLRF'], 'cantina', ['D', 'LYF', 'DLRF'], ['D', 'LYF', 'PBF'], ['D', 'PBF', 'DLRF'], ['DLR', 'LYF', 'DLRF'],
                ['LYF', 'DLRF'], ['DLR', 'PBF'], ['LY', 'DLRF'], ['LETT', 'MT'], ['LY', 'AT', 'LETT']];
+    if (scalaScelta === 'PIRAMIDE_DLR') PIR = PIR.filter(function (c) { return c !== 'cantina'; });
     if (scalaScelta === 'PIRAMIDE_PB') PIR = [['D', 'LYF', 'PBF'], 'cantina', ['DLR', 'LYF', 'PBF'], ['DLR', 'D', 'LYF'], ['DLR', 'D', 'PBF'], ['PB', 'LY', 'LYF'],
                ['LY', 'D', 'PBF'], ['MT', 'LYF'], ['PB', 'PBF'], ['DLR', 'LETT'], ['LY', 'AT']];
     if (scalaScelta === 'PIRAMIDE_LY') PIR = [['DLR', 'D', 'LYF'], 'cantina', ['PB', 'D', 'LYF'], ['LETT', 'D', 'LYF'], ['DLR', 'LETT', 'D'], ['LY', 'MT', 'LYF'],
@@ -1240,7 +1244,7 @@ function renderReportTreSistemi() {
 
   var spente = Object.keys(lyToggles).filter(function (k) { return lyToggles[k] === false; }).length;
   var nota = '<div style="padding:6px 14px;font-size:12px;background:rgba(227,179,65,.08);border-bottom:1px solid rgba(255,255,255,.08)">' +
-    '<b>Piramide</b> (dal 17/10/2026, S58 · piramide DLR): <b>1</b> sistema LY per forma, sistema PB per forma e sistema DLR per forma concordi (97,2% su 1.073 carte del backtest) · poi la cantina · <b>2-4</b> col sistema D (dal 91% all\'88%) · <b>5-10</b> il sistema migliore sulle carte rimaste (dal 71% al 48%). <b>Dal vivo 29/09-16/10</b> (misura_vivo.js): piramide 68 trade, 66%, +938 pip (punta 18 · 78% · +423); trend semplice 55%, +426; cantina 50%, −101. Piramide PB con SCALA=PB, S58 con SCALA=S58, quella del mattino con SCALA=S57. ' +
+    '<b>Piramide</b> (dal 17/10/2026, S58 · piramide DLR senza cantina): <b>1</b> sistema LY per forma, sistema PB per forma e sistema DLR per forma concordi (97,2% su 1.073 carte del backtest) · <b>2-4</b> col sistema D · <b>5-10</b> il sistema migliore sulle carte rimaste. La cantina (PB = LY = DLR) e\' abolita: quelle carte scendono nei gradini. Backtest 3.268 carte · 84,9% · +131.515 pip. <b>Dal vivo 29/09-16/10</b> (misura_vivo.js): 80 trade, 66%, +1.145 pip; trend semplice 55%, +426. Con la cantina SCALA=DLR_CANTINA, piramide PB con SCALA=PB, S58 con SCALA=S58, quella del mattino con SCALA=S57. ' +
     'Scala <b>A → B → C → D</b> (S57A): <b>A</b> attuale, DLR e metodo del trend concordi (68%) · <b>B</b> PB, DLR e Lettura S47 concordi (65%) · <b>C</b> attuale, DLR e sistema D concordi (68%) · <b>D</b> LY, attuale e DLR concordi (62%). <b>In cantina</b> le carte con PB, LY e DLR tutti concordi (il vecchio A: dal vivo 27%, fuori campione 46%): si mostrano e si registrano, non si tradano. Tutto il resto è fermo.' +
     (spente ? ' <b style="color:#e3b341">Nota: a schermo hai ' + spente + ' via' + (spente > 1 ? ' spente' : ' spenta') +
       ' — il report le ignora e le usa comunque accese.</b>' : '') + '</div>';
