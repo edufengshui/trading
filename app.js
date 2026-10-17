@@ -1045,6 +1045,9 @@ function livelloTreSistemi(e) {
   //   8  DLR = D 142 · 73,9%               9  LY = Lettura = D 137 · 68,6%     10 PB = D 158 · 67,1%
   //   totale 2.300 carte · 78,9% · +78.145 pip; ferme 381. Col sistema D contato senza la carta nella propria regola
   //   la punta fa 66,4% su 572 (misura del 17/10). SCALA=S57A rimette la scala a gradini del mattino, SCALA=S48 la vecchia.
+  //   DAL VIVO 29/09-16/10/2026 (misura_vivo.js, 12 giorni, 87 cross-giorno): piramide 58 trade 64% +800 pip (punta 16 · 56% ·
+  //   +133; 2-4 11 · 64%; 5-7 19 · 74%; 8-10 12 · 58%); trend semplice 87 · 56% · +458; D da solo 73 · 63% · +951; cantina 17 · 47%.
+  //   Edu, 17/10/2026: "E quindi questo deve essere il sistema da adesso in poi!"
   var scalaScelta = (typeof localStorage !== 'undefined' && localStorage && localStorage.getItem('SCALA')) || 'PIRAMIDE';
   if (scalaScelta === 'PIRAMIDE') {
     var VV = { PB: pb, LY: ly, AT: at, DLR: dlr, LETT: lett, MT: e.mtDir || null, D: e.dDir || null };
@@ -1179,7 +1182,7 @@ function renderReportTreSistemi() {
 
   var spente = Object.keys(lyToggles).filter(function (k) { return lyToggles[k] === false; }).length;
   var nota = '<div style="padding:6px 14px;font-size:12px;background:rgba(227,179,65,.08);border-bottom:1px solid rgba(255,255,255,.08)">' +
-    '<b>Piramide</b> (dal 17/10/2026, S57): <b>1</b> sistema D, DLR e metodo del trend concordi (85,5% su 656 carte del backtest) · poi la cantina · <b>2-10</b> il sistema migliore sulle carte rimaste, sempre col sistema D (dall\'83,6% al 67,1%). Scala del mattino con SCALA=S57A. ' +
+    '<b>Piramide</b> (dal 17/10/2026, S57): <b>1</b> sistema D, DLR e metodo del trend concordi (85,5% su 656 carte del backtest) · poi la cantina · <b>2-10</b> il sistema migliore sulle carte rimaste, sempre col sistema D (dall\'83,6% al 67,1%). <b>Dal vivo 29/09-16/10</b> (12 giorni, misura_vivo.js): piramide 58 trade, 64%, +800 pip; trend semplice 56%, +458; cantina 47%, −139. È il sistema in uso dal 17/10/2026. Scala del mattino con SCALA=S57A. ' +
     'Scala <b>A → B → C → D</b> (S57A): <b>A</b> attuale, DLR e metodo del trend concordi (68%) · <b>B</b> PB, DLR e Lettura S47 concordi (65%) · <b>C</b> attuale, DLR e sistema D concordi (68%) · <b>D</b> LY, attuale e DLR concordi (62%). <b>In cantina</b> le carte con PB, LY e DLR tutti concordi (il vecchio A: dal vivo 27%, fuori campione 46%): si mostrano e si registrano, non si tradano. Tutto il resto è fermo.' +
     (spente ? ' <b style="color:#e3b341">Nota: a schermo hai ' + spente + ' via' + (spente > 1 ? ' spente' : ' spenta') +
       ' — il report le ignora e le usa comunque accese.</b>' : '') + '</div>';
