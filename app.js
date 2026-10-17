@@ -470,6 +470,9 @@ function analizzaCrossPerReport(r, utcMs, dateStr) {
         // SISTEMA D (S57, Edu 17/10/2026): la regola della carta (esagramma + linea mobile) dal catalogo livello_d.js.
         var sd = sistemaD(ly, dateStr, yearBranch, chart.monthBranch, chart.dayStem || null, chart.dayBranch, oraB0, dir);
         out.dDir = sd.dir; out.dRegola = sd.regola; out.dForma = sd.forma;
+        // SISTEMA LY PER FORMA (S58, Edu 17/10/2026): la regola della forma dice se il verdetto LY e' giusto (livello_ly.js).
+        var sly = sistemaLY(ly, dateStr, yearBranch, chart.monthBranch, chart.dayStem || null, chart.dayBranch, oraB0, dir, out.lyDir);
+        out.lyfDir = sly.dir; out.lyfRegola = sly.regola; out.lyfForma = sly.forma;
         // --- TRE SISTEMI (Edu, 03/09/2026 S36): oltre a PB e LY si annotano il verdetto del
         // SISTEMA ATTUALE (PB + LY + rafforzativi, canonico = combinaS9 con tutte le vie accese)
         // e il verdetto del motore DA LIU REN (motore_dlr.js, stessa carta del pannello).
@@ -927,6 +930,18 @@ function sistemaD(ly, dateStr, yearBranch, monthBranch, dayStem, dayBranch, oraB
   return out;
 }
 
+function sistemaLY(ly, dateStr, yearBranch, monthBranch, dayStem, dayBranch, oraBranch, dir, lyDir) {
+  var out = { dir: null, regola: null, forma: null };
+  try {
+    if (!window.SistemaLY || !window.SistemaD || !window.InventarioCarta || !ly || ly.error) return out;
+    var stD = steliDiData(dateStr, yearBranch, monthBranch, dayStem, oraBranch);
+    var v = window.SistemaLY.leggi(ly, { dayBranch: dayBranch, monthBranch: monthBranch, yearBranch: yearBranch, oraBranch: oraBranch,
+      dayStem: dayStem, yearStem: stD.yearStem, monthStem: stD.monthStem, hourStem: stD.hourStem, emaDir: dir }, window.InventarioCarta, window.SistemaD, lyDir);
+    out.dir = v.dir; out.regola = v.regola; out.forma = v.forma;
+  } catch (e) { out.regola = 'sistema LY per forma non disponibile: ' + e.message; }
+  return out;
+}
+
 function letturaMotore(ly, dateStr, yearBranch, monthBranch, dayStem, dayBranch, oraBranch, emaDir) {
   var out = { dir: null, gradino: null, perche: null, racconto: '' };
   try {
@@ -1027,7 +1042,8 @@ function livelloTreSistemi(e) {
              ' · Sistema-trend ' + (e.stVerdetto ? (e.stVerdetto + ' (' + (e.stPunti > 0 ? '+' : '') + e.stPunti + (e.stDir ? ', ' + e.stDir : '') + ')') : 'tace') +
              (e.osserva && e.osserva.length ? ' · DA OSSERVARE: ' + e.osserva.join('; ') : '') +
              ' · Metodo del trend ' + (e.mtVerdetto && e.mtVerdetto !== 'tace' ? (e.mtVerdetto + ' (' + (e.mtPunti > 0 ? '+' : '') + e.mtPunti + (e.mtDir ? ', ' + e.mtDir : '') + ')') : 'tace') +
-             ' · Sistema D ' + (e.dDir ? e.dDir + ' (' + e.dForma + ': ' + e.dRegola + ')' : (e.dForma ? 'tace (' + e.dForma + ' senza regola)' : 'tace'));
+             ' · Sistema D ' + (e.dDir ? e.dDir + ' (' + e.dForma + ': ' + e.dRegola + ')' : (e.dForma ? 'tace (' + e.dForma + ' senza regola)' : 'tace')) +
+             ' · Sistema LY per forma ' + (e.lyfDir ? e.lyfDir + ' (' + e.lyfForma + ': ' + e.lyfRegola + ')' : (e.lyfForma ? 'tace (' + e.lyfForma + ' senza regola o LY che tace)' : 'tace'));
   // Lo Spirito e lo stelo del giorno restano mostrati ma dal 16/09/2026 non contano piu' nella scala.
   if (!pb) return { liv: null, dir: null, perche: 'carta non leggibile', voci: voci };
   // LIVELLO A IN CANTINA (Edu, 09/10/2026: "E' meglio mettere in cantina il livello A"). Dal vivo dal 15/09 il
@@ -1049,13 +1065,22 @@ function livelloTreSistemi(e) {
   //   +133; 2-4 11 · 64%; 5-7 19 · 74%; 8-10 12 · 58%); trend semplice 87 · 56% · +458; D da solo 73 · 63% · +951; cantina 17 · 47%.
   //   Edu, 17/10/2026: "E quindi questo deve essere il sistema da adesso in poi!"
   var scalaScelta = (typeof localStorage !== 'undefined' && localStorage && localStorage.getItem('SCALA')) || 'PIRAMIDE';
-  if (scalaScelta === 'PIRAMIDE') {
-    var VV = { PB: pb, LY: ly, AT: at, DLR: dlr, LETT: lett, MT: e.mtDir || null, D: e.dDir || null };
-    var NOMI = { PB: 'Plum Blossom', LY: 'Liu Yao', AT: 'sistema attuale', DLR: 'Da Liu Ren', LETT: 'Lettura S47', MT: 'metodo del trend', D: 'sistema D' };
+  // PIRAMIDE LY (S58, 17/10/2026, SCALA=PIRAMIDE_LY): costruita come la S57 (gradino dopo gradino il sistema migliore
+  // sulle carte rimaste, almeno 100 carte) con la voce nuova LYF (sistema LY per forma, livello_ly.js). Dump fino al
+  // 18/09/2026, 3.354 carte >= 20 pip, D e LYF col catalogo intero:
+  //   1  DLR = D = LYF 966 · 93,6%   (cantina PB = LY = DLR 546 · 54,9%)   2  metodo = D = LYF 259 · 89,2%
+  //   3  PB = D = LYF 259 · 85,7%    4  LY = D = LYF 113 · 85,8%    5  attuale = DLR = D 167 · 70,7%
+  //   6  PB = DLR = LYF 114 · 70,2%  7  LY = attuale = D 224 · 66,1%   8  DLR = LYF 149 · 67,8%
+  //   9  DLR = Lettura = D 113 · 62,8%   10  DLR = D 181 · 56,9%   totale 2.545 · 81,5% · +94.318 pip (in uso: 2.334 · 78,4% · +78.105)
+  if (scalaScelta === 'PIRAMIDE' || scalaScelta === 'PIRAMIDE_LY') {
+    var VV = { PB: pb, LY: ly, AT: at, DLR: dlr, LETT: lett, MT: e.mtDir || null, D: e.dDir || null, LYF: e.lyfDir || null };
+    var NOMI = { PB: 'Plum Blossom', LY: 'Liu Yao', AT: 'sistema attuale', DLR: 'Da Liu Ren', LETT: 'Lettura S47', MT: 'metodo del trend', D: 'sistema D', LYF: 'sistema LY per forma' };
     var conc = function (c) { var d = VV[c[0]]; return d && c.every(function (k) { return VV[k] === d; }) ? d : null; };
     var detto = function (c) { return c.map(function (k) { return NOMI[k]; }).join(', ') + ' concordano'; };
     var PIR = [['D', 'DLR', 'MT'], 'cantina', ['AT', 'DLR', 'D'], ['DLR', 'LETT', 'D'], ['PB', 'DLR', 'D'], ['LETT', 'MT', 'D'],
                ['PB', 'MT', 'D'], ['PB', 'AT', 'D'], ['DLR', 'D'], ['LY', 'LETT', 'D'], ['PB', 'D']];
+    if (scalaScelta === 'PIRAMIDE_LY') PIR = [['DLR', 'D', 'LYF'], 'cantina', ['MT', 'D', 'LYF'], ['PB', 'D', 'LYF'], ['LY', 'D', 'LYF'], ['AT', 'DLR', 'D'],
+               ['PB', 'DLR', 'LYF'], ['LY', 'AT', 'D'], ['DLR', 'LYF'], ['DLR', 'LETT', 'D'], ['DLR', 'D']];
     var liv = 0;
     for (var pi = 0; pi < PIR.length; pi++) {
       if (PIR[pi] === 'cantina') { if (ly && dlr && pb === ly && ly === dlr) return { liv: 'cantina', dir: pb, cantina: true, perche: 'Plum Blossom, Liu Yao e Da Liu Ren concordano — in cantina, non si trada', voci: voci }; continue; }
