@@ -501,6 +501,10 @@ function analizzaCrossPerReport(r, utcMs, dateStr) {
               steloAnno: (chart.source && chart.source.yearPillar) ? chart.source.yearPillar.charAt(0) : null };
             var ld = MD.leggi(cartaD);
             out.dlrDir = (ld && ld.dir) || null; out.dlrVia = (ld && ld.via) || null;
+            // SISTEMA DLR PER FORMA (S58, Edu 17/10/2026): la regola delle quattro lezioni dice alto o basso (livello_dlr.js).
+            if (window.SistemaDLR) { var cartaF = Object.assign({}, cartaD, { spiritoR2: (L4[1].top.general && L4[1].top.general.cn) || null,
+                spiritoR3: (L4[2].top.general && L4[2].top.general.cn) || null, spiritoR4: (L4[3].top.general && L4[3].top.general.cn) || null });
+              var sdl = window.SistemaDLR.leggi(cartaF); out.dlrfDir = sdl.dir || null; out.dlrfRegola = sdl.regola || null; out.dlrfForma = sdl.forma || null; }
             // S41: distinguere il silenzio per FORMA (carta fuori selezione) dal silenzio per
             // mancanza di attore. Il primo si riammette, il secondo resta silenzio vero.
             out.dlrEscluso = !!(ld && !ld.dir && String(ld.perche || '').indexOf('fuori selezione') >= 0);
@@ -1047,7 +1051,8 @@ function livelloTreSistemi(e) {
              ' · Metodo del trend ' + (e.mtVerdetto && e.mtVerdetto !== 'tace' ? (e.mtVerdetto + ' (' + (e.mtPunti > 0 ? '+' : '') + e.mtPunti + (e.mtDir ? ', ' + e.mtDir : '') + ')') : 'tace') +
              ' · Sistema D ' + (e.dDir ? e.dDir + ' (' + e.dForma + ': ' + e.dRegola + ')' : (e.dForma ? 'tace (' + e.dForma + ' senza regola)' : 'tace')) +
              ' · Sistema LY per forma ' + (e.lyfDir ? e.lyfDir + ' (' + e.lyfForma + ': ' + e.lyfRegola + ')' : (e.lyfForma ? 'tace (' + e.lyfForma + ' senza regola)' : 'tace')) +
-             ' · Sistema PB per forma ' + (e.pbfDir ? e.pbfDir + ' (' + e.pbfForma + ': ' + e.pbfRegola + ')' : (e.pbfForma ? 'tace (' + e.pbfForma + ' senza regola)' : 'tace'));
+             ' · Sistema PB per forma ' + (e.pbfDir ? e.pbfDir + ' (' + e.pbfForma + ': ' + e.pbfRegola + ')' : (e.pbfForma ? 'tace (' + e.pbfForma + ' senza regola)' : 'tace')) +
+             ' · Sistema DLR per forma ' + (e.dlrfDir ? e.dlrfDir + ' (' + e.dlrfForma + ': ' + e.dlrfRegola + ')' : (e.dlrfForma ? 'tace (' + e.dlrfForma + ' senza regola)' : 'tace'));
   // Lo Spirito e lo stelo del giorno restano mostrati ma dal 16/09/2026 non contano piu' nella scala.
   if (!pb) return { liv: null, dir: null, perche: 'carta non leggibile', voci: voci };
   // LIVELLO A IN CANTINA (Edu, 09/10/2026: "E' meglio mettere in cantina il livello A"). Dal vivo dal 15/09 il
@@ -1089,14 +1094,20 @@ function livelloTreSistemi(e) {
   // livello_pb.js). Backtest: 1 D=LYF=PBF 1.471 · 94,1% · cantina 466 · 68,0% · 2 DLR=LYF=PBF 138 · 86,2% · 3 DLR=D=LYF 117 · 79,5% ·
   // 4 DLR=D=PBF 315 · 73,0% · 5 PB=LY=LYF 119 · 72,3% · 6 LY=D=PBF 226 · 65,9% · 7 MT=LYF 122 · 60,7% · 8 PB=PBF 145 · 57,9% ·
   // 9 DLR=Lettura 101 · 56,4% · 10 LY=attuale 126 · 50,8%. Totale 2.880 · 81,3% · +105.088 pip.
-  if (scalaScelta === 'PIRAMIDE' || scalaScelta === 'PIRAMIDE_LY' || scalaScelta === 'PIRAMIDE_S57' || scalaScelta === 'PIRAMIDE_PB') {
-    var VV = { PB: pb, LY: ly, AT: at, DLR: dlr, LETT: lett, MT: e.mtDir || null, D: e.dDir || null, LYF: e.lyfDir || null, PBF: e.pbfDir || null };
-    var NOMI = { PB: 'Plum Blossom', LY: 'Liu Yao', AT: 'sistema attuale', DLR: 'Da Liu Ren', LETT: 'Lettura S47', MT: 'metodo del trend', D: 'sistema D', LYF: 'sistema LY per forma', PBF: 'sistema PB per forma' };
+  // PIRAMIDE DLR (S58, 17/10/2026, SCALA=PIRAMIDE_DLR): come la PB con anche la voce DLRF (sistema DLR per forma, livello_dlr.js).
+  // Backtest: 1 LYF=PBF=DLRF 1.073 · 97,2% · cantina 571 · 68,7% · 2 D=LYF=DLRF 132 · 90,9% · 3 D=LYF=PBF 439 · 88,8% ·
+  // 4 D=PBF=DLRF 320 · 88,4% · 5 DLR=LYF=DLRF 115 · 70,4% · 6 LYF=DLRF 100 · 70,0% · 7 DLR=PBF 215 · 70,7% · 8 LY=DLRF 103 · 66,0% ·
+  // 9 Lettura=metodo 113 · 60,2% · 10 LY=attuale=Lettura 107 · 47,7%. Totale 2.717 · 85,6% · +110.567 pip.
+  if (scalaScelta === 'PIRAMIDE' || scalaScelta === 'PIRAMIDE_LY' || scalaScelta === 'PIRAMIDE_S57' || scalaScelta === 'PIRAMIDE_PB' || scalaScelta === 'PIRAMIDE_DLR') {
+    var VV = { PB: pb, LY: ly, AT: at, DLR: dlr, LETT: lett, MT: e.mtDir || null, D: e.dDir || null, LYF: e.lyfDir || null, PBF: e.pbfDir || null, DLRF: e.dlrfDir || null };
+    var NOMI = { PB: 'Plum Blossom', LY: 'Liu Yao', AT: 'sistema attuale', DLR: 'Da Liu Ren', LETT: 'Lettura S47', MT: 'metodo del trend', D: 'sistema D', LYF: 'sistema LY per forma', PBF: 'sistema PB per forma', DLRF: 'sistema DLR per forma' };
     var conc = function (c) { var d = VV[c[0]]; return d && c.every(function (k) { return VV[k] === d; }) ? d : null; };
     var detto = function (c) { return c.map(function (k) { return NOMI[k]; }).join(', ') + ' concordano'; };
     var PIR = [['D', 'DLR', 'MT'], 'cantina', ['AT', 'DLR', 'D'], ['DLR', 'LETT', 'D'], ['PB', 'DLR', 'D'], ['LETT', 'MT', 'D'],
                ['PB', 'MT', 'D'], ['PB', 'AT', 'D'], ['DLR', 'D'], ['LY', 'LETT', 'D'], ['PB', 'D']];
     if (scalaScelta === 'PIRAMIDE') PIR = [['DLR', 'D', 'LYF'], 'cantina', ['PB', 'D', 'LYF'], ['LETT', 'D', 'LYF']].concat(PIR.filter(function (c) { return c !== 'cantina'; }));
+    if (scalaScelta === 'PIRAMIDE_DLR') PIR = [['LYF', 'PBF', 'DLRF'], 'cantina', ['D', 'LYF', 'DLRF'], ['D', 'LYF', 'PBF'], ['D', 'PBF', 'DLRF'], ['DLR', 'LYF', 'DLRF'],
+               ['LYF', 'DLRF'], ['DLR', 'PBF'], ['LY', 'DLRF'], ['LETT', 'MT'], ['LY', 'AT', 'LETT']];
     if (scalaScelta === 'PIRAMIDE_PB') PIR = [['D', 'LYF', 'PBF'], 'cantina', ['DLR', 'LYF', 'PBF'], ['DLR', 'D', 'LYF'], ['DLR', 'D', 'PBF'], ['PB', 'LY', 'LYF'],
                ['LY', 'D', 'PBF'], ['MT', 'LYF'], ['PB', 'PBF'], ['DLR', 'LETT'], ['LY', 'AT']];
     if (scalaScelta === 'PIRAMIDE_LY') PIR = [['DLR', 'D', 'LYF'], 'cantina', ['PB', 'D', 'LYF'], ['LETT', 'D', 'LYF'], ['DLR', 'LETT', 'D'], ['LY', 'MT', 'LYF'],
