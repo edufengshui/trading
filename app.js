@@ -467,6 +467,9 @@ function analizzaCrossPerReport(r, utcMs, dateStr) {
         var mt = metodoTrend(ly, dateStr, yearBranch, chart.monthBranch, chart.dayStem || null, chart.dayBranch, oraB0, dir);
         out.mtDir = mt.dir; out.mtPunti = mt.punti; out.mtVerdetto = mt.verdetto; out.mtRacconto = mt.racconto;
         out.osserva = osservaBestie(ly, chart.monthBranch);
+        // SISTEMA D (S57, Edu 17/10/2026): la regola della carta (esagramma + linea mobile) dal catalogo livello_d.js.
+        var sd = sistemaD(ly, dateStr, yearBranch, chart.monthBranch, chart.dayStem || null, chart.dayBranch, oraB0, dir);
+        out.dDir = sd.dir; out.dRegola = sd.regola; out.dForma = sd.forma;
         // --- TRE SISTEMI (Edu, 03/09/2026 S36): oltre a PB e LY si annotano il verdetto del
         // SISTEMA ATTUALE (PB + LY + rafforzativi, canonico = combinaS9 con tutte le vie accese)
         // e il verdetto del motore DA LIU REN (motore_dlr.js, stessa carta del pannello).
@@ -912,6 +915,18 @@ function metodoTrend(ly, dateStr, yearBranch, monthBranch, dayStem, dayBranch, o
   return out;
 }
 
+function sistemaD(ly, dateStr, yearBranch, monthBranch, dayStem, dayBranch, oraBranch, dir) {
+  var out = { dir: null, regola: null, forma: null };
+  try {
+    if (!window.SistemaD || !window.InventarioCarta || !ly || ly.error || !dir) return out;
+    var stD = steliDiData(dateStr, yearBranch, monthBranch, dayStem, oraBranch);
+    var v = window.SistemaD.leggi(ly, { dayBranch: dayBranch, monthBranch: monthBranch, yearBranch: yearBranch, oraBranch: oraBranch,
+      dayStem: dayStem, yearStem: stD.yearStem, monthStem: stD.monthStem, hourStem: stD.hourStem, emaDir: dir }, window.InventarioCarta);
+    out.dir = v.dir; out.regola = v.regola; out.forma = v.forma;
+  } catch (e) { out.regola = 'sistema D non disponibile: ' + e.message; }
+  return out;
+}
+
 function letturaMotore(ly, dateStr, yearBranch, monthBranch, dayStem, dayBranch, oraBranch, emaDir) {
   var out = { dir: null, gradino: null, perche: null, racconto: '' };
   try {
@@ -1011,7 +1026,8 @@ function livelloTreSistemi(e) {
              ' · Spirito ' + (e.spirito || 'tace') + ' · stelo ' + (e.steloVoce || 'tace') +
              ' · Sistema-trend ' + (e.stVerdetto ? (e.stVerdetto + ' (' + (e.stPunti > 0 ? '+' : '') + e.stPunti + (e.stDir ? ', ' + e.stDir : '') + ')') : 'tace') +
              (e.osserva && e.osserva.length ? ' · DA OSSERVARE: ' + e.osserva.join('; ') : '') +
-             ' · Metodo del trend ' + (e.mtVerdetto && e.mtVerdetto !== 'tace' ? (e.mtVerdetto + ' (' + (e.mtPunti > 0 ? '+' : '') + e.mtPunti + (e.mtDir ? ', ' + e.mtDir : '') + ')') : 'tace');
+             ' · Metodo del trend ' + (e.mtVerdetto && e.mtVerdetto !== 'tace' ? (e.mtVerdetto + ' (' + (e.mtPunti > 0 ? '+' : '') + e.mtPunti + (e.mtDir ? ', ' + e.mtDir : '') + ')') : 'tace') +
+             ' · Sistema D ' + (e.dDir ? e.dDir + ' (' + e.dForma + ': ' + e.dRegola + ')' : (e.dForma ? 'tace (' + e.dForma + ' senza regola)' : 'tace'));
   // Lo Spirito e lo stelo del giorno restano mostrati ma dal 16/09/2026 non contano piu' nella scala.
   if (!pb) return { liv: null, dir: null, perche: 'carta non leggibile', voci: voci };
   // LIVELLO A IN CANTINA (Edu, 09/10/2026: "E' meglio mettere in cantina il livello A"). Dal vivo dal 15/09 il
@@ -1025,6 +1041,24 @@ function livelloTreSistemi(e) {
     // (livello "cantina"); il vecchio B diventa A, il vecchio C diventa B, il vecchio D diventa C. Dal vivo dal
     // 15/09 al 08/10 i record del registro usano ancora le lettere vecchie (A=concordi, B=attuale+DLR...).
     return { liv: cantinaA ? 'cantina' : 'A', dir: pb, cantina: cantinaA, perche: 'Plum Blossom, Liu Yao e Da Liu Ren concordano' + (cantinaA ? ' — in cantina, non si trada' : ''), voci: voci };
+  // SCALA S57 (Edu, 17/10/2026: "un sistema gerarchico che integri tutti i livelli per scala di efficienza").
+  // Gradini scelti fra tutte le coppie e terne di voci concordi (PB, LY, attuale, DLR, Lettura S47, metodo del
+  // trend, sistema D), ognuno la combinazione migliore fra le carte rimaste, almeno 80 carte e 58% dal 2025.
+  // Misura del 17/10/2026 sulle 3.309 carte 2020-2026 (D contato senza la carta nella propria regola), dopo la cantina:
+  //   A attuale = DLR = metodo del trend   268 carte · 68,3% · +5.427 pip
+  //   B PB = DLR = Lettura S47             252 · 64,7% · +4.851
+  //   C attuale = DLR = sistema D          194 · 67,5% · +4.990
+  //   D LY = attuale = DLR                 256 · 61,7% · +4.817 (26 gen-lug 40% su 25)
+  //   totale 970 carte · 65,5% · +20.085 pip · 26 ago-ott 69,7% su 33. La scala S48 (A/B/C) si rimette con SCALA=S48.
+  var scalaVecchia = (typeof localStorage !== 'undefined' && localStorage && localStorage.getItem('SCALA') === 'S48');
+  if (!scalaVecchia) {
+    var dd = e.dDir || null, mtd = e.mtDir || null;
+    if (at && dlr && mtd && at === dlr && dlr === mtd) return { liv: 'A', dir: dlr, perche: 'sistema attuale, Da Liu Ren e metodo del trend concordano', voci: voci };
+    if (pb && dlr && lett && pb === dlr && dlr === lett) return { liv: 'B', dir: dlr, perche: 'Plum Blossom, Da Liu Ren e Lettura S47 concordano', voci: voci };
+    if (at && dlr && dd && at === dlr && dlr === dd) return { liv: 'C', dir: dlr, perche: 'sistema attuale, Da Liu Ren e sistema D concordano', voci: voci };
+    if (ly && at && dlr && ly === at && at === dlr) return { liv: 'D', dir: dlr, perche: 'Liu Yao, sistema attuale e Da Liu Ren concordano', voci: voci };
+    return { liv: null, dir: null, perche: 'nessun gradino della scala: fermo', voci: voci };
+  }
   if (dlr && at && at === dlr)
     return { liv: 'A', dir: dlr, perche: 'sistema attuale e Da Liu Ren concordano', voci: voci };
   if (ly && pb === ly && !dlr)
@@ -1082,7 +1116,7 @@ function renderReportTreSistemi() {
       'font-weight:800;font-size:13px;letter-spacing:.4px;color:#0e1022;background:' + col + '">' + sig + '</span>';
   }
   function livBadge(l) {
-    var col = l === 'A' ? '#3fb950' : l === 'B' ? '#e3b341' : l === 'C' ? '#58a6ff' : '#8b949e';
+    var col = l === 'A' ? '#3fb950' : l === 'B' ? '#e3b341' : l === 'C' ? '#58a6ff' : l === 'D' ? '#d2a8ff' : '#8b949e';
     if (l === 'cantina') l = 'cant.';
     return '<span style="display:inline-block;min-width:26px;text-align:center;padding:3px 8px;border-radius:6px;' +
       'font-weight:900;font-size:13px;color:#0e1022;background:' + col + '" title="livello ' + l + '">' + l + '</span>';
@@ -1094,7 +1128,7 @@ function renderReportTreSistemi() {
       (e.fiducia ? '<span style="font-size:11px;font-weight:800;padding:1px 6px;border-radius:6px;margin-left:6px;color:#0e1022;background:' + (e.fiducia === 'alta' ? '#3fb950' : e.fiducia === 'bassa' ? '#e3b341' : '#8b949e') + '" title="fiducia dal sistema-trend">fiducia ' + e.fiducia + '</span>' : '') +
       '<span style="' + css.note + '">' + e.voci + (e.dlrVia ? ' · via DLR: ' + e.dlrVia : '') +
       (e.avviso ? ' · <b style="color:#e3b341">' + e.avviso + '</b>' : '') + '</span></div>';
-  }).join('') || '<div style="padding:8px 0;opacity:.7">Nessun cross da tradare oggi: nessun livello A, B o C.</div>';
+  }).join('') || '<div style="padding:8px 0;opacity:.7">Nessun cross da tradare oggi: nessun livello A, B, C o D.</div>';
   var righeCant = inCantina.map(function (e) {
     return '<div class="repline" data-cross="' + e.cross + '" style="' + css.row + ';cursor:pointer;opacity:.75">' +
       livBadge('cantina') + '<span style="' + css.name + '">' + e.cross + '</span>' + badge(e.signal) +
@@ -1115,7 +1149,7 @@ function renderReportTreSistemi() {
 
   var spente = Object.keys(lyToggles).filter(function (k) { return lyToggles[k] === false; }).length;
   var nota = '<div style="padding:6px 14px;font-size:12px;background:rgba(227,179,65,.08);border-bottom:1px solid rgba(255,255,255,.08)">' +
-    'Scala <b>A → B → C</b> (dal 09/10/2026): <b>A</b> sistema attuale e DLR concordi (66% nei sei anni, 70% ago-ott 2026) · <b>B</b> PB e LY concordi, DLR tace · <b>C</b> DLR e Lettura S47 concordi. <b>In cantina</b> le carte con PB, LY e DLR tutti concordi (il vecchio A: dal vivo 27%, fuori campione 46%): si mostrano e si registrano, non si tradano. Tutto il resto è fermo.' +
+    'Scala <b>A → B → C → D</b> (dal 17/10/2026, S57): <b>A</b> attuale, DLR e metodo del trend concordi (68%) · <b>B</b> PB, DLR e Lettura S47 concordi (65%) · <b>C</b> attuale, DLR e sistema D concordi (68%) · <b>D</b> LY, attuale e DLR concordi (62%). <b>In cantina</b> le carte con PB, LY e DLR tutti concordi (il vecchio A: dal vivo 27%, fuori campione 46%): si mostrano e si registrano, non si tradano. Tutto il resto è fermo.' +
     (spente ? ' <b style="color:#e3b341">Nota: a schermo hai ' + spente + ' via' + (spente > 1 ? ' spente' : ' spenta') +
       ' — il report le ignora e le usa comunque accese.</b>' : '') + '</div>';
 
@@ -1125,10 +1159,10 @@ function renderReportTreSistemi() {
       '<div style="' + css.head + '">' +
         '<b style="font-size:16px">Da tradare oggi · ' + forexData.date + ' 00:00 GMT</b>' +
         '<span style="font-size:12px;opacity:.8">' + tradabili.length + ' da tradare (' + nL + ' long, ' + nS + ' short) · ' +
-        'A ' + nA + ' · B ' + nB + ' · C ' + nC + ' · in cantina ' + inCantina.length + ' · ' + esclusi.length + ' fermi</span>' +
+        'A ' + nA + ' · B ' + nB + ' · C ' + nC + ' · D ' + nD + ' · in cantina ' + inCantina.length + ' · ' + esclusi.length + ' fermi</span>' +
       '</div>' + nota +
       '<div style="' + css.sect + '">' +
-        '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">DA TRADARE · livello A, B o C</div>' + righeOk +
+        '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">DA TRADARE · livello A, B, C o D</div>' + righeOk +
       '</div>' +
       (inCantina.length ? '<div style="' + css.sect + ';background:rgba(63,185,80,.05);border-top:1px solid rgba(255,255,255,.10)">' +
         '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">IN CANTINA · PB, LY e DLR concordi, solo da osservare</div>' + righeCant + '</div>' : '') +
