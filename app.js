@@ -1072,13 +1072,20 @@ function livelloTreSistemi(e) {
   //   3  Lettura = D = LYF 150 · 87,3%   4  DLR = Lettura = D 212 · 69,3%   5  LY = metodo = LYF 148 · 62,2%
   //   6  PB = DLR = LYF 120 · 61,7%   7  LY = LYF 254 · 60,2%   8  metodo = D 133 · 60,2%   9  DLR = LYF 110 · 60,0%
   //   10 attuale = DLR 101 · 57,4%   totale 2.651 · 79,5% · +90.276 pip (in uso sullo stesso dump: 2.334 · 78,4% · +78.105)
-  if (scalaScelta === 'PIRAMIDE' || scalaScelta === 'PIRAMIDE_LY') {
+  // PIRAMIDE S58 IN USO DAL 17/10/2026 (Edu: "Si"): in testa i primi 3 gradini della piramide LY, sotto la piramide S57
+  // com'era. Backtest (dump al 18/09, 3.354 carte): 1 DLR=D=LYF 1.002 · 92,7% · cantina 532 · 55,1% · 2 PB=D=LYF 421 · 89,8% ·
+  // 3 Lettura=D=LYF 150 · 87,3% · 4 D=DLR=metodo 171 · 64,9% · 5 attuale=DLR=D 104 · 66,3% · 6 DLR=Lettura=D 63 · 63,5% ·
+  // 7-13 i gradini S57 rimasti, 50-55% (12 e 13 sotto il 50%). Totale 2.440 · 79,2% · +84.455 pip.
+  // SCALA=S57 rimette la piramide S57, SCALA=PIRAMIDE_LY la piramide LY intera.
+  if (scalaScelta === 'S57') scalaScelta = 'PIRAMIDE_S57';
+  if (scalaScelta === 'PIRAMIDE' || scalaScelta === 'PIRAMIDE_LY' || scalaScelta === 'PIRAMIDE_S57') {
     var VV = { PB: pb, LY: ly, AT: at, DLR: dlr, LETT: lett, MT: e.mtDir || null, D: e.dDir || null, LYF: e.lyfDir || null };
     var NOMI = { PB: 'Plum Blossom', LY: 'Liu Yao', AT: 'sistema attuale', DLR: 'Da Liu Ren', LETT: 'Lettura S47', MT: 'metodo del trend', D: 'sistema D', LYF: 'sistema LY per forma' };
     var conc = function (c) { var d = VV[c[0]]; return d && c.every(function (k) { return VV[k] === d; }) ? d : null; };
     var detto = function (c) { return c.map(function (k) { return NOMI[k]; }).join(', ') + ' concordano'; };
     var PIR = [['D', 'DLR', 'MT'], 'cantina', ['AT', 'DLR', 'D'], ['DLR', 'LETT', 'D'], ['PB', 'DLR', 'D'], ['LETT', 'MT', 'D'],
                ['PB', 'MT', 'D'], ['PB', 'AT', 'D'], ['DLR', 'D'], ['LY', 'LETT', 'D'], ['PB', 'D']];
+    if (scalaScelta === 'PIRAMIDE') PIR = [['DLR', 'D', 'LYF'], 'cantina', ['PB', 'D', 'LYF'], ['LETT', 'D', 'LYF']].concat(PIR.filter(function (c) { return c !== 'cantina'; }));
     if (scalaScelta === 'PIRAMIDE_LY') PIR = [['DLR', 'D', 'LYF'], 'cantina', ['PB', 'D', 'LYF'], ['LETT', 'D', 'LYF'], ['DLR', 'LETT', 'D'], ['LY', 'MT', 'LYF'],
                ['PB', 'DLR', 'LYF'], ['LY', 'LYF'], ['MT', 'D'], ['DLR', 'LYF'], ['AT', 'DLR']];
     var liv = 0;
@@ -1207,7 +1214,7 @@ function renderReportTreSistemi() {
 
   var spente = Object.keys(lyToggles).filter(function (k) { return lyToggles[k] === false; }).length;
   var nota = '<div style="padding:6px 14px;font-size:12px;background:rgba(227,179,65,.08);border-bottom:1px solid rgba(255,255,255,.08)">' +
-    '<b>Piramide</b> (dal 17/10/2026, S57): <b>1</b> sistema D, DLR e metodo del trend concordi (85,5% su 656 carte del backtest) · poi la cantina · <b>2-10</b> il sistema migliore sulle carte rimaste, sempre col sistema D (dall\'83,6% al 67,1%). <b>Dal vivo 29/09-16/10</b> (12 giorni, misura_vivo.js): piramide 58 trade, 64%, +800 pip; trend semplice 56%, +458; cantina 47%, −139. È il sistema in uso dal 17/10/2026. Scala del mattino con SCALA=S57A. ' +
+    '<b>Piramide</b> (dal 17/10/2026, S58): <b>1</b> Da Liu Ren, sistema D e sistema LY per forma concordi (92,7% su 1.002 carte del backtest) · poi la cantina · <b>2</b> Plum Blossom, D e LY per forma (89,8%) · <b>3</b> Lettura S47, D e LY per forma (87,3%) · <b>4-13</b> la piramide S57 sulle carte rimaste (dal 66% al 46%). <b>Dal vivo 29/09-16/10</b> (misura_vivo.js): piramide 61 trade, 61%, +849 pip (punta 19 · 63% · +296); trend semplice 55%, +426; cantina 45%, −116. Piramide S57 con SCALA=S57. ' +
     'Scala <b>A → B → C → D</b> (S57A): <b>A</b> attuale, DLR e metodo del trend concordi (68%) · <b>B</b> PB, DLR e Lettura S47 concordi (65%) · <b>C</b> attuale, DLR e sistema D concordi (68%) · <b>D</b> LY, attuale e DLR concordi (62%). <b>In cantina</b> le carte con PB, LY e DLR tutti concordi (il vecchio A: dal vivo 27%, fuori campione 46%): si mostrano e si registrano, non si tradano. Tutto il resto è fermo.' +
     (spente ? ' <b style="color:#e3b341">Nota: a schermo hai ' + spente + ' via' + (spente > 1 ? ' spente' : ' spenta') +
       ' — il report le ignora e le usa comunque accese.</b>' : '') + '</div>';
