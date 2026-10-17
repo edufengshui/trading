@@ -1035,6 +1035,32 @@ function livelloTreSistemi(e) {
   // agosto-ottobre 2026 (11/24) contro il 77% di gennaio-luglio: il 70% vale solo dentro i sei anni su cui le
   // regole sono nate. Le carte A restano calcolate, mostrate e registrate con l'esito (per continuare a
   // misurarle), ma NON si tradano. CANTINA_A=0 nel localStorage lo rimette in scala.
+  // PIRAMIDE S57 (Edu, 17/10/2026: "metti l'85% in cima alla piramide da usare solo ed esclusivamente su quel numero
+  // limitato di carte. Al secondo livello il sistema che performa meglio per il restante gruppo, e cosi' via a scendere").
+  // Misura del 17/10/2026 sulle 3.309 carte 2020-2026, sistema D col catalogo intero (come qui nel software):
+  //   1  D = DLR = metodo del trend   656 carte · 85,5% · +26.014 pip (19,8% del backtest)
+  //   (cantina PB = LY = DLR sulle rimaste: 628 · 61,9%, non si trada)
+  //   2  attuale = DLR = D 262 · 83,6%     3  DLR = Lettura = D 154 · 82,5%    4  PB = DLR = D 102 · 78,4%
+  //   5  Lettura = metodo = D 264 · 76,9%  6  PB = metodo = D 152 · 75,7%      7  PB = attuale = D 273 · 75,1%
+  //   8  DLR = D 142 · 73,9%               9  LY = Lettura = D 137 · 68,6%     10 PB = D 158 · 67,1%
+  //   totale 2.300 carte · 78,9% · +78.145 pip; ferme 381. Col sistema D contato senza la carta nella propria regola
+  //   la punta fa 66,4% su 572 (misura del 17/10). SCALA=S57A rimette la scala a gradini del mattino, SCALA=S48 la vecchia.
+  var scalaScelta = (typeof localStorage !== 'undefined' && localStorage && localStorage.getItem('SCALA')) || 'PIRAMIDE';
+  if (scalaScelta === 'PIRAMIDE') {
+    var VV = { PB: pb, LY: ly, AT: at, DLR: dlr, LETT: lett, MT: e.mtDir || null, D: e.dDir || null };
+    var NOMI = { PB: 'Plum Blossom', LY: 'Liu Yao', AT: 'sistema attuale', DLR: 'Da Liu Ren', LETT: 'Lettura S47', MT: 'metodo del trend', D: 'sistema D' };
+    var conc = function (c) { var d = VV[c[0]]; return d && c.every(function (k) { return VV[k] === d; }) ? d : null; };
+    var detto = function (c) { return c.map(function (k) { return NOMI[k]; }).join(', ') + ' concordano'; };
+    var PIR = [['D', 'DLR', 'MT'], 'cantina', ['AT', 'DLR', 'D'], ['DLR', 'LETT', 'D'], ['PB', 'DLR', 'D'], ['LETT', 'MT', 'D'],
+               ['PB', 'MT', 'D'], ['PB', 'AT', 'D'], ['DLR', 'D'], ['LY', 'LETT', 'D'], ['PB', 'D']];
+    var liv = 0;
+    for (var pi = 0; pi < PIR.length; pi++) {
+      if (PIR[pi] === 'cantina') { if (ly && dlr && pb === ly && ly === dlr) return { liv: 'cantina', dir: pb, cantina: true, perche: 'Plum Blossom, Liu Yao e Da Liu Ren concordano — in cantina, non si trada', voci: voci }; continue; }
+      liv++; var dP = conc(PIR[pi]);
+      if (dP) return { liv: String(liv), dir: dP, perche: detto(PIR[pi]), voci: voci };
+    }
+    return { liv: null, dir: null, perche: 'nessun gradino della piramide: fermo', voci: voci };
+  }
   var cantinaA = !(typeof localStorage !== 'undefined' && localStorage && localStorage.getItem('CANTINA_A') === '0');
   if (ly && dlr && pb === ly && ly === dlr)
     // SCALA RINOMINATA (Edu, 09/10/2026, "Confermo"): il vecchio A e' abolito come livello e resta in cantina
@@ -1050,7 +1076,7 @@ function livelloTreSistemi(e) {
   //   C attuale = DLR = sistema D          194 · 67,5% · +4.990
   //   D LY = attuale = DLR                 256 · 61,7% · +4.817 (26 gen-lug 40% su 25)
   //   totale 970 carte · 65,5% · +20.085 pip · 26 ago-ott 69,7% su 33. La scala S48 (A/B/C) si rimette con SCALA=S48.
-  var scalaVecchia = (typeof localStorage !== 'undefined' && localStorage && localStorage.getItem('SCALA') === 'S48');
+  var scalaVecchia = scalaScelta === 'S48';
   if (!scalaVecchia) {
     var dd = e.dDir || null, mtd = e.mtDir || null;
     if (at && dlr && mtd && at === dlr && dlr === mtd) return { liv: 'A', dir: dlr, perche: 'sistema attuale, Da Liu Ren e metodo del trend concordano', voci: voci };
@@ -1098,8 +1124,9 @@ function renderReportTreSistemi() {
   });
   var tradabili = esiti.filter(function (e) { return e.livello && !e.cantina && (e.signal === 'LONG' || e.signal === 'SHORT'); });
   var inCantina = esiti.filter(function (e) { return e.livello && e.cantina && (e.signal === 'LONG' || e.signal === 'SHORT'); });
-  var ordine = { A: 0, B: 1, C: 2, D: 3, cantina: 4 };
-  tradabili.sort(function (a, b) { return ordine[a.livello] - ordine[b.livello]; });
+  var ordine = { A: 0, B: 1, C: 2, D: 3, cantina: 99 };
+  var ord = function (l) { return l in ordine ? ordine[l] : +l; };
+  tradabili.sort(function (a, b) { return ord(a.livello) - ord(b.livello); });
   var esclusi = esiti.filter(function (e) { return tradabili.indexOf(e) < 0 && inCantina.indexOf(e) < 0; });
 
   var css = {
@@ -1116,6 +1143,9 @@ function renderReportTreSistemi() {
       'font-weight:800;font-size:13px;letter-spacing:.4px;color:#0e1022;background:' + col + '">' + sig + '</span>';
   }
   function livBadge(l) {
+    if (/^[0-9]+$/.test(l)) { var nn = +l; var colN = nn === 1 ? '#3fb950' : nn <= 4 ? '#7ee787' : nn <= 7 ? '#e3b341' : '#58a6ff';
+      return '<span style="display:inline-block;min-width:26px;text-align:center;padding:3px 8px;border-radius:6px;' +
+        'font-weight:900;font-size:13px;color:#0e1022;background:' + colN + '" title="gradino ' + l + ' della piramide">' + l + '</span>'; }
     var col = l === 'A' ? '#3fb950' : l === 'B' ? '#e3b341' : l === 'C' ? '#58a6ff' : l === 'D' ? '#d2a8ff' : '#8b949e';
     if (l === 'cantina') l = 'cant.';
     return '<span style="display:inline-block;min-width:26px;text-align:center;padding:3px 8px;border-radius:6px;' +
@@ -1128,7 +1158,7 @@ function renderReportTreSistemi() {
       (e.fiducia ? '<span style="font-size:11px;font-weight:800;padding:1px 6px;border-radius:6px;margin-left:6px;color:#0e1022;background:' + (e.fiducia === 'alta' ? '#3fb950' : e.fiducia === 'bassa' ? '#e3b341' : '#8b949e') + '" title="fiducia dal sistema-trend">fiducia ' + e.fiducia + '</span>' : '') +
       '<span style="' + css.note + '">' + e.voci + (e.dlrVia ? ' · via DLR: ' + e.dlrVia : '') +
       (e.avviso ? ' · <b style="color:#e3b341">' + e.avviso + '</b>' : '') + '</span></div>';
-  }).join('') || '<div style="padding:8px 0;opacity:.7">Nessun cross da tradare oggi: nessun livello A, B, C o D.</div>';
+  }).join('') || '<div style="padding:8px 0;opacity:.7">Nessun cross da tradare oggi: nessun gradino della scala.</div>';
   var righeCant = inCantina.map(function (e) {
     return '<div class="repline" data-cross="' + e.cross + '" style="' + css.row + ';cursor:pointer;opacity:.75">' +
       livBadge('cantina') + '<span style="' + css.name + '">' + e.cross + '</span>' + badge(e.signal) +
@@ -1149,7 +1179,8 @@ function renderReportTreSistemi() {
 
   var spente = Object.keys(lyToggles).filter(function (k) { return lyToggles[k] === false; }).length;
   var nota = '<div style="padding:6px 14px;font-size:12px;background:rgba(227,179,65,.08);border-bottom:1px solid rgba(255,255,255,.08)">' +
-    'Scala <b>A → B → C → D</b> (dal 17/10/2026, S57): <b>A</b> attuale, DLR e metodo del trend concordi (68%) · <b>B</b> PB, DLR e Lettura S47 concordi (65%) · <b>C</b> attuale, DLR e sistema D concordi (68%) · <b>D</b> LY, attuale e DLR concordi (62%). <b>In cantina</b> le carte con PB, LY e DLR tutti concordi (il vecchio A: dal vivo 27%, fuori campione 46%): si mostrano e si registrano, non si tradano. Tutto il resto è fermo.' +
+    '<b>Piramide</b> (dal 17/10/2026, S57): <b>1</b> sistema D, DLR e metodo del trend concordi (85,5% su 656 carte del backtest) · poi la cantina · <b>2-10</b> il sistema migliore sulle carte rimaste, sempre col sistema D (dall\'83,6% al 67,1%). Scala del mattino con SCALA=S57A. ' +
+    'Scala <b>A → B → C → D</b> (S57A): <b>A</b> attuale, DLR e metodo del trend concordi (68%) · <b>B</b> PB, DLR e Lettura S47 concordi (65%) · <b>C</b> attuale, DLR e sistema D concordi (68%) · <b>D</b> LY, attuale e DLR concordi (62%). <b>In cantina</b> le carte con PB, LY e DLR tutti concordi (il vecchio A: dal vivo 27%, fuori campione 46%): si mostrano e si registrano, non si tradano. Tutto il resto è fermo.' +
     (spente ? ' <b style="color:#e3b341">Nota: a schermo hai ' + spente + ' via' + (spente > 1 ? ' spente' : ' spenta') +
       ' — il report le ignora e le usa comunque accese.</b>' : '') + '</div>';
 
@@ -1159,10 +1190,10 @@ function renderReportTreSistemi() {
       '<div style="' + css.head + '">' +
         '<b style="font-size:16px">Da tradare oggi · ' + forexData.date + ' 00:00 GMT</b>' +
         '<span style="font-size:12px;opacity:.8">' + tradabili.length + ' da tradare (' + nL + ' long, ' + nS + ' short) · ' +
-        'A ' + nA + ' · B ' + nB + ' · C ' + nC + ' · D ' + nD + ' · in cantina ' + inCantina.length + ' · ' + esclusi.length + ' fermi</span>' +
+        (nA + nB + nC + nD ? 'A ' + nA + ' · B ' + nB + ' · C ' + nC + ' · D ' + nD : 'punta ' + cont('1') + ' · gradini 2-10 ' + (tradabili.length - cont('1'))) + ' · in cantina ' + inCantina.length + ' · ' + esclusi.length + ' fermi</span>' +
       '</div>' + nota +
       '<div style="' + css.sect + '">' +
-        '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">DA TRADARE · livello A, B, C o D</div>' + righeOk +
+        '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">DA TRADARE · in ordine di gradino</div>' + righeOk +
       '</div>' +
       (inCantina.length ? '<div style="' + css.sect + ';background:rgba(63,185,80,.05);border-top:1px solid rgba(255,255,255,.10)">' +
         '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">IN CANTINA · PB, LY e DLR concordi, solo da osservare</div>' + righeCant + '</div>' : '') +
