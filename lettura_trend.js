@@ -609,7 +609,14 @@
       return KE[mE] === WX[Ls.ramo] ? Ls : null;
     })();
     if (_serpMorto && c.serpenteMorto === 'prima') return vince('Y', 'il Serpente siede su L' + _serpMorto.pos + ' ed è morto nel mese (死): l\'azione è attorcigliata, il trend non tiene', 1);
-    if (troppoFuori(S) && troppoFuori(Y)) { dire('Shi e Ying tutti e due troppo fuori stagione: il metodo tace'); return out; }
+    // L'ORA SALVA DAL FUORI GIOCO (S58, Edu 19/10/2026, EURUSD 19/10/2026 s112: "se il trend e' short, S sta vincendo"; dottrina
+    // 08/09: "chi decide se una cosa e' in stagione: il MESE al 70% e l'ORA al 30%"). La sede troppo fuori stagione nel mese ma
+    // sul ramo dell'ora o del suo elemento, o generata dall'ora, non e' fuori gioco (li' lo Shi Mao, prigioniero nel mese Xu,
+    // sta sul ramo dell'ora Mao). c.oraSalva === false spegne.
+    var _oraSalva = function (L) { if (c.oraSalva === false || !c.oraBranch) return false; var oE = WX[c.oraBranch], e = WX[L.ramo]; return oE === e || GEN[oE] === e; };
+    var _fuoriGioco = function (L) { return troppoFuori(L) && !_oraSalva(L); };
+    if (_fuoriGioco(S) && _fuoriGioco(Y)) { dire('Shi e Ying tutti e due troppo fuori stagione: il metodo tace'); return out; }
+    if (troppoFuori(S) && troppoFuori(Y)) dire((_oraSalva(S) ? 'lo Shi' : 'la Ying') + ' e\' fuori stagione nel mese ma l\'ora la tiene in gioco (mese 70%, ora 30%)');
     if (_serpMorto) return vince('Y', 'il Serpente siede su L' + _serpMorto.pos + ' ed è morto nel mese (死): l\'azione è attorcigliata, il trend non tiene', 1);
     // chi si muove: la mobile (se non e' legata alla partenza dal mese o dal giorno) e le incompatibili che girano
     var dep = R.mutante.ramoDep, arr = R.mutante.ramoArr, fut = R.mutante.futuro || [];

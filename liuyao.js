@@ -2808,6 +2808,9 @@
       var mob = R.linee[R.mutante.pos-1];
       if (mob.par !== 'B') return null;
       if (COMBINA[R.dayBranch] !== R.mutante.ramoArr) return null;   // trapped arrival: the day combines it
+      // S58 (Edu 19/10/2026, EURUSD 19/10/2026 s112): if the arrival is VOID the combination does not take it out of the void
+      // (only the clash wakes the void, 08/09) — the line that moves into the void is invalidated (16/09): no suspended B.
+      if ((typeof process==='undefined' || !process.env || process.env.VIA94VUOTO!=='off') && (R.vuoti||[]).indexOf(R.mutante.ramoArr) >= 0) return null;
       var seat = mob.pos<=3 ? 'SHORT' : 'LONG';
       state.why = 'The mobile <b>B</b> L'+mob.pos+' ('+R.mutante.ramoDep+'→'+R.mutante.ramoArr+') is trapped: the day <b>'+R.dayBranch+'</b> combines (六合) its arrival — the B cannot advance, so it cannot make its own team lose → its seat holds → '+seat+'.';
       return seat;
