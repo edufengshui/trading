@@ -470,6 +470,10 @@ function analizzaCrossPerReport(r, utcMs, dateStr) {
         // SISTEMA D (S57, Edu 17/10/2026): la regola della carta (esagramma + linea mobile) dal catalogo livello_d.js.
         var sd = sistemaD(ly, dateStr, yearBranch, chart.monthBranch, chart.dayStem || null, chart.dayBranch, oraB0, dir);
         out.dDir = sd.dir; out.dRegola = sd.regola; out.dForma = sd.forma;
+        // COLPO DEL MESE (S58, Edu 19/10/2026 "devi cablarlo"): la bestia del mese che controlla una sede, o il mese che la
+        // combina e la controlla -> quella sede perde (colpo_mese.js; 307 carte, 58,6%; 2024-26 fuori campione 57,9% su 145).
+        var cmo = colpoMese(ly, dateStr, yearBranch, chart.monthBranch, chart.dayStem || null, chart.dayBranch, oraB0, dir);
+        out.cmDir = cmo.dir; out.cmPerche = cmo.perche;
         // SISTEMA LY PER FORMA (S58, Edu 17/10/2026): la regola della forma dice alto o basso (livello_ly.js), senza il trend.
         var sly = sistemaLY(ly, dateStr, yearBranch, chart.monthBranch, chart.dayStem || null, chart.dayBranch, oraB0, dir);
         out.lyfDir = sly.dir; out.lyfRegola = sly.regola; out.lyfForma = sly.forma;
@@ -937,6 +941,18 @@ function sistemaD(ly, dateStr, yearBranch, monthBranch, dayStem, dayBranch, oraB
   return out;
 }
 
+function colpoMese(ly, dateStr, yearBranch, monthBranch, dayStem, dayBranch, oraBranch, dir) {
+  var out = { dir: null, perche: null };
+  try {
+    if (!window.ColpoMese || !window.InventarioCarta || !ly || ly.error) return out;
+    var stD = steliDiData(dateStr, yearBranch, monthBranch, dayStem, oraBranch);
+    var inv = window.InventarioCarta.inventario(ly, { dayBranch: dayBranch, monthBranch: monthBranch, yearBranch: yearBranch, oraBranch: oraBranch,
+      dayStem: dayStem, yearStem: stD.yearStem, monthStem: stD.monthStem, hourStem: stD.hourStem, emaDir: dir });
+    var v = window.ColpoMese.leggi(inv, monthBranch); out.dir = v.dir || null; out.perche = v.perche || null;
+  } catch (e) { out.perche = 'colpo del mese non disponibile: ' + e.message; }
+  return out;
+}
+
 function sistemaLY(ly, dateStr, yearBranch, monthBranch, dayStem, dayBranch, oraBranch, dir) {
   var out = { dir: null, regola: null, forma: null };
   try {
@@ -1052,6 +1068,7 @@ function livelloTreSistemi(e) {
              ' · Sistema D ' + (e.dDir ? e.dDir + ' (' + e.dForma + ': ' + e.dRegola + ')' : (e.dForma ? 'tace (' + e.dForma + ' senza regola)' : 'tace')) +
              ' · Sistema LY per forma ' + (e.lyfDir ? e.lyfDir + ' (' + e.lyfForma + ': ' + e.lyfRegola + ')' : (e.lyfForma ? 'tace (' + e.lyfForma + ' senza regola)' : 'tace')) +
              ' · Sistema PB per forma ' + (e.pbfDir ? e.pbfDir + ' (' + e.pbfForma + ': ' + e.pbfRegola + ')' : (e.pbfForma ? 'tace (' + e.pbfForma + ' senza regola)' : 'tace')) +
+             ' · Colpo del mese ' + (e.cmDir ? e.cmDir + ' (' + e.cmPerche + ')' : 'tace') +
              ' · Sistema DLR per forma ' + (e.dlrfDir ? e.dlrfDir + ' (' + e.dlrfForma + ': ' + e.dlrfRegola + ')' : (e.dlrfForma ? 'tace (' + e.dlrfForma + ' senza regola)' : 'tace'));
   // Lo Spirito e lo stelo del giorno restano mostrati ma dal 16/09/2026 non contano piu' nella scala.
   if (!pb) return { liv: null, dir: null, perche: 'carta non leggibile', voci: voci };
@@ -1100,9 +1117,9 @@ function livelloTreSistemi(e) {
   // Backtest: 1 LYF=PBF=DLRF 1.073 · 97,2% · cantina 571 · 68,7% · 2 D=LYF=DLRF 132 · 90,9% · 3 D=LYF=PBF 439 · 88,8% ·
   // 4 D=PBF=DLRF 320 · 88,4% · 5 DLR=LYF=DLRF 115 · 70,4% · 6 LYF=DLRF 100 · 70,0% · 7 DLR=PBF 215 · 70,7% · 8 LY=DLRF 103 · 66,0% ·
   // 9 Lettura=metodo 113 · 60,2% · 10 LY=attuale=Lettura 107 · 47,7%. Totale 2.717 · 85,6% · +110.567 pip.
-  if (scalaScelta === 'PIRAMIDE' || scalaScelta === 'PIRAMIDE_LY' || scalaScelta === 'PIRAMIDE_S57' || scalaScelta === 'PIRAMIDE_PB' || scalaScelta === 'PIRAMIDE_DLR' || scalaScelta === 'DLR_CANTINA') {
-    var VV = { PB: pb, LY: ly, AT: at, DLR: dlr, LETT: lett, MT: e.mtDir || null, D: e.dDir || null, LYF: e.lyfDir || null, PBF: e.pbfDir || null, DLRF: e.dlrfDir || null };
-    var NOMI = { PB: 'Plum Blossom', LY: 'Liu Yao', AT: 'sistema attuale', DLR: 'Da Liu Ren', LETT: 'Lettura S47', MT: 'metodo del trend', D: 'sistema D', LYF: 'sistema LY per forma', PBF: 'sistema PB per forma', DLRF: 'sistema DLR per forma' };
+  if (scalaScelta === 'PIRAMIDE' || scalaScelta === 'PIRAMIDE_LY' || scalaScelta === 'PIRAMIDE_S57' || scalaScelta === 'PIRAMIDE_PB' || scalaScelta === 'PIRAMIDE_DLR' || scalaScelta === 'DLR_CANTINA' || scalaScelta === 'DLR_SENZA_CM') {
+    var VV = { PB: pb, LY: ly, AT: at, DLR: dlr, LETT: lett, MT: e.mtDir || null, D: e.dDir || null, LYF: e.lyfDir || null, PBF: e.pbfDir || null, DLRF: e.dlrfDir || null, CM: e.cmDir || null };
+    var NOMI = { PB: 'Plum Blossom', LY: 'Liu Yao', AT: 'sistema attuale', DLR: 'Da Liu Ren', LETT: 'Lettura S47', MT: 'metodo del trend', D: 'sistema D', LYF: 'sistema LY per forma', PBF: 'sistema PB per forma', DLRF: 'sistema DLR per forma', CM: 'colpo del mese' };
     var conc = function (c) { var d = VV[c[0]]; return d && c.every(function (k) { return VV[k] === d; }) ? d : null; };
     var detto = function (c) { return c.map(function (k) { return NOMI[k]; }).join(', ') + ' concordano'; };
     var PIR = [['D', 'DLR', 'MT'], 'cantina', ['AT', 'DLR', 'D'], ['DLR', 'LETT', 'D'], ['PB', 'DLR', 'D'], ['LETT', 'MT', 'D'],
@@ -1111,9 +1128,13 @@ function livelloTreSistemi(e) {
     // CANTINA ABOLITA NELLA PIRAMIDE DLR (Edu, 17/10/2026: "Se migliora il sistema generale, si"): le carte PB = LY = DLR
     // scendono nei gradini 2-10 invece di restare ferme. Backtest 3.268 · 84,9% · +131.515 pip (con la cantina 2.717 · 85,6% ·
     // +110.567); dal vivo 29/09-16/10 80 trade · 66% · +1.145 (con la cantina 68 · 66% · +938). SCALA=DLR_CANTINA la rimette.
-    if (scalaScelta === 'PIRAMIDE_DLR' || scalaScelta === 'DLR_CANTINA') PIR = [['LYF', 'PBF', 'DLRF'], 'cantina', ['D', 'LYF', 'DLRF'], ['D', 'LYF', 'PBF'], ['D', 'PBF', 'DLRF'], ['DLR', 'LYF', 'DLRF'],
+    if (scalaScelta === 'PIRAMIDE_DLR' || scalaScelta === 'DLR_CANTINA' || scalaScelta === 'DLR_SENZA_CM') PIR = [['LYF', 'PBF', 'DLRF'], 'cantina', ['D', 'LYF', 'DLRF'], ['D', 'LYF', 'PBF'], ['D', 'PBF', 'DLRF'], ['DLR', 'LYF', 'DLRF'],
                ['LYF', 'DLRF'], ['DLR', 'PBF'], ['LY', 'DLRF'], ['LETT', 'MT'], ['LY', 'AT', 'LETT']];
-    if (scalaScelta === 'PIRAMIDE_DLR') PIR = PIR.filter(function (c) { return c !== 'cantina'; });
+    if (scalaScelta === 'PIRAMIDE_DLR' || scalaScelta === 'DLR_SENZA_CM') PIR = PIR.filter(function (c) { return c !== 'cantina'; });
+    // COLPO DEL MESE nella piramide DLR (Edu, 19/10/2026): il LY corretto dal colpo del mese dove il mese colpisce una sede,
+    // e il colpo del mese da solo sulle carte che nessun gradino prende. Prova pulita (cataloghi 2020-23, carte 2024-26):
+    // piramide 1.370 · 55,4% · +11.164 -> 1.389 · 55,7% · +11.909. SCALA=DLR_SENZA_CM la toglie.
+    if (scalaScelta === 'PIRAMIDE_DLR' && VV.CM) { VV.LY = VV.CM; PIR = PIR.concat([['CM']]); }
     if (scalaScelta === 'PIRAMIDE_PB') PIR = [['D', 'LYF', 'PBF'], 'cantina', ['DLR', 'LYF', 'PBF'], ['DLR', 'D', 'LYF'], ['DLR', 'D', 'PBF'], ['PB', 'LY', 'LYF'],
                ['LY', 'D', 'PBF'], ['MT', 'LYF'], ['PB', 'PBF'], ['DLR', 'LETT'], ['LY', 'AT']];
     if (scalaScelta === 'PIRAMIDE_LY') PIR = [['DLR', 'D', 'LYF'], 'cantina', ['PB', 'D', 'LYF'], ['LETT', 'D', 'LYF'], ['DLR', 'LETT', 'D'], ['LY', 'MT', 'LYF'],
