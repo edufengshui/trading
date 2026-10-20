@@ -5,7 +5,7 @@
  */
 'use strict';
 
-var CACHE = 'trading-app-v71';
+var CACHE = 'trading-app-v72';
 
 // Core files precached at install so the app opens offline. Relative paths only.
 var CORE = [
@@ -30,6 +30,7 @@ var CORE = [
   './livello_pb.js',
   './livello_dlr.js',
   './colpo_mese.js',
+  './semplificato.js',
   './manifest.webmanifest',
   './icons/icon.svg'
 ];
