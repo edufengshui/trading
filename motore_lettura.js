@@ -3492,8 +3492,9 @@ function creaMotore(LYM) {
 
     if ((mobileAnnullata || mobileNonDecide) && !off('MLSVEGLIA')) {
       var sveglie = R.linee.filter(function (L) {
+        // 暗動 nella propria tomba: si muove ma non agisce (Edu, 22/10/2026). ANDONGTOMBA=off in liuyao.js spegne.
         return L.pos !== pos && !annullate[L.pos] && !vuotaL(L, C, R) &&
-               ((L.stato === 'mossa' && C.D && CLASH[C.D] === L.ramo) || L._sveglia2);
+               ((L.stato === 'mossa' && C.D && CLASH[C.D] === L.ramo && !L.andongTomba) || L._sveglia2);
       });
       if (sveglie.length === 1) {
         var SW = sveglie[0];

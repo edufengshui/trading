@@ -568,12 +568,22 @@
     var _gioNoComb  = giornoLegatoDalMese;
     var _gioNoClash = giornoLegatoDalMese;
     var anDong = {};   // pos -> { arr }
+    // 暗動 NELLA PROPRIA TOMBA (Edu, 22/10/2026, EURUSD 19/10/2026 s112: "L4 e' clashato e si muove nella sua tomba
+    // quindi zero per il trigramma superiore" · "e' dottrina"): la linea in movimento nascosto il cui arrivo e' la
+    // tomba del PROPRIO elemento (Legno 未, Fuoco 戌, Metallo 丑, Acqua 辰; la Terra no) non ha nessuna azione: esce da
+    // anDong (non combina, non clasha, non genera, non avanza ne' retrocede) e resta in anDongTomba per il racconto.
+    // ANDONGTOMBA=off spegne.
+    var _adtOn = !((typeof process !== 'undefined' && process.env && process.env.ANDONGTOMBA) === 'off');
+    var TOMBA_AD = { Wood:'未', Fire:'戌', Metal:'丑', Water:'辰' };   // la Terra no: USDJPY 24/07/2023 s141, Chou -> Chen avanza (Edu)
+    var anDongTomba = {};   // pos -> { arr }
     for (var ad = 1; ad <= 6; ad++) {
       if (ad === linea) continue;
       var brA = ramoAl(ad);
       if (vuoti.indexOf(brA) >= 0) continue;
       if (!clashSu(brA).eff) continue;
-      anDong[ad] = { arr: ramoTrasfA(ad) };
+      var arrAD = ramoTrasfA(ad);
+      if (_adtOn && TOMBA_AD[WX[brA]] === arrAD) { anDongTomba[ad] = { arr: arrAD }; continue; }
+      anDong[ad] = { arr: arrAD };
     }
     // ATTERRAGGIO SU LINEA IN MOVIMENTO (Edu, 13/08/2026): se l'arrivo di una linea in
     // 暗動 COMBINA la partenza di una linea che GIA' si muove (la mutante), il bloccaggio
@@ -770,6 +780,7 @@
         isTaiSui: yearBranch != null && ramo === yearBranch,
         vuoto: vuoti.indexOf(ramo) >= 0,
         stato: statoLin(ramo, isMobile, pos),
+        andongTomba: !!anDongTomba[pos],   // 暗動 nella propria tomba: nessuna azione (Edu, 22/10/2026)
         forte: fortLinea(ramo),
         fushen: fu ? { b: fu.b, ramoIt: BR_IT[fu.b], el: fu.el, elIt: EL_IT[fu.el],
                        par: fu.par, parCn: PAR[fu.par].cn, parIt: PAR[fu.par].it } : null,
@@ -821,7 +832,7 @@
       shiClash: clashSu(shiB), yingClash: clashSu(yingB),
       shiLegato: legataDalGiorno(shiB), yingLegato: legataDalGiorno(yingB),
       ripiegoMobile: (!shiEff && !yingEff),
-      anDong: anDong, scalaMobile: scalaMobile,
+      anDong: anDong, anDongTomba: anDongTomba, scalaMobile: scalaMobile,
       mutante: {
         pos: linea, ramoDep: ramoDep, ramoArr: ramoArr, depEl: depEl, arrEl: arrEl,
         depElIt: EL_IT[depEl], arrElIt: EL_IT[arrEl],
