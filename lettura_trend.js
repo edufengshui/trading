@@ -1142,6 +1142,25 @@
         }
       }
     });
+    // LA FERMA CLASHATA DAL GIORNO PORTA LA SUA FORZA ALLA SEDE CHE IL SUO ARRIVO COMBINA (Edu, 22/10/2026, EURUSD 19/10/2026
+    // s112: "Il giorno clasha L4 che si muove su Chou che si combina con Y, quindi Y riceve Shen che controlla S"): una linea
+    // ferma, non sede, non vuota, clashata dal giorno si muove (暗動) al ramo della sua posizione nell'esagramma trasformato; se
+    // quell'arrivo fa 六合 con una sede, la sede riceve l'elemento della PARTENZA, e se quell'elemento controlla l'altra sede la
+    // colpisce. Non se la linea entra nella propria tomba fuori stagione (nessuna azione). c.forzaCombinata === false spegne.
+    if (c.forzaCombinata !== false && dB && (R.mutante.futuro || []).length) {
+      var _tombaFc = { Wood: '未', Fire: '戌', Metal: '丑', Water: '辰' };
+      R.linee.forEach(function (Lf) {
+        if (Lf.pos === R.shi || Lf.pos === R.ying || Lf.pos === R.mutante.pos || Lf.vuoto || (R.incompatibili || []).indexOf(Lf.pos) >= 0) return;
+        if (CLASH[dB] !== Lf.ramo) return;
+        var aF = R.mutante.futuro[Lf.pos - 1]; if (!aF || aF === Lf.ramo || vuoti.indexOf(aF) >= 0) return;
+        if (_tombaFc[WX[Lf.ramo]] === aF && !timely(Lf)) return;
+        ['S', 'Y'].forEach(function (k) {
+          var o = ALTRA[k];
+          if (COMBINA[aF] !== SEDE[k].ramo || SEDE[k].vuoto || bloccata[k] || SEDE[o].vuoto) return;
+          if (KE[WX[Lf.ramo]] === WX[SEDE[o].ramo]) colpisci(o, 1, 'il giorno ' + dB + ' clasha L' + Lf.pos + ' ' + Lf.ramo + ' che va in ' + aF + ', combinato con ' + NOME[k] + ': ' + NOME[k] + ' riceve ' + Lf.ramo + ' che controlla ' + NOME[o]);
+        });
+      });
+    }
     // la sede nutrita da un movimento che controlla l'altra la colpisce
     var colpitaDaNutrita = { S: false, Y: false };
     ['S', 'Y'].forEach(function (k) { var o = ALTRA[k]; if (nutritoDaAltri[k] && !SEDE[o].vuoto && KE[WX[SEDE[k].ramo]] === WX[SEDE[o].ramo]) { colpitaDaNutrita[o] = true; colpisci(o, 1, NOME[k] + ', nutrit' + (k === 'S' ? 'o' : 'a') + ' da un movimento, controlla ' + NOME[o]); } });
@@ -1179,7 +1198,7 @@
         // 暗動 nella propria tomba (Edu, 22/10/2026): la sede sveglia che arriva nella tomba del proprio elemento non
         // agisce, niente sfida. c.andongTomba === false spegne.
         var _tombaSv = { Wood: '未', Fire: '戌', Metal: '丑', Water: '辰' };   // la Terra no (USDJPY 24/07/2023, Chou -> Chen avanza)
-        if (arrSv && c.andongTomba !== false && _tombaSv[WX[SEDE[kS1].ramo]] === arrSv) dire(NOME[kS1] + ' clashat' + (kS1 === 'S' ? 'o' : 'a') + ' dal giorno va in ' + arrSv + ', la sua tomba: nessuna azione');
+        if (arrSv && c.andongTomba !== false && _tombaSv[WX[SEDE[kS1].ramo]] === arrSv && !timely(SEDE[kS1])) dire(NOME[kS1] + ' clashat' + (kS1 === 'S' ? 'o' : 'a') + ' dal giorno va in ' + arrSv + ', la sua tomba: nessuna azione');
         else if (arrSv && arrSv !== SEDE[kS1].ramo && vuoti.indexOf(arrSv) < 0) {
           var eSv = WX[arrSv], oSv = SEDE[ALTRA[kS1]], eOv = WX[oSv.ramo];
           dire(NOME[kS1] + ' ferm' + (kS1 === 'S' ? 'o' : 'a') + ' è clashat' + (kS1 === 'S' ? 'o' : 'a') + ' dal giorno: si sveglia e va in ' + arrSv);

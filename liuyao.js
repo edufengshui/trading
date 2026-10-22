@@ -582,7 +582,9 @@
       if (vuoti.indexOf(brA) >= 0) continue;
       if (!clashSu(brA).eff) continue;
       var arrAD = ramoTrasfA(ad);
-      if (_adtOn && TOMBA_AD[WX[brA]] === arrAD) { anDongTomba[ad] = { arr: arrAD }; continue; }
+      // solo se la linea e' FUORI STAGIONE nel mese (Edu, 22/10/2026: "la tomba e' tale solo quando l'elemento e' untimely")
+      var _adTimely = !!monthEl && (WX[brA] === monthEl || GEN[monthEl] === WX[brA]);
+      if (_adtOn && TOMBA_AD[WX[brA]] === arrAD && !_adTimely) { anDongTomba[ad] = { arr: arrAD }; continue; }
       anDong[ad] = { arr: arrAD };
     }
     // ATTERRAGGIO SU LINEA IN MOVIMENTO (Edu, 13/08/2026): se l'arrivo di una linea in
