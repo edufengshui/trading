@@ -582,7 +582,13 @@
     var _arrLibero = {};
     var arrVuoto = function (b) { return vuotoVero(b) && !_arrLibero[b] && !(c.vuotoTimely === 'arrivo' && diStag(b)); };
     var campo = function (pos) { return (pos <= 3) === (R.shi <= 3) ? 'S' : 'Y'; };
-    var segnoNutri = function (L) { return (L.par === 'P' || L.par === 'B') ? -1 : 1; };                    // nutrire una P/B la rovescia
+    // SENZA CARATTERI (Edu, 22/10/2026: 'non credo siano necessari perche' li usiamo in abbondanza nel LY normale' · 'In ogni caso,
+    // togli i caratteri'): il metodo del trend legge solo Shi e Ying. Spenti: nutrire una P/B la rovescia, la sede B/P o G/W che
+    // retrocede, la G/W fuori stagione clashata dal giorno eliminata, la G/W non sede che retrocede, il mese G che combina lo Shi.
+    // Misura alla decisione: 53,7% -> 53,1% su 2.652, 2024-26 53,4 -> 51,8; carte di Edu 53 -> 49 (EURGBP 07/10/2026 s84, USDCAD
+    // 24/08/2026 s137, EURJPY 26/08/2026 s185, AUDUSD 24/09/2026 s70). c.senzaCaratteri === false rimette i caratteri.
+    var _sc = c.senzaCaratteri === false ? false : (c.senzaCaratteri || true);
+    var segnoNutri = function (L) { return (!_sc && (L.par === 'P' || L.par === 'B')) ? -1 : 1; };                    // nutrire una P/B la rovescia
     var vuotaInMezzo = function (a, b) { for (var q = Math.min(a, b) + 1; q < Math.max(a, b); q++) if (R.linee[q - 1].vuoto) return true; return false; };
     var _p = { S: 0, Y: 0 }, pt = {}, mosso = { v: false };
     ['S', 'Y'].forEach(function (k) { Object.defineProperty(pt, k, { get: function () { return _p[k]; }, set: function (v) { if (v !== _p[k]) mosso.v = true; _p[k] = v; } }); });
@@ -831,7 +837,7 @@
     if (scart.length === 1) return vince(ALTRA[scart[0]], NOME[scart[0]] + ' si muove per diventare vuot' + (scart[0] === 'S' ? 'o' : 'a') + ' (' + sedeMossa(scart[0]).arr + '): scartat' + (scart[0] === 'S' ? 'o' : 'a') + ', vince l\'altra sede', 1);
     if (scart.length === 2) { dire('tutte e due le sedi si muovono nel vuoto: il metodo tace'); return out; }
     // la sede G/W fuori stagione clashata dal giorno e' eliminata (ferma o mobile; non l'incompatibile che gira)
-    var elim = ['S', 'Y'].filter(function (k) { var L = SEDE[k]; return !L.vuoto && (L.par === 'G' || L.par === 'W') && dB && CLASH[dB] === L.ramo && !timely(L) && inc.indexOf(POS[k]) < 0; });
+    var elim = ['S', 'Y'].filter(function (k) { var L = SEDE[k]; return !L.vuoto && (_sc === 'elimTutte' || (!_sc && (L.par === 'G' || L.par === 'W'))) && dB && CLASH[dB] === L.ramo && !timely(L) && inc.indexOf(POS[k]) < 0; });
     if (elim.length === 1 && c.sostituto !== false) { var so2 = sostituto(elim[0]); if (so2) { dire(NOME[elim[0]] + ' è eliminat' + (elim[0] === 'S' ? 'o' : 'a') + ' dal clash del giorno: fuori gioco'); return vince(so2.vince, so2.t, 1); } }
     // LA SEDE VUOTA FERMA NON PARLA DA SOLA: LA MOBILE DEL SUO CAMPO PARLA PER LEI (Edu, 12/10/2026, USDJPY 21/10/2024
     // s149: "Y è vuoto quindi L2 parla per lui, si muove per diventare Wu ma perde il confronto con S"). La sede vuota e
@@ -963,6 +969,33 @@
       if (eSt && GEN[dEl] === eSt && GEN[eSt] === WX[L0.ramo] && eSt === mE) return vince(k0, NOME[k0] + ' è legat' + (k0 === 'S' ? 'o' : 'a') + ' dal giorno, ma lo stelo ' + c.dayStem + ', forte nella data, fa scorrere il flusso verso di ' + (k0 === 'S' ? 'lui' : 'lei') + ': ne beneficia e non si lascia indebolire', 1);
       bloccata[k0] = true; dire(NOME[k0] + ' è bloccat' + (k0 === 'S' ? 'o' : 'a') + ' dal giorno ' + dB + ' che lo combina e lo controlla: fuori dal confronto');
     }
+    // IL PILASTRO CHE COMBINA UNA SEDE LA BLOCCA (Edu, 22/10/2026, EURUSD 19/10/2026 s112: "Il mese combina con S bloccandolo"
+    // · "il mese o il giorno o l'ora o l'anno che combina S o Y possono bloccarlo"; solo nel metodo del trend). La sede FERMA (non
+    // la mobile, non l'incompatibile che gira: "il mese che combina non ferma la mobile", 13/10), non vuota, il cui ramo fa 六合
+    // col ramo di uno dei pilastri scelti e' bloccata: fuori dal confronto come la sede bloccata dal giorno (regola 22), e se
+    // nessun movimento decide vince l'altra sede. c.pilastriBlocca = lista dei pilastri ('anno','mese','giorno','ora');
+    // c.meseBlocca: 'S' (solo lo Shi), 'entrambe', 'quieta' (solo nel principio 4), false spegne.
+    var bloccataMese = { S: false, Y: false };
+    // IN PROVA (22/10/2026): spento finche' Edu non sceglie pilastri e sedi; misura nella RIPARTENZA S57 (S59 ter).
+    if (c.meseBlocca && c.monthBranch) {
+      var _palEm = null;
+      R.linee.forEach(function (Lx) { if (_palEm) return; var ex = WX[Lx.ramo];
+        if (Lx.par === 'B') _palEm = ex; else if (Lx.par === 'G') _palEm = KE[ex]; else if (Lx.par === 'P') _palEm = GEN[ex];
+        else if (Lx.par === 'C') _palEm = Object.keys(GEN).filter(function (z) { return GEN[z] === ex; })[0];
+        else if (Lx.par === 'W') _palEm = Object.keys(KE).filter(function (z) { return KE[z] === ex; })[0]; });
+      var _meseG = !!(_palEm && mE && KE[mE] === _palEm);
+      var _pilB = { anno: c.yearBranch, mese: c.monthBranch, giorno: dB, ora: c.oraBranch };
+      var _pilScelti = c.pilastriBlocca || ['mese'];
+      (c.meseBlocca === 'S' ? ['S'] : ['S', 'Y']).forEach(function (k) {
+        var L = SEDE[k];
+        if (bloccata[k] || L.vuoto || R.mutante.pos === POS[k] || (R.incompatibili || []).indexOf(POS[k]) >= 0) return;
+        var chi = _pilScelti.filter(function (pn) { return _pilB[pn] && COMBINA[_pilB[pn]] === L.ramo; })[0];
+        if (!chi || (chi === 'mese' && k === 'S' && _meseG && c.meseBloccaG !== true && !_sc)) return;
+        bloccataMese[k] = true;
+        if (c.meseBlocca !== 'quieta') bloccata[k] = true;
+        dire(NOME[k] + ' è combinat' + (k === 'S' ? 'o' : 'a') + ' ' + (chi === 'ora' ? "dall'ora " : chi === 'anno' ? "dall'anno " : 'dal ' + chi + ' ') + _pilB[chi] + ': bloccat' + (k === 'S' ? 'o' : 'a') + ', fuori dal confronto');
+      });
+    }
 
     // IL TRIGONO DELLE LINEE CHE SI MUOVONO GENERA UNA SEDE (Edu, 13/10/2026, S56, USDCAD 04/07/2023 s132: "L4 ed L6 formano
     // un trigono di metallo che genera S"): le partenze e gli arrivi di due o piu' linee che si muovono (la mobile, anche
@@ -1032,8 +1065,8 @@
         // la sede che si muove: generata indietro, controllata indietro, ritirata
         if (m.incArr) dire('l\'arrivo ' + m.arr + ' è incompatibile: non agisce su ' + NOME[kM]);
         else if (m.retro) {
-          if (SEDE[kM].par === 'B' || SEDE[kM].par === 'P') { pt[kM] += 1; dire(NOME[kM] + ', una ' + SEDE[kM].par + ', retrocede: porta via la perdita'); }
-          else if (SEDE[kM].par === 'G' || SEDE[kM].par === 'W') { pt[kM] -= 1; dire(NOME[kM] + ', una ' + SEDE[kM].par + ', retrocede: porta via il vantaggio'); }
+          if (!_sc && (SEDE[kM].par === 'B' || SEDE[kM].par === 'P')) { pt[kM] += 1; dire(NOME[kM] + ', una ' + SEDE[kM].par + ', retrocede: porta via la perdita'); }
+          else if (!_sc && (SEDE[kM].par === 'G' || SEDE[kM].par === 'W')) { pt[kM] -= 1; dire(NOME[kM] + ', una ' + SEDE[kM].par + ', retrocede: porta via il vantaggio'); }
         } else if (GEN[aE] === dE) {
           nutri(kM, NOME[kM] + ' si fa generare indietro: rafforzat' + (kM === 'S' ? 'o' : 'a'), true);
           if (dEl && GEN[dEl] === aE) { pt[kM] += 1; dire('il giorno ' + dB + ' genera l\'arrivo ' + m.arr + ': ' + NOME[kM] + ' si autogenera con il suo aiuto'); }
@@ -1057,7 +1090,7 @@
           // (perimetro: la B/P che retrocede "porta via la perdita" vale per le sedi, non cablata qui per le non sedi).
           // c.retroPorta === false spegne.
           var LRet = R.linee[m.pos - 1];
-          if (c.retroPorta !== false && LRet && (LRet.par === 'G' || LRet.par === 'W')) { colpisci(campo(m.pos), 1, 'L' + m.pos + ', una ' + LRet.par + ', retrocede: porta via il vantaggio del suo campo'); return; }
+          if (c.retroPorta !== false && !_sc && LRet && (LRet.par === 'G' || LRet.par === 'W')) { colpisci(campo(m.pos), 1, 'L' + m.pos + ', una ' + LRet.par + ', retrocede: porta via il vantaggio del suo campo'); return; }
           dire('L' + m.pos + ' retrocede: non condiziona le sedi'); return; }
         var genSe = GEN[aE] === dE;
         if (genSe && timely(R.linee[m.pos - 1])) {               // gia' forte e generata indietro: rafforza il suo campo
@@ -1393,6 +1426,8 @@
     }
     if (mosso.v) dire('i movimenti si pareggiano: decide la forza ferma');
     out.principio = 4;
+    // il mese che combina la sede ferma la blocca (Edu, 22/10/2026): se nessun movimento decide, vince l'altra sede
+    if (bloccataMese.S !== bloccataMese.Y) { var _kbm = bloccataMese.S ? 'S' : 'Y'; return vince(ALTRA[_kbm], NOME[_kbm] + ' è bloccat' + (_kbm === 'S' ? 'o' : 'a') + ' dal pilastro che l' + (_kbm === 'S' ? 'o' : 'a') + ' combina: non può vincere, vince l\'altra sede', 4); }
     var fermo = { S: 0, Y: 0 };
     // la Ying che genera lo Shi nutre il trend (non se bloccata)
     // MA CON LA GENERAZIONE ARRIVA ANCHE LA PENALITA' (Edu, 12/10/2026, S56, EURUSD 25/06/2020 s112: "Y è untimely ma è
@@ -1415,7 +1450,7 @@
       if (Lx.par === 'B') palE = ex; else if (Lx.par === 'G') palE = KE[ex]; else if (Lx.par === 'P') palE = GEN[ex];
       else if (Lx.par === 'C') palE = Object.keys(GEN).filter(function (z) { return GEN[z] === ex; })[0];
       else if (Lx.par === 'W') palE = Object.keys(KE).filter(function (z) { return KE[z] === ex; })[0]; });
-    if (palE && mE && KE[mE] === palE && COMBINA[c.monthBranch] === S.ramo) { fermo.S += 1; dire('il mese è una G che si combina con lo Shi: gli garantisce la vittoria'); }
+    if (!_sc && palE && mE && KE[mE] === palE && COMBINA[c.monthBranch] === S.ramo) { fermo.S += 1; dire('il mese è una G che si combina con lo Shi: gli garantisce la vittoria'); }
     // il raduno stagionale chiuso dalla sede, dal giorno e dalla mobile del suo trigramma
     ['S', 'Y'].forEach(function (k) {
       var L = SEDE[k], gr = RADUNO[L.ramo]; if (L.vuoto || !gr || !dB || gr.indexOf(dB) < 0 || dB === L.ramo) return;
