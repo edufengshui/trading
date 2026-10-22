@@ -1081,15 +1081,18 @@ function livelloTreSistemi(e) {
   // misurata su carte non viste e conclude. Si trada solo la conclusione FORTE (margine >= 0,6): 2022-23 66,5% su 499,
   // 2024-26 65,1% su 733 (+15.086 pip), dal vivo 29/09-22/10 58,8% su 51; media e debole si mostrano e si registrano, non
   // si tradano (2024-26 53,9% e 51,9%). LEGGOIO_TUTTE=1 trada anche media e debole. SCALA=PIRAMIDE rimette la piramide DLR.
-  var LIo = (typeof window !== 'undefined' && window.LeggoIo) ? window.LeggoIo.leggi({ PB: pb, LY: ly, AT: at, DLR: dlr, LETT: lett,
-    MT: e.mtDir || null, CM: e.cmDir || null, D: e.dDir || null, LYF: e.lyfDir || null, PBF: e.pbfDir || null, DLRF: e.dlrfDir || null }) : null;
+  var LIo = (typeof window !== 'undefined' && window.LeggoIo) ? window.LeggoIo.leggi({ PB: pb, LY: ly, DLR: dlr, LETT: lett,
+    MT: e.mtDir || null, CM: e.cmDir || null, D: e.dDir || null, LYF: e.lyfDir || null, PBF: e.pbfDir || null, DLRF: e.dlrfDir || null,
+    lySez: e.lySez || null, lettGrad: (e.lettGradino || '').split(' ')[0] || null, dlrVia: e.dlrVia || null }) : null;
   if (LIo) { e.liDir = LIo.dir; e.liForza = LIo.forza; e.liRacconto = LIo.racconto; voci = 'LEGGO IO: ' + LIo.racconto + ' ‖ ' + voci; }
   var scalaLI = (typeof localStorage !== 'undefined' && localStorage && localStorage.getItem('SCALA')) || 'LEGGOIO';
   if (scalaLI === 'LEGGOIO' && LIo) {
     var tutte = typeof localStorage !== 'undefined' && localStorage && localStorage.getItem('LEGGOIO_TUTTE') === '1';
     if (!LIo.dir) return { liv: null, dir: null, perche: 'Leggo io: le voci si equivalgono, fermo', voci: voci };
-    if (LIo.forza === 'forte' || tutte) return { liv: 'LI', dir: LIo.dir, perche: 'Leggo io, conclusione ' + LIo.forza, voci: voci };
-    return { liv: 'cantina', dir: LIo.dir, cantina: true, perche: 'Leggo io, conclusione ' + LIo.forza + ': si osserva, non si trada', voci: voci };
+    // S59 bis (Edu 22/10: "metti in pausa i sistemi che combinano vari metodi"): Leggo io per metodi (LY, PB, DLR uno alla
+    // volta, ognuno coi suoi pro e contro); si trada ogni conclusione che supera la soglia, la cantina e' in pausa.
+    void tutte;
+    return { liv: 'LI', dir: LIo.dir, perche: 'Leggo io, conclusione ' + LIo.forza, voci: voci };
   }
   // LIVELLO A IN CANTINA (Edu, 09/10/2026: "E' meglio mettere in cantina il livello A"). Dal vivo dal 15/09 il
   // livello A ha fatto 6 vinti su 22 (27%); col software di oggi e lo storico portato al 09/10/2026 fa 46% su
@@ -1288,7 +1291,7 @@ function renderReportTreSistemi() {
 
   var spente = Object.keys(lyToggles).filter(function (k) { return lyToggles[k] === false; }).length;
   var nota = '<div style="padding:6px 14px;font-size:12px;background:rgba(227,179,65,.08);border-bottom:1px solid rgba(255,255,255,.08)">' +
-    '<b>LEGGO IO</b> (dal 22/10/2026): passa in rassegna tutte le voci, ognuna col peso della sua affidabilità misurata su carte non viste, e conclude. Si trada solo la conclusione <b>forte</b> (2024-26: 65,1% su 733 carte; dal vivo 29/09-22/10: 58,8% su 51); media e debole si osservano. SCALA=PIRAMIDE rimette la piramide. ' +
+    '<b>LEGGO IO</b> (dal 22/10/2026): legge un metodo alla volta (Liu Yao, Plum Blossom, Da Liu Ren), dentro ognuno pesa i pro e i contro e conclude, poi mette insieme le tre conclusioni. I sistemi che combinano metodi (piramide, cantina, sistema attuale) sono in pausa. 2024-26 su carte mai viste circa 60%; dal vivo 29/09-22/10 50%. ' +
     '<b>Piramide</b> (dal 17/10/2026, S58 · piramide DLR senza cantina): <b>1</b> sistema LY per forma, sistema PB per forma e sistema DLR per forma concordi (97,2% su 1.073 carte del backtest) · <b>2-4</b> col sistema D · <b>5-10</b> il sistema migliore sulle carte rimaste. La cantina (PB = LY = DLR) e\' abolita: quelle carte scendono nei gradini. Backtest 3.268 carte · 84,9% · +131.515 pip. <b>Dal vivo 29/09-16/10</b> (misura_vivo.js): 80 trade, 66%, +1.145 pip; trend semplice 55%, +426. Con la cantina SCALA=DLR_CANTINA, piramide PB con SCALA=PB, S58 con SCALA=S58, quella del mattino con SCALA=S57. ' +
     'Scala <b>A → B → C → D</b> (S57A): <b>A</b> attuale, DLR e metodo del trend concordi (68%) · <b>B</b> PB, DLR e lettura della carta concordi (65%) · <b>C</b> attuale, DLR e sistema D concordi (68%) · <b>D</b> LY, attuale e DLR concordi (62%). <b>In cantina</b> le carte con PB, LY e DLR tutti concordi (il vecchio A: dal vivo 27%, fuori campione 46%): si mostrano e si registrano, non si tradano. Tutto il resto è fermo.' +
     (spente ? ' <b style="color:#e3b341">Nota: a schermo hai ' + spente + ' via' + (spente > 1 ? ' spente' : ' spenta') +
