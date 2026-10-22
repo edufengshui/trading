@@ -3530,6 +3530,39 @@
     }
   });
 
+  // §140 — LA LINEA IN MEZZO, CLASHATA DAL GIORNO E SOSTENUTA DAL NASCOSTO, PASSA L'ARRIVO ALLA SEDE (Edu, 22/10/2026)
+  LY_VIE.push({ id:'R87_MEZZO', sezione:'§140', cablata:'2026-10-22',
+    nome:'The middle line, clashed by the day and held by its hidden line, passes the arrival to the seat',
+    dottrina:'Edu (22/10/2026, guida EURJPY 30/07/2026 seme 187): "L4 muove per clashare S e lo risveglia dal vuoto ma L3 che sta in mezzo fra i due e\' clashato dal giorno e si attiva assorbendo la forte linea You e trasferendo la sua energia a S" · "L3 e\' sostenuta dal nascosto". Una linea ferma (non sede, non mobile, non vuota) clashata dal giorno si attiva se e\' di stagione o se il suo NASCOSTO la sostiene (la genera o ha il suo elemento); se sta IN MEZZO fra la mobile e una sede, l\'arrivo della mobile la genera e lei genera la sede, la linea assorbe l\'arrivo e passa la forza alla sede, che vince la propria sede (alto LONG, basso SHORT). La sede vuota riceve se l\'arrivo la clasha (la sveglia). Prima di §125. VIA140=off la spegne.',
+    test: function (R, ctx, state) {
+      if (typeof process!=='undefined' && process.env && process.env.VIA140==='off') return null;
+      var mu = R.mutante; if (!mu || mu.movimentoNullo || !mu.ramoArr) return null;
+      var vuoti = R.vuoti || [], dB = R.dayBranch, mEl = R.monthEl, A = mu.ramoArr, aEl = WX[A];
+      if (!dB || vuoti.indexOf(A) >= 0) return null;
+      var CL = {'子':'午','午':'子','丑':'未','未':'丑','寅':'申','申':'寅','卯':'酉','酉':'卯','辰':'戌','戌':'辰','巳':'亥','亥':'巳'};
+      var hits = [];
+      [R.shi, R.ying].forEach(function (pk) {
+        if (pk === mu.pos) return;
+        var K = R.linee[pk-1], lo = Math.min(pk, mu.pos), hi = Math.max(pk, mu.pos);
+        if (K.vuoto && CL[A] !== K.ramo) return;                    // la sede vuota riceve solo se l'arrivo la sveglia
+        for (var p = lo + 1; p < hi; p++) {
+          var M = R.linee[p-1];
+          if (M.isShi || M.isYing || M.isMobile || M.vuoto || CL[dB] !== M.ramo) continue;
+          var tim = !!mEl && (M.el === mEl || GEN[mEl] === M.el);
+          var nasc = M.fushen && (M.fushen.el === M.el || GEN[M.fushen.el] === M.el);
+          if (!tim && !nasc) continue;
+          if (GEN[aEl] !== M.el || GEN[M.el] !== K.el) continue;
+          hits.push({ K: K, M: M, nasc: nasc && !tim });
+        }
+      });
+      if (hits.length !== 1) return null;
+      var h = hits[0], dir = h.K.pos > 3 ? 'LONG' : 'SHORT';
+      state.why = 'L' + h.M.pos + ' ' + h.M.ramo + ' sits between the mobile and the <b>' + (h.K.isShi ? 'Shi' : 'Ying') + '</b>: clashed by the day ' + dB +
+                  (h.nasc ? ' and held by its hidden line ' + h.M.fushen.b : ', in season') + ', it absorbs the arrival <b>' + A + '</b> and passes its energy to L' + h.K.pos + ' ' + h.K.ramo + ' → ' + dir + '.';
+      return dir;
+    }
+  });
+
   // §125 — IL DIREZIONALE CHE GENERA LA SHI O LA YING (Edu, 30/08/2026)
   LY_VIE.push({ id:'R64_125', sezione:'§125', coda:true, cablata:'2026-08-30',
     nome:'The directional set (三會) turns the trigram and nourishes Shi or Ying',
