@@ -91,7 +91,7 @@ function creaMotore(LYM) {
              '午':'Fire','未':'Earth','申':'Metal','酉':'Metal','戌':'Earth','亥':'Water' };
   var GEN = { Wood:'Fire', Fire:'Earth', Earth:'Metal', Metal:'Water', Water:'Wood' };
   var KE  = { Wood:'Earth', Earth:'Water', Water:'Fire', Fire:'Metal', Metal:'Wood' };
-  var TOMBA = { Wood:'未', Fire:'戌', Metal:'丑', Water:'辰', Earth:'辰' };
+  var TOMBA = { Wood:'未', Fire:'戌', Metal:'丑', Water:'辰' };   // la Terra non ha tomba (Edu, 22/10/2026)
   var COMBINA = { '子':'丑','丑':'子','寅':'亥','亥':'寅','卯':'戌','戌':'卯',
                   '辰':'酉','酉':'辰','巳':'申','申':'巳','午':'未','未':'午' };
   var CLASH = { '子':'午','午':'子','丑':'未','未':'丑','寅':'申','申':'寅',
@@ -113,7 +113,7 @@ function creaMotore(LYM) {
   var EL_IT = { Wood:'Legno', Fire:'Fuoco', Earth:'Terra', Metal:'Metallo', Water:'Acqua' };
   var PAR_IT = { G:'G', W:'W', P:'P', B:'B', C:'C' };
   // Tombe (墓): la Terra dove ogni elemento si sotterra.
-  var TOMBA = { 'Water': '辰', 'Fire': '戌', 'Metal': '丑', 'Wood': '未', 'Earth': '辰' };
+  var TOMBA = { 'Water': '辰', 'Fire': '戌', 'Metal': '丑', 'Wood': '未' };   // la Terra non ha tomba (Edu, 22/10/2026)
   var PESO_STAGIONE = { '旺': 2, '相': 1, '休': 0, '囚': -1, '死': -2 };
 
   var off = function (k) { return ENV[k] === 'off'; };
