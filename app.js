@@ -1053,17 +1053,17 @@ function capolineaDelFlusso(chart) {
  * Livello A: Plum Blossom, Liu Yao e Da Liu Ren concordano                   820 carte · 70,9%
  * Livello B: sistema attuale (PB+LY+rafforzativi) e Da Liu Ren concordano   759 · 64,8%
  * Livello C: Plum Blossom e Liu Yao concordano e il Da Liu Ren TACE          93 · 69,9%
- * Livello D (S48): su tutte le altre carte, Da Liu Ren e Lettura S47 concordi 653 · 57,6% (dal 2024: 62,5%)
+ * Livello D (S48): su tutte le altre carte, Da Liu Ren e Leggo io concordi 653 · 57,6% (dal 2024: 62,5%)
  * Altrimenti fermo. Scala misurata il 16/09/2026 (S48) su 3.180 carte dei sei anni, soglia 20 pip:
  * A+B+C 1.672 carte · 68,1% · +38.481 pip; A+B+C+D 2.325 carte · 65,1% · +44.201 pip (pb_stress.js TRESIST=1).
- * La Lettura S47 al POSTO del Liu Yao fa peggio (livello A da 70,9% a 68,0%): il motore nuovo
+ * Leggo io al POSTO del Liu Yao fa peggio (livello A da 70,9% a 68,0%): il motore nuovo
  * legge ancora peggio della catena; da solo, sulle ferme, sta al 53%. Col DLR d'accordo tiene.
  */
 function livelloTreSistemi(e) {
   var pb = e.pbDir || null, ly = e.lyDir || null, at = e.attuale || null, dlr = e.dlrDir || null;
   var lett = e.lettDir || null;
   var voci = 'PB ' + (pb || '—') + ' · LY ' + (ly || 'tace') + ' · attuale ' + (at || '—') +
-             ' · DLR ' + (dlr || 'tace') + ' · Lettura S47 ' + (lett || 'tace') + (e.lettGradino ? ' (' + e.lettGradino + ')' : '') +
+             ' · DLR ' + (dlr || 'tace') + ' · Leggo io ' + (lett || 'tace') + (e.lettGradino ? ' (' + e.lettGradino + ')' : '') +
              ' · Spirito ' + (e.spirito || 'tace') + ' · stelo ' + (e.steloVoce || 'tace') +
              ' · Sistema-trend ' + (e.stVerdetto ? (e.stVerdetto + ' (' + (e.stPunti > 0 ? '+' : '') + e.stPunti + (e.stDir ? ', ' + e.stDir : '') + ')') : 'tace') +
              (e.osserva && e.osserva.length ? ' · DA OSSERVARE: ' + e.osserva.join('; ') : '') +
@@ -1123,7 +1123,7 @@ function livelloTreSistemi(e) {
   // 9 Lettura=metodo 113 · 60,2% · 10 LY=attuale=Lettura 107 · 47,7%. Totale 2.717 · 85,6% · +110.567 pip.
   if (scalaScelta === 'PIRAMIDE' || scalaScelta === 'PIRAMIDE_LY' || scalaScelta === 'PIRAMIDE_S57' || scalaScelta === 'PIRAMIDE_PB' || scalaScelta === 'PIRAMIDE_DLR' || scalaScelta === 'DLR_CANTINA' || scalaScelta === 'DLR_SENZA_CM') {
     var VV = { PB: pb, LY: ly, AT: at, DLR: dlr, LETT: lett, MT: e.mtDir || null, D: e.dDir || null, LYF: e.lyfDir || null, PBF: e.pbfDir || null, DLRF: e.dlrfDir || null, CM: e.cmDir || null, SEMP: e.sempDir || null };
-    var NOMI = { PB: 'Plum Blossom', LY: 'Liu Yao', AT: 'sistema attuale', DLR: 'Da Liu Ren', LETT: 'Lettura S47', MT: 'metodo del trend', D: 'sistema D', LYF: 'sistema LY per forma', PBF: 'sistema PB per forma', DLRF: 'sistema DLR per forma', CM: 'colpo del mese', SEMP: 'metodo semplificato' };
+    var NOMI = { PB: 'Plum Blossom', LY: 'Liu Yao', AT: 'sistema attuale', DLR: 'Da Liu Ren', LETT: 'Leggo io', MT: 'metodo del trend', D: 'sistema D', LYF: 'sistema LY per forma', PBF: 'sistema PB per forma', DLRF: 'sistema DLR per forma', CM: 'colpo del mese', SEMP: 'metodo semplificato' };
     var conc = function (c) { var d = VV[c[0]]; return d && c.every(function (k) { return VV[k] === d; }) ? d : null; };
     var detto = function (c) { return c.map(function (k) { return NOMI[k]; }).join(', ') + ' concordano'; };
     var PIR = [['D', 'DLR', 'MT'], 'cantina', ['AT', 'DLR', 'D'], ['DLR', 'LETT', 'D'], ['PB', 'DLR', 'D'], ['LETT', 'MT', 'D'],
@@ -1160,11 +1160,11 @@ function livelloTreSistemi(e) {
     // 15/09 al 08/10 i record del registro usano ancora le lettere vecchie (A=concordi, B=attuale+DLR...).
     return { liv: cantinaA ? 'cantina' : 'A', dir: pb, cantina: cantinaA, perche: 'Plum Blossom, Liu Yao e Da Liu Ren concordano' + (cantinaA ? ' — in cantina, non si trada' : ''), voci: voci };
   // SCALA S57 (Edu, 17/10/2026: "un sistema gerarchico che integri tutti i livelli per scala di efficienza").
-  // Gradini scelti fra tutte le coppie e terne di voci concordi (PB, LY, attuale, DLR, Lettura S47, metodo del
+  // Gradini scelti fra tutte le coppie e terne di voci concordi (PB, LY, attuale, DLR, Leggo io, metodo del
   // trend, sistema D), ognuno la combinazione migliore fra le carte rimaste, almeno 80 carte e 58% dal 2025.
   // Misura del 17/10/2026 sulle 3.309 carte 2020-2026 (D contato senza la carta nella propria regola), dopo la cantina:
   //   A attuale = DLR = metodo del trend   268 carte · 68,3% · +5.427 pip
-  //   B PB = DLR = Lettura S47             252 · 64,7% · +4.851
+  //   B PB = DLR = Leggo io             252 · 64,7% · +4.851
   //   C attuale = DLR = sistema D          194 · 67,5% · +4.990
   //   D LY = attuale = DLR                 256 · 61,7% · +4.817 (26 gen-lug 40% su 25)
   //   totale 970 carte · 65,5% · +20.085 pip · 26 ago-ott 69,7% su 33. La scala S48 (A/B/C) si rimette con SCALA=S48.
@@ -1172,7 +1172,7 @@ function livelloTreSistemi(e) {
   if (!scalaVecchia) {
     var dd = e.dDir || null, mtd = e.mtDir || null;
     if (at && dlr && mtd && at === dlr && dlr === mtd) return { liv: 'A', dir: dlr, perche: 'sistema attuale, Da Liu Ren e metodo del trend concordano', voci: voci };
-    if (pb && dlr && lett && pb === dlr && dlr === lett) return { liv: 'B', dir: dlr, perche: 'Plum Blossom, Da Liu Ren e Lettura S47 concordano', voci: voci };
+    if (pb && dlr && lett && pb === dlr && dlr === lett) return { liv: 'B', dir: dlr, perche: 'Plum Blossom, Da Liu Ren e Leggo io concordano', voci: voci };
     if (at && dlr && dd && at === dlr && dlr === dd) return { liv: 'C', dir: dlr, perche: 'sistema attuale, Da Liu Ren e sistema D concordano', voci: voci };
     if (ly && at && dlr && ly === at && at === dlr) return { liv: 'D', dir: dlr, perche: 'Liu Yao, sistema attuale e Da Liu Ren concordano', voci: voci };
     return { liv: null, dir: null, perche: 'nessun gradino della scala: fermo', voci: voci };
@@ -1182,10 +1182,10 @@ function livelloTreSistemi(e) {
   if (ly && pb === ly && !dlr)
     return { liv: 'B', dir: pb, perche: 'Plum Blossom e Liu Yao concordano, il Da Liu Ren tace', voci: voci };
   if (dlr && lett && dlr === lett)
-    return { liv: 'C', dir: dlr, perche: 'Da Liu Ren e Lettura S47 concordano', voci: voci };
+    return { liv: 'C', dir: dlr, perche: 'Da Liu Ren e Leggo io concordano', voci: voci };
   var perche = !dlr ? 'il Da Liu Ren tace e Plum Blossom e Liu Yao non concordano'
              : (ly && pb === ly) ? 'il Da Liu Ren contrasta Plum Blossom e Liu Yao concordi'
-             : lett ? 'la Lettura S47 contrasta il Da Liu Ren' : 'nessun accordo fra le voci';
+             : lett ? 'Leggo io contrasta il Da Liu Ren' : 'nessun accordo fra le voci';
   return { liv: null, dir: null, perche: perche + ': fermo', voci: voci };
 }
 
@@ -1260,7 +1260,7 @@ function renderReportTreSistemi() {
   var righeNo = esclusi.map(function (e) {
     return '<div style="' + css.row + '">' +
       '<span style="' + css.name + ';opacity:.75">' + e.cross + '</span>' + badge('NO TRADE') +
-      '<span style="' + css.note + '">' + e.motivo + (e.lettDir ? ' · <b>Lettura S47 ' + e.lettDir + '</b>' : '') + (e.stVerdetto ? ' · Sistema-trend ' + e.stVerdetto + ' (' + (e.stPunti > 0 ? '+' : '') + e.stPunti + ')' : '') + (e.osserva && e.osserva.length ? ' · <b style="color:#e3b341">Da osservare: ' + e.osserva.join('; ') + '</b>' : '') + (e.mtVerdetto && e.mtVerdetto !== 'tace' ? ' · Metodo del trend ' + e.mtVerdetto + (e.mtDir ? ' (' + e.mtDir + ')' : '') : '') + '</span></div>';
+      '<span style="' + css.note + '">' + e.motivo + (e.lettDir ? ' · <b>Leggo io ' + e.lettDir + '</b>' : '') + (e.stVerdetto ? ' · Sistema-trend ' + e.stVerdetto + ' (' + (e.stPunti > 0 ? '+' : '') + e.stPunti + ')' : '') + (e.osserva && e.osserva.length ? ' · <b style="color:#e3b341">Da osservare: ' + e.osserva.join('; ') + '</b>' : '') + (e.mtVerdetto && e.mtVerdetto !== 'tace' ? ' · Metodo del trend ' + e.mtVerdetto + (e.mtDir ? ' (' + e.mtDir + ')' : '') : '') + '</span></div>';
   }).join('') || '<div style="padding:8px 0;opacity:.7">Nessun cross fermo.</div>';
   var cont = function (L) { return tradabili.filter(function (e) { return e.livello === L; }).length; };
   var nA = cont('A'), nB = cont('B'), nC = cont('C'), nD = cont('D');
@@ -1272,7 +1272,7 @@ function renderReportTreSistemi() {
   var spente = Object.keys(lyToggles).filter(function (k) { return lyToggles[k] === false; }).length;
   var nota = '<div style="padding:6px 14px;font-size:12px;background:rgba(227,179,65,.08);border-bottom:1px solid rgba(255,255,255,.08)">' +
     '<b>Piramide</b> (dal 17/10/2026, S58 · piramide DLR senza cantina): <b>1</b> sistema LY per forma, sistema PB per forma e sistema DLR per forma concordi (97,2% su 1.073 carte del backtest) · <b>2-4</b> col sistema D · <b>5-10</b> il sistema migliore sulle carte rimaste. La cantina (PB = LY = DLR) e\' abolita: quelle carte scendono nei gradini. Backtest 3.268 carte · 84,9% · +131.515 pip. <b>Dal vivo 29/09-16/10</b> (misura_vivo.js): 80 trade, 66%, +1.145 pip; trend semplice 55%, +426. Con la cantina SCALA=DLR_CANTINA, piramide PB con SCALA=PB, S58 con SCALA=S58, quella del mattino con SCALA=S57. ' +
-    'Scala <b>A → B → C → D</b> (S57A): <b>A</b> attuale, DLR e metodo del trend concordi (68%) · <b>B</b> PB, DLR e Lettura S47 concordi (65%) · <b>C</b> attuale, DLR e sistema D concordi (68%) · <b>D</b> LY, attuale e DLR concordi (62%). <b>In cantina</b> le carte con PB, LY e DLR tutti concordi (il vecchio A: dal vivo 27%, fuori campione 46%): si mostrano e si registrano, non si tradano. Tutto il resto è fermo.' +
+    'Scala <b>A → B → C → D</b> (S57A): <b>A</b> attuale, DLR e metodo del trend concordi (68%) · <b>B</b> PB, DLR e Leggo io concordi (65%) · <b>C</b> attuale, DLR e sistema D concordi (68%) · <b>D</b> LY, attuale e DLR concordi (62%). <b>In cantina</b> le carte con PB, LY e DLR tutti concordi (il vecchio A: dal vivo 27%, fuori campione 46%): si mostrano e si registrano, non si tradano. Tutto il resto è fermo.' +
     (spente ? ' <b style="color:#e3b341">Nota: a schermo hai ' + spente + ' via' + (spente > 1 ? ' spente' : ' spenta') +
       ' — il report le ignora e le usa comunque accese.</b>' : '') + '</div>';
 
@@ -1621,7 +1621,7 @@ function renderLiuYao(cross, chart, row, lyp, pbCtx) {
     var lettCls = lettP.dir === 'LONG' ? 'long' : lettP.dir === 'SHORT' ? 'short' : '';
     var emaSigL = (pbCtx && pbCtx.emaDir === 'up') ? 'LONG' : (pbCtx && pbCtx.emaDir === 'down') ? 'SHORT' : null;
     lettHtml = '<div class="trendmsgs" style="margin-top:10px;padding:8px 10px;border-left:3px solid #58a6ff;background:rgba(88,166,255,.06)">' +
-      '<b>Motore di lettura (S47):</b> ' + (lettP.dir ? '<span class="sig ' + lettCls + '" style="display:inline-block">' + lettP.dir + '</span>' : '<b>tace</b>') +
+      '<b>Leggo io:</b> ' + (lettP.dir ? '<span class="sig ' + lettCls + '" style="display:inline-block">' + lettP.dir + '</span>' : '<b>tace</b>') +
       (lettP.dir && emaSigL ? ' <b>' + (lettP.dir === emaSigL ? 'segue il trend' : 'non segue il trend') + '</b>' : '') +
       (lettP.gradino ? ' <span style="opacity:.75">· ' + lettP.gradino + '</span>' : '') +
       (lettP.racconto ? '<div style="margin-top:6px;font-size:13px;white-space:pre-line">' + lettP.racconto + '</div>' : '') +
