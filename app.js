@@ -1063,7 +1063,7 @@ function livelloTreSistemi(e) {
   var pb = e.pbDir || null, ly = e.lyDir || null, at = e.attuale || null, dlr = e.dlrDir || null;
   var lett = e.lettDir || null;
   var voci = 'PB ' + (pb || '—') + ' · LY ' + (ly || 'tace') + ' · attuale ' + (at || '—') +
-             ' · DLR ' + (dlr || 'tace') + ' · Leggo io ' + (lett || 'tace') + (e.lettGradino ? ' (' + e.lettGradino + ')' : '') +
+             ' · DLR ' + (dlr || 'tace') + ' · lettura della carta ' + (lett || 'tace') + (e.lettGradino ? ' (' + e.lettGradino + ')' : '') +
              ' · Spirito ' + (e.spirito || 'tace') + ' · stelo ' + (e.steloVoce || 'tace') +
              ' · Sistema-trend ' + (e.stVerdetto ? (e.stVerdetto + ' (' + (e.stPunti > 0 ? '+' : '') + e.stPunti + (e.stDir ? ', ' + e.stDir : '') + ')') : 'tace') +
              (e.osserva && e.osserva.length ? ' · DA OSSERVARE: ' + e.osserva.join('; ') : '') +
@@ -1076,6 +1076,21 @@ function livelloTreSistemi(e) {
              ' · Sistema DLR per forma ' + (e.dlrfDir ? e.dlrfDir + ' (' + e.dlrfForma + ': ' + e.dlrfRegola + ')' : (e.dlrfForma ? 'tace (' + e.dlrfForma + ' senza regola)' : 'tace'));
   // Lo Spirito e lo stelo del giorno restano mostrati ma dal 16/09/2026 non contano piu' nella scala.
   if (!pb) return { liv: null, dir: null, perche: 'carta non leggibile', voci: voci };
+  // LEGGO IO (S59, Edu 22/10/2026: "Leggo io dovrebbe scannerizzare tutti i metodi, uno per uno e giungere ad una
+  // conclusione sensata. Rendilo il metodo che usa tutti gli altri"): leggo_io.js pesa ogni voce con la sua affidabilita'
+  // misurata su carte non viste e conclude. Si trada solo la conclusione FORTE (margine >= 0,6): 2022-23 66,5% su 499,
+  // 2024-26 65,1% su 733 (+15.086 pip), dal vivo 29/09-22/10 58,8% su 51; media e debole si mostrano e si registrano, non
+  // si tradano (2024-26 53,9% e 51,9%). LEGGOIO_TUTTE=1 trada anche media e debole. SCALA=PIRAMIDE rimette la piramide DLR.
+  var LIo = (typeof window !== 'undefined' && window.LeggoIo) ? window.LeggoIo.leggi({ PB: pb, LY: ly, AT: at, DLR: dlr, LETT: lett,
+    MT: e.mtDir || null, CM: e.cmDir || null, D: e.dDir || null, LYF: e.lyfDir || null, PBF: e.pbfDir || null, DLRF: e.dlrfDir || null }) : null;
+  if (LIo) { e.liDir = LIo.dir; e.liForza = LIo.forza; e.liRacconto = LIo.racconto; voci = 'LEGGO IO: ' + LIo.racconto + ' ‖ ' + voci; }
+  var scalaLI = (typeof localStorage !== 'undefined' && localStorage && localStorage.getItem('SCALA')) || 'LEGGOIO';
+  if (scalaLI === 'LEGGOIO' && LIo) {
+    var tutte = typeof localStorage !== 'undefined' && localStorage && localStorage.getItem('LEGGOIO_TUTTE') === '1';
+    if (!LIo.dir) return { liv: null, dir: null, perche: 'Leggo io: le voci si equivalgono, fermo', voci: voci };
+    if (LIo.forza === 'forte' || tutte) return { liv: 'LI', dir: LIo.dir, perche: 'Leggo io, conclusione ' + LIo.forza, voci: voci };
+    return { liv: 'cantina', dir: LIo.dir, cantina: true, perche: 'Leggo io, conclusione ' + LIo.forza + ': si osserva, non si trada', voci: voci };
+  }
   // LIVELLO A IN CANTINA (Edu, 09/10/2026: "E' meglio mettere in cantina il livello A"). Dal vivo dal 15/09 il
   // livello A ha fatto 6 vinti su 22 (27%); col software di oggi e lo storico portato al 09/10/2026 fa 46% su
   // agosto-ottobre 2026 (11/24) contro il 77% di gennaio-luglio: il 70% vale solo dentro i sei anni su cui le
@@ -1123,7 +1138,7 @@ function livelloTreSistemi(e) {
   // 9 Lettura=metodo 113 · 60,2% · 10 LY=attuale=Lettura 107 · 47,7%. Totale 2.717 · 85,6% · +110.567 pip.
   if (scalaScelta === 'PIRAMIDE' || scalaScelta === 'PIRAMIDE_LY' || scalaScelta === 'PIRAMIDE_S57' || scalaScelta === 'PIRAMIDE_PB' || scalaScelta === 'PIRAMIDE_DLR' || scalaScelta === 'DLR_CANTINA' || scalaScelta === 'DLR_SENZA_CM') {
     var VV = { PB: pb, LY: ly, AT: at, DLR: dlr, LETT: lett, MT: e.mtDir || null, D: e.dDir || null, LYF: e.lyfDir || null, PBF: e.pbfDir || null, DLRF: e.dlrfDir || null, CM: e.cmDir || null, SEMP: e.sempDir || null };
-    var NOMI = { PB: 'Plum Blossom', LY: 'Liu Yao', AT: 'sistema attuale', DLR: 'Da Liu Ren', LETT: 'Leggo io', MT: 'metodo del trend', D: 'sistema D', LYF: 'sistema LY per forma', PBF: 'sistema PB per forma', DLRF: 'sistema DLR per forma', CM: 'colpo del mese', SEMP: 'metodo semplificato' };
+    var NOMI = { PB: 'Plum Blossom', LY: 'Liu Yao', AT: 'sistema attuale', DLR: 'Da Liu Ren', LETT: 'lettura della carta', MT: 'metodo del trend', D: 'sistema D', LYF: 'sistema LY per forma', PBF: 'sistema PB per forma', DLRF: 'sistema DLR per forma', CM: 'colpo del mese', SEMP: 'metodo semplificato' };
     var conc = function (c) { var d = VV[c[0]]; return d && c.every(function (k) { return VV[k] === d; }) ? d : null; };
     var detto = function (c) { return c.map(function (k) { return NOMI[k]; }).join(', ') + ' concordano'; };
     var PIR = [['D', 'DLR', 'MT'], 'cantina', ['AT', 'DLR', 'D'], ['DLR', 'LETT', 'D'], ['PB', 'DLR', 'D'], ['LETT', 'MT', 'D'],
@@ -1172,7 +1187,7 @@ function livelloTreSistemi(e) {
   if (!scalaVecchia) {
     var dd = e.dDir || null, mtd = e.mtDir || null;
     if (at && dlr && mtd && at === dlr && dlr === mtd) return { liv: 'A', dir: dlr, perche: 'sistema attuale, Da Liu Ren e metodo del trend concordano', voci: voci };
-    if (pb && dlr && lett && pb === dlr && dlr === lett) return { liv: 'B', dir: dlr, perche: 'Plum Blossom, Da Liu Ren e Leggo io concordano', voci: voci };
+    if (pb && dlr && lett && pb === dlr && dlr === lett) return { liv: 'B', dir: dlr, perche: 'Plum Blossom, Da Liu Ren e lettura della carta concordano', voci: voci };
     if (at && dlr && dd && at === dlr && dlr === dd) return { liv: 'C', dir: dlr, perche: 'sistema attuale, Da Liu Ren e sistema D concordano', voci: voci };
     if (ly && at && dlr && ly === at && at === dlr) return { liv: 'D', dir: dlr, perche: 'Liu Yao, sistema attuale e Da Liu Ren concordano', voci: voci };
     return { liv: null, dir: null, perche: 'nessun gradino della scala: fermo', voci: voci };
@@ -1182,10 +1197,10 @@ function livelloTreSistemi(e) {
   if (ly && pb === ly && !dlr)
     return { liv: 'B', dir: pb, perche: 'Plum Blossom e Liu Yao concordano, il Da Liu Ren tace', voci: voci };
   if (dlr && lett && dlr === lett)
-    return { liv: 'C', dir: dlr, perche: 'Da Liu Ren e Leggo io concordano', voci: voci };
+    return { liv: 'C', dir: dlr, perche: 'Da Liu Ren e lettura della carta concordano', voci: voci };
   var perche = !dlr ? 'il Da Liu Ren tace e Plum Blossom e Liu Yao non concordano'
              : (ly && pb === ly) ? 'il Da Liu Ren contrasta Plum Blossom e Liu Yao concordi'
-             : lett ? 'Leggo io contrasta il Da Liu Ren' : 'nessun accordo fra le voci';
+             : lett ? 'la lettura della carta contrasta il Da Liu Ren' : 'nessun accordo fra le voci';
   return { liv: null, dir: null, perche: perche + ': fermo', voci: voci };
 }
 
@@ -1204,7 +1219,7 @@ function renderReportTreSistemi() {
       var L = livelloTreSistemi(e);
       e.livello = L.liv; e.voci = L.voci;
       e.cantina = !!L.cantina;
-      if (L.liv) { e.signal = L.dir; e.segue = (L.dir === e.trend); e.decisore = 'Livello ' + L.liv + ' · ' + L.perche + ' · ' + L.voci; e.motivo = L.cantina ? 'in cantina (Edu, 09/10/2026): PB, LY e DLR concordi, non si trada' : '';
+      if (L.liv) { e.signal = L.dir; e.segue = (L.dir === e.trend); e.decisore = 'Livello ' + L.liv + ' · ' + L.perche + ' · ' + L.voci; e.motivo = L.cantina ? L.perche : '';
         // S51 (21/09/2026): la FIDUCIA del trade dal sistema-trend. Misura del 19-20/09 sulla scala
         // A+B+C+D (2.299 carte 65,6%): il sistema-trend concorde 71,1% (547 carte), tace 64,8%,
         // contraddice 61,4% (440). Non ferma il trade (le contraddette restano sopra il 60%): lo
@@ -1216,7 +1231,7 @@ function renderReportTreSistemi() {
   });
   var tradabili = esiti.filter(function (e) { return e.livello && !e.cantina && (e.signal === 'LONG' || e.signal === 'SHORT'); });
   var inCantina = esiti.filter(function (e) { return e.livello && e.cantina && (e.signal === 'LONG' || e.signal === 'SHORT'); });
-  var ordine = { A: 0, B: 1, C: 2, D: 3, cantina: 99 };
+  var ordine = { LI: 0, A: 0, B: 1, C: 2, D: 3, cantina: 99 };
   var ord = function (l) { return l in ordine ? ordine[l] : +l; };
   tradabili.sort(function (a, b) { return ord(a.livello) - ord(b.livello); });
   var esclusi = esiti.filter(function (e) { return tradabili.indexOf(e) < 0 && inCantina.indexOf(e) < 0; });
@@ -1235,6 +1250,8 @@ function renderReportTreSistemi() {
       'font-weight:800;font-size:13px;letter-spacing:.4px;color:#0e1022;background:' + col + '">' + sig + '</span>';
   }
   function livBadge(l) {
+    if (l === 'LI') return '<span style="display:inline-block;min-width:26px;text-align:center;padding:3px 8px;border-radius:6px;' +
+      'font-weight:900;font-size:13px;color:#0e1022;background:#3fb950" title="Leggo io, conclusione forte">LI</span>';
     if (/^[0-9]+$/.test(l)) { var nn = +l; var colN = nn === 1 ? '#3fb950' : nn <= 4 ? '#7ee787' : nn <= 7 ? '#e3b341' : '#58a6ff';
       return '<span style="display:inline-block;min-width:26px;text-align:center;padding:3px 8px;border-radius:6px;' +
         'font-weight:900;font-size:13px;color:#0e1022;background:' + colN + '" title="gradino ' + l + ' della piramide">' + l + '</span>'; }
@@ -1254,13 +1271,13 @@ function renderReportTreSistemi() {
   var righeCant = inCantina.map(function (e) {
     return '<div class="repline" data-cross="' + e.cross + '" style="' + css.row + ';cursor:pointer;opacity:.75">' +
       livBadge('cantina') + '<span style="' + css.name + '">' + e.cross + '</span>' + badge(e.signal) +
-      '<span style="font-size:12px;opacity:.9">' + (e.segue ? 'segue il trend' : 'non segue il trend') + ' · <b>in cantina, non si trada</b></span>' +
+      '<span style="font-size:12px;opacity:.9">' + (e.segue ? 'segue il trend' : 'non segue il trend') + ' · <b>' + ((e.motivo || '').indexOf('Leggo io') >= 0 ? 'Leggo io ' + (e.liForza || '') + ', si osserva' : 'in cantina') + ', non si trada</b></span>' +
       '<span style="' + css.note + '">' + e.voci + (e.dlrVia ? ' · via DLR: ' + e.dlrVia : '') + '</span></div>';
   }).join('');
   var righeNo = esclusi.map(function (e) {
     return '<div style="' + css.row + '">' +
       '<span style="' + css.name + ';opacity:.75">' + e.cross + '</span>' + badge('NO TRADE') +
-      '<span style="' + css.note + '">' + e.motivo + (e.lettDir ? ' · <b>Leggo io ' + e.lettDir + '</b>' : '') + (e.stVerdetto ? ' · Sistema-trend ' + e.stVerdetto + ' (' + (e.stPunti > 0 ? '+' : '') + e.stPunti + ')' : '') + (e.osserva && e.osserva.length ? ' · <b style="color:#e3b341">Da osservare: ' + e.osserva.join('; ') + '</b>' : '') + (e.mtVerdetto && e.mtVerdetto !== 'tace' ? ' · Metodo del trend ' + e.mtVerdetto + (e.mtDir ? ' (' + e.mtDir + ')' : '') : '') + '</span></div>';
+      '<span style="' + css.note + '">' + e.motivo + (e.liRacconto ? ' · <b>Leggo io: ' + e.liRacconto + '</b>' : '') + (e.lettDir ? ' · lettura della carta ' + e.lettDir : '') + (e.stVerdetto ? ' · Sistema-trend ' + e.stVerdetto + ' (' + (e.stPunti > 0 ? '+' : '') + e.stPunti + ')' : '') + (e.osserva && e.osserva.length ? ' · <b style="color:#e3b341">Da osservare: ' + e.osserva.join('; ') + '</b>' : '') + (e.mtVerdetto && e.mtVerdetto !== 'tace' ? ' · Metodo del trend ' + e.mtVerdetto + (e.mtDir ? ' (' + e.mtDir + ')' : '') : '') + '</span></div>';
   }).join('') || '<div style="padding:8px 0;opacity:.7">Nessun cross fermo.</div>';
   var cont = function (L) { return tradabili.filter(function (e) { return e.livello === L; }).length; };
   var nA = cont('A'), nB = cont('B'), nC = cont('C'), nD = cont('D');
@@ -1271,8 +1288,9 @@ function renderReportTreSistemi() {
 
   var spente = Object.keys(lyToggles).filter(function (k) { return lyToggles[k] === false; }).length;
   var nota = '<div style="padding:6px 14px;font-size:12px;background:rgba(227,179,65,.08);border-bottom:1px solid rgba(255,255,255,.08)">' +
+    '<b>LEGGO IO</b> (dal 22/10/2026): passa in rassegna tutte le voci, ognuna col peso della sua affidabilità misurata su carte non viste, e conclude. Si trada solo la conclusione <b>forte</b> (2024-26: 65,1% su 733 carte; dal vivo 29/09-22/10: 58,8% su 51); media e debole si osservano. SCALA=PIRAMIDE rimette la piramide. ' +
     '<b>Piramide</b> (dal 17/10/2026, S58 · piramide DLR senza cantina): <b>1</b> sistema LY per forma, sistema PB per forma e sistema DLR per forma concordi (97,2% su 1.073 carte del backtest) · <b>2-4</b> col sistema D · <b>5-10</b> il sistema migliore sulle carte rimaste. La cantina (PB = LY = DLR) e\' abolita: quelle carte scendono nei gradini. Backtest 3.268 carte · 84,9% · +131.515 pip. <b>Dal vivo 29/09-16/10</b> (misura_vivo.js): 80 trade, 66%, +1.145 pip; trend semplice 55%, +426. Con la cantina SCALA=DLR_CANTINA, piramide PB con SCALA=PB, S58 con SCALA=S58, quella del mattino con SCALA=S57. ' +
-    'Scala <b>A → B → C → D</b> (S57A): <b>A</b> attuale, DLR e metodo del trend concordi (68%) · <b>B</b> PB, DLR e Leggo io concordi (65%) · <b>C</b> attuale, DLR e sistema D concordi (68%) · <b>D</b> LY, attuale e DLR concordi (62%). <b>In cantina</b> le carte con PB, LY e DLR tutti concordi (il vecchio A: dal vivo 27%, fuori campione 46%): si mostrano e si registrano, non si tradano. Tutto il resto è fermo.' +
+    'Scala <b>A → B → C → D</b> (S57A): <b>A</b> attuale, DLR e metodo del trend concordi (68%) · <b>B</b> PB, DLR e lettura della carta concordi (65%) · <b>C</b> attuale, DLR e sistema D concordi (68%) · <b>D</b> LY, attuale e DLR concordi (62%). <b>In cantina</b> le carte con PB, LY e DLR tutti concordi (il vecchio A: dal vivo 27%, fuori campione 46%): si mostrano e si registrano, non si tradano. Tutto il resto è fermo.' +
     (spente ? ' <b style="color:#e3b341">Nota: a schermo hai ' + spente + ' via' + (spente > 1 ? ' spente' : ' spenta') +
       ' — il report le ignora e le usa comunque accese.</b>' : '') + '</div>';
 
@@ -1288,7 +1306,7 @@ function renderReportTreSistemi() {
         '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">DA TRADARE · in ordine di gradino</div>' + righeOk +
       '</div>' +
       (inCantina.length ? '<div style="' + css.sect + ';background:rgba(63,185,80,.05);border-top:1px solid rgba(255,255,255,.10)">' +
-        '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">IN CANTINA · PB, LY e DLR concordi, solo da osservare</div>' + righeCant + '</div>' : '') +
+        '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">DA OSSERVARE · non si tradano (Leggo io con conclusione media o debole)</div>' + righeCant + '</div>' : '') +
       '<details style="' + css.sect + ';background:rgba(248,81,73,.05);border-top:1px solid rgba(255,255,255,.10)">' +
         '<summary style="font-size:12px;letter-spacing:1px;opacity:.65;cursor:pointer">FERMI · ' + esclusi.length + ' cross (tocca per vedere perché)</summary>' + righeNo +
       '</details>' +
@@ -1621,7 +1639,7 @@ function renderLiuYao(cross, chart, row, lyp, pbCtx) {
     var lettCls = lettP.dir === 'LONG' ? 'long' : lettP.dir === 'SHORT' ? 'short' : '';
     var emaSigL = (pbCtx && pbCtx.emaDir === 'up') ? 'LONG' : (pbCtx && pbCtx.emaDir === 'down') ? 'SHORT' : null;
     lettHtml = '<div class="trendmsgs" style="margin-top:10px;padding:8px 10px;border-left:3px solid #58a6ff;background:rgba(88,166,255,.06)">' +
-      '<b>Leggo io:</b> ' + (lettP.dir ? '<span class="sig ' + lettCls + '" style="display:inline-block">' + lettP.dir + '</span>' : '<b>tace</b>') +
+      '<b>Lettura della carta:</b> ' + (lettP.dir ? '<span class="sig ' + lettCls + '" style="display:inline-block">' + lettP.dir + '</span>' : '<b>tace</b>') +
       (lettP.dir && emaSigL ? ' <b>' + (lettP.dir === emaSigL ? 'segue il trend' : 'non segue il trend') + '</b>' : '') +
       (lettP.gradino ? ' <span style="opacity:.75">· ' + lettP.gradino + '</span>' : '') +
       (lettP.racconto ? '<div style="margin-top:6px;font-size:13px;white-space:pre-line">' + lettP.racconto + '</div>' : '') +
