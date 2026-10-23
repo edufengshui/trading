@@ -1,93 +1,101 @@
-/* qmdj.js — Qi Men Dun Jia, carta ORARIA, rotante (转盘), chai bu (拆补). (Edu, 23/10/2026)
- * Solo costruzione della carta: nessuna lettura LONG/SHORT finche' Edu non sceglie i simboli.
- * Ora di Pechino esclusa: giornata e termine solare sulla mezzanotte di Londra (jieqi-gmt.js), come le altre carte.
- * Convenzioni scritte qui e da confermare con Edu:
- *   - palazzo 5 appoggiato al 2 (寄坤) per stella, porta e stelo del 5;
- *   - otto spiriti: 值符 螣蛇 太阴 六合 白虎 玄武 九地 九天, orari in yang dun, antiorari in yin dun;
- *   - Yuan dal 符头 (stelo 甲/己 del giorno nel suo gruppo di 5): 子午卯酉 上元, 寅申巳亥 中元, 辰戌丑未 下元.
- * Uso: XKDGQimen.build(dayPillar, hourPillar, termName)   oppure   XKDGQimen.fromUtc(utcMs, lonDeg, hourBranch?)
+/* qmdj.js — Qi Men Dun Jia per il trading (Edu, 23/10/2026).
+ * Le carte le costruisce il motore di XKDG (qmdj-water-scanner.js, copiato da eduXKDG senza modifiche,
+ * getRotatingHourChart = carta rotante). Questo modulo decide solo QUALE carta, con le regole del trading:
+ *   - giornata e termini solari sulla mezzanotte di Londra: un termine conta dal giorno D se il suo istante
+ *     e' <= 00:00 GMT di D (stessa regola di jieqi-gmt.js). Ora di Pechino esclusa: il Jú si passa sempre
+ *     col forceJuDun, il motore non lo calcola da se'.
+ *   - CARTA ORARIA: ora = ramo del seme del cross (Edu: "usa il seme per stabilire l'ora"), stelo col 五鼠遁;
+ *     Jú chai bu (拆补): termine in corso + Yuan dal 符头 del giorno (子午卯酉 上, 寅申巳亥 中, 辰戌丑未 下).
+ *   - CARTA GIORNALIERA: metodo di XKDG sessione 32 (qmdj-daymonth.js dayChartJu), pilastro del giorno al
+ *     posto dell'ora; i termini sono contati con la regola di Londra invece del giorno in tempo solare locale.
+ * Uso: XKDGQimen.oraria(utcMs, seedBranch)  ·  XKDGQimen.giornaliera(utcMs)  ·  XKDGQimen.testo(chart)
  */
 (function () {
   'use strict';
+  var W = typeof window !== 'undefined' ? window : global;
   var STEMS = '甲乙丙丁戊己庚辛壬癸', BR = '子丑寅卯辰巳午未申酉戌亥';
-  var JU = {   // [上, 中, 下]; yang dun da 冬至 a 芒种, yin dun da 夏至 a 大雪
+  var JU = {   // chai bu [上, 中, 下]
     '冬至':[1,7,4],'小寒':[2,8,5],'大寒':[3,9,6],'立春':[8,5,2],'雨水':[9,6,3],'惊蛰':[1,7,4],
     '春分':[3,9,6],'清明':[4,1,7],'谷雨':[5,2,8],'立夏':[4,1,7],'小满':[5,2,8],'芒种':[6,3,9],
     '夏至':[9,3,6],'小暑':[8,2,5],'大暑':[7,1,4],'立秋':[2,5,8],'处暑':[1,4,7],'白露':[9,3,6],
     '秋分':[7,1,4],'寒露':[6,9,3],'霜降':[5,8,2],'立冬':[6,9,3],'小雪':[5,8,2],'大雪':[4,7,1]
   };
-  var YANG = { '冬至':1,'小寒':1,'大寒':1,'立春':1,'雨水':1,'惊蛰':1,'春分':1,'清明':1,'谷雨':1,'立夏':1,'小满':1,'芒种':1 };
-  var YI = '戊己庚辛壬癸丁丙乙';                       // tre rari e sei yi, in ordine di disposizione
-  var XUN_YI = { '子':'戊', '戌':'己', '申':'庚', '午':'辛', '辰':'壬', '寅':'癸' };  // ramo del 旬首 甲X -> yi che lo nasconde
-  var RING = [1, 8, 3, 4, 9, 2, 7, 6];                  // giro orario dei palazzi esterni
-  var STAR = { 1:'天蓬', 8:'天任', 3:'天冲', 4:'天辅', 9:'天英', 2:'天芮', 7:'天柱', 6:'天心', 5:'天禽' };
-  var DOOR = { 1:'休门', 8:'生门', 3:'伤门', 4:'杜门', 9:'景门', 2:'死门', 7:'惊门', 6:'开门' };
-  var GOD = ['值符', '螣蛇', '太阴', '六合', '白虎', '玄武', '九地', '九天'];
-  var PAL_EL = { 1:'Acqua', 8:'Terra', 3:'Legno', 4:'Legno', 9:'Fuoco', 2:'Terra', 7:'Metallo', 6:'Metallo', 5:'Terra' };
-  var PAL_GUA = { 1:'坎', 8:'艮', 3:'震', 4:'巽', 9:'离', 2:'坤', 7:'兑', 6:'乾', 5:'中' };
+  var YANG_T = { '冬至':1,'小寒':1,'大寒':1,'立春':1,'雨水':1,'惊蛰':1,'春分':1,'清明':1,'谷雨':1,'立夏':1,'小满':1,'芒种':1 };
+  var PINYIN_TERM = { DONG_ZHI:'冬至', XIAO_HAN:'小寒', DA_HAN:'大寒', LI_CHUN:'立春', YU_SHUI:'雨水', JING_ZHE:'惊蛰', DA_XUE:'大雪' };
+  var HOUR_STEM_START = { '甲':0,'己':0,'乙':2,'庚':2,'丙':4,'辛':4,'丁':6,'壬':6,'戊':8,'癸':8 };   // 五鼠遁
+  // carta giornaliera (XKDG sessione 32)
+  var MAIN = { '冬至':[1,7,4], '立春':[8,5,2], '春分':[3,9,6], '立夏':[4,1,7], '夏至':[9,3,6], '立秋':[2,5,8], '秋分':[7,1,4], '立冬':[6,9,3] };
+  var YANG_M = { '冬至':1, '立春':1, '春分':1, '立夏':1 };
+  var ENTRY = { '惊蛰':'卯', '清明':'辰', '芒种':'午', '小暑':'未', '白露':'酉', '寒露':'戌', '大雪':'子', '小寒':'丑' };
+  var BR_CYCLE = { '子':0, '卯':0, '午':0, '酉':0, '丑':2, '辰':2, '未':2, '戌':2 };
 
-  function idx60(gz) { var s = STEMS.indexOf(gz[0]), b = BR.indexOf(gz[1]); for (var i = 0; i < 60; i++) if (i % 10 === s && i % 12 === b) return i; return -1; }
-  function gz60(i) { i = ((i % 60) + 60) % 60; return STEMS[i % 10] + BR[i % 12]; }
-  function ring(p) { return RING.indexOf(p === 5 ? 2 : p); }
-  function out5(p) { return p === 5 ? 2 : p; }
-
-  function yuan(dayGZ) {                                 // 符头 = ultimo giorno 甲 o 己 (gruppo di 5)
-    var i = idx60(dayGZ), fu = gz60(i - (i % 5)), b = fu[1];
-    return { fuTou: fu, yuan: '子午卯酉'.indexOf(b) >= 0 ? 0 : '寅申巳亥'.indexOf(b) >= 0 ? 1 : 2 };
-  }
-
-  function build(dayGZ, hourGZ, term) {
-    if (!JU[term]) return { error: 'termine solare sconosciuto: ' + term };
-    var yang = !!YANG[term], y = yuan(dayGZ), ju = JU[term][y.yuan];
-    // piatto della terra
-    var earth = {}; for (var k = 0; k < 9; k++) { var p = yang ? ((ju - 1 + k) % 9) + 1 : ((ju - 1 - k + 90) % 9) + 1; earth[p] = YI[k]; }
-    var palOf = function (st) { for (var q = 1; q <= 9; q++) if (earth[q] === st) return q; return null; };
-    // 旬首 dell'ora
-    var hi = idx60(hourGZ), xunHead = gz60(hi - (hi % 10)), xunYi = XUN_YI[xunHead[1]], steps = hi % 10;
-    var fuPal = palOf(xunYi);                            // palazzo del 旬首 sul piatto della terra
-    var zhiShi = DOOR[out5(fuPal)];
-    // stella di servizio va sopra lo stelo dell'ora (甲 -> il suo yi)
-    var hStem = hourGZ[0] === '甲' ? xunYi : hourGZ[0], hPal = out5(palOf(hStem));
-    var shiftS = (ring(hPal) - ring(out5(fuPal)) + 8) % 8;
-    var heavenStar = {}, heavenStem = {}, heavenStem5 = null;
-    RING.forEach(function (p0) { var p1 = RING[(ring(p0) + shiftS) % 8]; heavenStar[p1] = STAR[p0]; heavenStem[p1] = earth[p0]; if (p0 === 2) heavenStem5 = { pal: p1, stem: earth[5] }; });
-    // porta di servizio: dal palazzo del 旬首 avanza di 'steps' (yang +1, yin -1), il 5 va al 2
-    var dp = fuPal; for (var s = 0; s < steps; s++) dp = yang ? (dp % 9) + 1 : ((dp + 7) % 9) + 1;
-    var doorPal = out5(dp), shiftD = (ring(doorPal) - ring(out5(fuPal)) + 8) % 8, doors = {};
-    RING.forEach(function (p0) { doors[RING[(ring(p0) + shiftD) % 8]] = DOOR[p0]; });
-    // otto spiriti: 值符 sopra la stella di servizio
-    var gods = {}; GOD.forEach(function (g, j) { gods[RING[(ring(hPal) + (yang ? j : 8 - j) % 8 + 8) % 8]] = g; });
-    // vuoto dell'ora e cavallo
-    var kong = [BR[(BR.indexOf(xunHead[1]) + 10) % 12], BR[(BR.indexOf(xunHead[1]) + 11) % 12]];
-    var MA = { '申':'寅','子':'寅','辰':'寅','寅':'申','午':'申','戌':'申','巳':'亥','酉':'亥','丑':'亥','亥':'巳','卯':'巳','未':'巳' };
-    var palazzi = {};
-    for (var q = 1; q <= 9; q++) palazzi[q] = { gua: PAL_GUA[q], elemento: PAL_EL[q], terra: earth[q],
-      cielo: q === 5 ? null : heavenStem[q], cielo5: heavenStem5 && heavenStem5.pal === q ? heavenStem5.stem : null,
-      stella: q === 5 ? null : heavenStar[q], porta: q === 5 ? null : doors[q], spirito: q === 5 ? null : gods[q] };
-    return { dun: yang ? 'yang' : 'yin', ju: ju, termine: term, fuTou: y.fuTou, yuan: ['上元', '中元', '下元'][y.yuan],
-      giorno: dayGZ, ora: hourGZ, xunShou: xunHead + xunYi, zhiFu: STAR[fuPal], zhiFuPal: hPal, zhiShi: zhiShi, zhiShiPal: doorPal,
-      stemOraPal: hPal, kong: kong, ma: MA[hourGZ[1]], palazzi: palazzi };
-  }
-
-  var HOUR_STEM_START = { '甲':0, '己':0, '乙':2, '庚':2, '丙':4, '辛':4, '丁':6, '壬':6, '戊':8, '癸':8 };  // 五鼠遁
+  function solar() { return W.Solar || (typeof require !== 'undefined' ? require('lunar-javascript').Solar : null); }
+  function ST() { return W.XKDGSolarTime || require('./solar-time.js'); }
+  function JQ() { return W.XKDGJieQiGMT || require('./jieqi-gmt.js'); }
+  function engine() { if (!W.QMDJWaterScanner && typeof require !== 'undefined') { W.window = W.window || W; require('./qmdj-water-scanner.js'); } return W.QMDJWaterScanner; }
+  function idx60(gz) { for (var i = 0; i < 60; i++) if (STEMS[i % 10] + BR[i % 12] === gz) return i; return -1; }
+  function wrap(n) { return ((n - 1) % 9 + 9) % 9 + 1; }
+  function dayNum(y, m, d) { return Math.round(Date.UTC(y, m - 1, d) / 864e5); }
+  function dayGzN(n) { var d = new Date(n * 864e5); return solar().fromYmd(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate()).getLunar().getDayInGanZhi(); }
   function hourGZ(dayStem, hb) { return STEMS[(HOUR_STEM_START[dayStem] + BR.indexOf(hb)) % 10] + hb; }
 
-  function fromUtc(utcMs, lonDeg, hourBranch) {
-    var ST = typeof window !== 'undefined' ? window.XKDGSolarTime : require('./solar-time.js');
-    var JQ = typeof window !== 'undefined' ? window.XKDGJieQiGMT : require('./jieqi-gmt.js');
-    var p = ST.pillarsFromUtc(utcMs, lonDeg), t = p.meta.tst, cur = JQ.currentJieQi(t.y, t.mo, t.d);
-    var hb = hourBranch || p.hour.charAt(1), c = build(p.day, hourGZ(p.day[0], hb), cur.name);
-    c.mese = p.month; c.anno = p.year; return c;
+  // termini attorno all'anno: giorno da cui contano = primo giorno la cui mezzanotte GMT e' >= istante del termine
+  function termini(year) {
+    var out = [], seen = {}, S = solar();
+    [year - 1, year, year + 1].forEach(function (y) {
+      var t = S.fromYmd(y, 6, 1).getLunar().getJieQiTable();
+      Object.keys(t).forEach(function (k) {
+        var s = t[k], name = PINYIN_TERM[k] || k, key = name + s.toYmd(); if (seen[key]) return; seen[key] = 1;
+        var ms = Date.UTC(s.getYear(), s.getMonth() - 1, s.getDay(), s.getHour(), s.getMinute(), s.getSecond()) - 8 * 3600e3;
+        out.push({ name: name, day: Math.ceil(ms / 864e5), bj: s });
+      });
+    });
+    return out.sort(function (a, b) { return a.day - b.day; });
   }
 
-  // griglia 3x3 (4 9 2 / 3 5 7 / 8 1 6) per mostrarla
-  function griglia(c) {
-    var rows = [[4, 9, 2], [3, 5, 7], [8, 1, 6]];
-    return rows.map(function (r) { return r.map(function (q) { var x = c.palazzi[q];
-      return q === 5 ? '中5 terra ' + x.terra : x.gua + q + ' ' + x.spirito + ' ' + x.stella + (x.cielo5 ? '+禽' : '') + ' ' + x.porta + ' cielo ' + x.cielo + (x.cielo5 ? '/' + x.cielo5 : '') + ' terra ' + x.terra; }).join(' | '); }).join('\n');
+  function giornoLondra(utcMs) { var p = ST().pillarsFromUtc(utcMs, 0); return { p: p, t: p.meta.tst }; }
+
+  function juOraria(dayGz, t) {
+    var cur = JQ().currentJieQi(t.y, t.mo, t.d), i = idx60(dayGz), fu = STEMS[(i - i % 5) % 10] + BR[(i - i % 5) % 12];
+    var y = '子午卯酉'.indexOf(fu[1]) >= 0 ? 0 : '寅申巳亥'.indexOf(fu[1]) >= 0 ? 1 : 2;
+    return { dun: YANG_T[cur.name] ? 'yang' : 'yin', ju: JU[cur.name][y], termine: cur.name, fuTou: fu, yuan: ['上元', '中元', '下元'][y] };
   }
 
-  var API = { build: build, fromUtc: fromUtc, hourGZ: hourGZ, griglia: griglia };
-  if (typeof window !== 'undefined') window.XKDGQimen = API;
+  function juGiornaliera(t) {                     // dayChartJu di XKDG con i termini contati sulla mezzanotte di Londra
+    var T = dayNum(t.y, t.mo, t.d), list = termini(t.y), start = null, S = solar();
+    list.forEach(function (x) { if (MAIN[x.name] && x.day <= T) start = x; });
+    if (!start) return null;
+    var b = start.bj, after = S.fromYmdHms(b.getYear(), b.getMonth(), b.getDay(), b.getHour(), b.getMinute(), b.getSecond());
+    var mon = S.fromJulianDay(after.getJulianDay() + 1 / 24).getLunar().getMonthInGanZhiExact();
+    var yang = !!YANG_M[start.name], cur = [0, 2, 1, 0, 2, 1][Math.floor(idx60(mon) / 10)], ju = MAIN[start.name][cur];
+    var passi = [start.name + ' ' + ['上', '中', '下'][cur] + ' ' + ju], entries = {};
+    list.forEach(function (x) { if (ENTRY[x.name]) entries[x.day] = x.name; });
+    for (var n = start.day + 1; n <= T; n++) {
+      if (idx60(dayGzN(n)) % 10 === 0) { ju = wrap(ju + (yang ? 1 : -1)); passi.push('旬 ' + dayGzN(n) + ' ' + ju); }
+      if (entries[n]) { var nc = BR_CYCLE[ENTRY[entries[n]]], k = ((nc - cur) % 3 + 3) % 3; ju = wrap(ju + k * (yang ? 6 : -6)); cur = nc; passi.push(entries[n] + ' ' + ju); }
+    }
+    return { dun: yang ? 'yang' : 'yin', ju: ju, passi: passi };
+  }
+
+  function carta(t, gz, info) {
+    var c = engine().getRotatingHourChart(t.y, t.mo, t.d, gz[0], gz[1], null, { ju: info.ju, dun: info.dun });
+    if (c) { c.pilastro = gz; c.jiu = info; }
+    return c;
+  }
+  function oraria(utcMs, seedBranch) {
+    var g = giornoLondra(utcMs), info = juOraria(g.p.day, g.t), gz = hourGZ(g.p.day[0], seedBranch);
+    var c = carta(g.t, gz, info); if (c) { c.tipo = 'oraria'; c.giorno = g.p.day; c.mese = g.p.month; c.anno = g.p.year; } return c;
+  }
+  function giornaliera(utcMs) {
+    var g = giornoLondra(utcMs), info = juGiornaliera(g.t); if (!info) return null;
+    var c = carta(g.t, g.p.day, info); if (c) { c.tipo = 'giornaliera'; c.giorno = g.p.day; c.mese = g.p.month; c.anno = g.p.year; } return c;
+  }
+  function testo(c) {
+    var cell = function (p) { var d = c.palaces[p]; return p + ' ' + (d.deity || '') + ' ' + (d.star || '') + ' ' + (d.doorName || d.door || '') + ' ' + (d.tiH || '') + '/' + (d.diH || ''); };
+    return [[4, 9, 2], [3, 5, 7], [8, 1, 6]].map(function (r) { return r.map(cell).join(' | '); }).join('\n');
+  }
+
+  var API = { oraria: oraria, giornaliera: giornaliera, testo: testo, hourGZ: hourGZ, juOraria: juOraria, juGiornaliera: juGiornaliera };
+  W.XKDGQimen = API;
   if (typeof module !== 'undefined') module.exports = API;
 })();
