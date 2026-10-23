@@ -486,7 +486,7 @@ function analizzaCrossPerReport(r, utcMs, dateStr) {
         // --- TRE SISTEMI (Edu, 03/09/2026 S36): oltre a PB e LY si annotano il verdetto del
         // SISTEMA ATTUALE (PB + LY + rafforzativi, canonico = combinaS9 con tutte le vie accese)
         // e il verdetto del motore DA LIU REN (motore_dlr.js, stessa carta del pannello).
-        out.pbDir = pbDir; out.pbHu = pb.huGua || null;   // Hu Gua del PB: via del PB in Leggo io (Edu, 23/10/2026)
+        out.pbDir = pbDir; out.pbHu = pb.huGua || null; out.pbYongApice = !!pb.yongApice;   // Hu Gua del PB: via del PB in Leggo io (Edu, 23/10/2026)
         try { var cmb = LYM.combinaS9(ly, ctxT, pbDir, {}, {}, {}); out.attuale = (cmb && cmb.finale) || pbDir; }
         catch (e2) { out.attuale = pbDir; }
         out.dlrDir = null; out.dlrVia = null;
@@ -1081,7 +1081,8 @@ function livelloTreSistemi(e) {
   // misurata su carte non viste e conclude. Si trada solo la conclusione FORTE (margine >= 0,6): 2022-23 66,5% su 499,
   // 2024-26 65,1% su 733 (+15.086 pip), dal vivo 29/09-22/10 58,8% su 51; media e debole si mostrano e si registrano, non
   // si tradano (2024-26 53,9% e 51,9%). LEGGOIO_TUTTE=1 trada anche media e debole. SCALA=PIRAMIDE rimette la piramide DLR.
-  var LIo = (typeof window !== 'undefined' && window.LeggoIo) ? window.LeggoIo.leggi({ PB: pb, LY: ly, DLR: dlr, LETT: lett,
+  var LIo = (typeof window !== 'undefined' && window.LeggoIo) ? window.LeggoIo.leggi({ PB: (e.pbYongApice && !(typeof localStorage !== 'undefined' && localStorage && localStorage.getItem('PB_APICE') === '1')) ? null : pb, LY: ly,   // PB muto con lo Yong in apice nel mese (Edu, 23/10/2026; PB_APICE=1 lo riaccende)
+    DLR: dlr, LETT: lett,
     MT: e.mtDir || null, CM: e.cmDir || null, D: e.dDir || null, LYF: e.lyfDir || null, PBF: e.pbfDir || null, DLRF: e.dlrfDir || null,
     lySez: e.lySez || null, lettGrad: (e.lettGradino || '').split(' ')[0] || null, dlrVia: e.dlrVia || null, pbHu: e.pbHu || null }) : null;
   if (LIo) { e.liDir = LIo.dir; e.liForza = LIo.forza; e.liRacconto = LIo.racconto; voci = 'LEGGO IO: ' + LIo.racconto + ' ‖ ' + voci; }

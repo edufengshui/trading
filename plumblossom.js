@@ -486,6 +486,11 @@
       relTesto = 'clash giorno↔mese ' + bz.dayBranch + '↔' + bz.monthBranch + ' → NO TRADE';
     }
 
+    // LO YONG IN APICE NEL MESE (Edu, 23/10/2026, dalle slide di Joseph Yu sulla stagione dei trigrammi): quando lo Yong
+    // originale ha lo stesso elemento del mese (旺) il PB legge come una moneta (49,3% su 668, 48,2/50,5% nei due periodi;
+    // Yong morto 57,3%, a riposo 56,6%). Il verdetto resta calcolato; yongApice dice all'app di farlo tacere in Leggo io.
+    var yongApice = !!(bz && bz.monthBranch && WX[bz.monthBranch] === yongOrig.el);
+
     var trSup = supNum, trInf = infNum;
     if (linea <= 3) trInf = flipLine(infNum, linea); else trSup = flipLine(supNum, linea - 3);
     var low6 = TRIGRAM[infNum].lines + TRIGRAM[supNum].lines;
@@ -496,7 +501,7 @@
       superiore: supNum, inferiore: infNum, linea: linea,
       trend: trend, yongOriginale: yongOrig, yongTrasformato: yongTrasf,
       relazione: rel, relazioneTesto: relTesto, pareggio: pareggio,
-      segueBase: segueBase, segue: segueFinale, noTradeClash: noTradeClash, riscatto: riscatto, rafforzato: rafforzato, huGua: huGua, vuotoPareggio: vuotoPareggio, sopraffTrasf: sopraffTrasf, sopraffAttiva: sopraffAttiva, flussoVersoTi: flussoVersoTi, nayinSalva: nayinSalva, drenaggio: drenaggio,
+      segueBase: segueBase, segue: segueFinale, noTradeClash: noTradeClash, yongApice: yongApice, riscatto: riscatto, rafforzato: rafforzato, huGua: huGua, vuotoPareggio: vuotoPareggio, sopraffTrasf: sopraffTrasf, sopraffAttiva: sopraffAttiva, flussoVersoTi: flussoVersoTi, nayinSalva: nayinSalva, drenaggio: drenaggio,
       clash: clash,
       original:  { sup: supNum, inf: infNum },
       mutual:    { sup: nucSup, inf: nucInf },
