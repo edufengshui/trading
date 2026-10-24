@@ -101,7 +101,7 @@
   // forza = timeliness 旺4 相3 休2 囚1 死0 sul ramo del mese + sulla stagione (寅卯辰 legno, 巳午未 fuoco, 申酉戌 metallo, 亥子丑 acqua);
   // vuoti del 旬 dell'ORA: palazzo vuoto = forza 0; palazzo a due rami vuoto a meta' = vuoto solo se lo stelo del di pan ha la
   // polarita' del ramo vuoto. Controllo: vince chi controlla, 反侮 se il controllato e' piu' forte. Generazione: vince il generato.
-  // Ponte del Commander o dello Zhi Shi: se il suo palazzo e' generato da chi controlla e genera il controllato, l'esito si ribalta.
+  // Ponte del Commander o dello Zhi Shi (solo se il loro palazzo NON e' vuoto, Edu 24/10): se il suo palazzo e' generato da chi controlla e genera il controllato, l'esito si ribalta.
   // Stesso palazzo, stesso elemento, forze pari: fermo. Vince il giorno -> SEGUE il trend; vince l'ora -> NON SEGUE.
   // Stelo 甲 -> stelo del 旬 (遁甲); stelo solo al centro -> palazzo della stella Rice (天芮): Fowl segue sempre Rice (Edu).
   var PEL = { 1:'W', 2:'E', 3:'L', 4:'L', 6:'M', 7:'M', 8:'E', 9:'F' };
@@ -131,7 +131,7 @@
     else if (GEN[x] === y) { r.segue = false; r.motivo = 'il giorno genera l\'ora'; return r; }
     else { r.segue = true; r.motivo = 'l\'ora genera il giorno'; return r; }
     var ctl = CTL[x] === y ? a : b, sub = ctl === a ? b : a, ponti = [];
-    var ponte = function (k) { return k && k !== a && k !== b && GEN[PEL[ctl]] === PEL[k] && GEN[PEL[k]] === PEL[sub]; };
+    var ponte = function (k) { return k && k !== a && k !== b && !vuoto(c, k, vu) && GEN[PEL[ctl]] === PEL[k] && GEN[PEL[k]] === PEL[sub]; };
     var trova = function (f) { for (var k = 1; k <= 9; k++) if (k !== 5 && f(c.palaces[k])) return k; return null; };
     if (ponte(trova(function (d) { return d.deity === 'Commander'; }))) ponti.push('Commander');
     if (ponte(trova(function (d) { return d.zhiShi; }))) ponti.push('Zhi Shi');   // Edu 24/10/2026, EURJPY 22/10
