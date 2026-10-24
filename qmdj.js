@@ -119,6 +119,7 @@
     return ('甲丙戊庚壬'.indexOf(c.palaces[p].diH) >= 0) === ('子寅辰午申戌'.indexOf(d[0]) >= 0); }
   function giornoOra(c) {
     if (!c || c.tipo !== 'oraria') return null;
+    var trovaC = function () { for (var k = 1; k <= 9; k++) if (k !== 5 && c.palaces[k].deity === 'Commander') return k; return null; };
     var mb = c.mese[1], vu = vuotiDi(c.pilastro), a = palOf(c, stemOf(c.giorno)), b = palOf(c, stemOf(c.pilastro));
     var f = function (p) { return vuoto(c, p, vu) ? 0 : tempo(PEL[p], BEL[mb]) + tempo(PEL[p], SEAS[mb]); };
     var r = { palGiorno: a, palOra: b, forzaGiorno: a && f(a), forzaOra: b && f(b), segue: null, motivo: '' };
@@ -128,15 +129,23 @@
     if (x === y) { r.motivo = 'stesso elemento: fermo'; return r; }
     if (CTL[x] === y) { w = sa >= sb; r.motivo = 'il giorno controlla l\'ora' + (w ? '' : ' (反侮)'); }
     else if (CTL[y] === x) { w = !(sb >= sa); r.motivo = 'l\'ora controlla il giorno' + (w ? ' (反侮)' : ''); }
-    else if (GEN[x] === y) { r.segue = false; r.motivo = 'il giorno genera l\'ora'; return r; }
-    else { r.segue = true; r.motivo = 'l\'ora genera il giorno'; return r; }
+    else if (GEN[x] === y) { w = false; r.motivo = 'il giorno genera l\'ora';     // Edu 24/10: un palazzo vuoto non puo' essere generato
+      if (vuoto(c, b, vu)) { w = true; r.motivo += ' (ora vuota: non generata)'; } return finale(w); }
+    else { w = true; r.motivo = 'l\'ora genera il giorno';
+      if (vuoto(c, a, vu)) { w = false; r.motivo += ' (giorno vuoto: non generato)'; } return finale(w); }
     var ctl = CTL[x] === y ? a : b, sub = ctl === a ? b : a, ponti = [];
     var ponte = function (k) { return k && k !== a && k !== b && !vuoto(c, k, vu) && GEN[PEL[ctl]] === PEL[k] && GEN[PEL[k]] === PEL[sub]; };
     var trova = function (f) { for (var k = 1; k <= 9; k++) if (k !== 5 && f(c.palaces[k])) return k; return null; };
     if (ponte(trova(function (d) { return d.deity === 'Commander'; }))) ponti.push('Commander');
     if (ponte(trova(function (d) { return d.zhiShi; }))) ponti.push('Zhi Shi');   // Edu 24/10/2026, EURJPY 22/10
     if (ponti.length) { w = !w; r.motivo += ' · ponte ' + ponti.join(' + ') + ': ribaltato'; }
-    r.segue = w; return r;
+    return finale(w);
+    // Commander nel palazzo opposto a chi vince: e' contro di lui, l'esito si ribalta (Edu 24/10, USDJPY 01/05/2024)
+    function finale(v) {
+      var OPP = { 1:9, 9:1, 2:8, 8:2, 3:7, 7:3, 4:6, 6:4 }, cm = trovaC(), vinc = v ? a : b;
+      if (cm && OPP[cm] === vinc) { v = !v; r.motivo += ' · Commander opposto al vincitore: ribaltato'; }
+      r.segue = v; return r;
+    }
   }
 
   var API = { giornoOra: giornoOra, oraria: oraria, giornaliera: giornaliera, testo: testo, hourGZ: hourGZ, juOraria: juOraria, juGiornaliera: juGiornaliera };
