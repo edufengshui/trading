@@ -114,7 +114,8 @@
     for (p = 1; p <= 9; p++) if (p !== 5 && c.palaces[p].star === 'Rice') return p; return null; }
   function tempo(pe, me) { return pe === me ? 4 : GEN[me] === pe ? 3 : GEN[pe] === me ? 2 : CTL[pe] === me ? 1 : 0; }
   function vuotiDi(gz) { var s = Math.floor(idx60(gz) / 10) * 10; return [BR[(s + 10) % 12], BR[(s + 11) % 12]]; }
-  function vuoto(c, p, vu) { var d = PBR[p].split('').filter(function (b) { return vu.indexOf(b) >= 0; });
+  function vuoto(c, p, vu) { if (PBR[p].indexOf(c.mese[1]) >= 0) return false;   // Edu 24/10: col ramo del mese il palazzo e' forte, il vuoto non conta
+    var d = PBR[p].split('').filter(function (b) { return vu.indexOf(b) >= 0; });
     if (!d.length) return false; if (d.length === PBR[p].length) return true;
     return ('甲丙戊庚壬'.indexOf(c.palaces[p].diH) >= 0) === ('子寅辰午申戌'.indexOf(d[0]) >= 0); }
   function giornoOra(c) {
