@@ -739,7 +739,7 @@ function salvaNelRegistro(data, tradabili) {
   reg[data] = tradabili.map(function (e) {
     return { cross: e.cross, signal: e.signal, trend: e.trend, segue: e.segue,
              decisore: e.decisore, seed: e.seed, sup: e.sup, inf: e.inf, linea: e.linea,
-             bazi: e.bazi, livello: e.livello || null, cantina: !!e.cantina, fiducia: e.fiducia || null, voci: e.voci || null, dlrVia: e.dlrVia || null,
+             bazi: e.bazi, livello: e.livello || null, cantina: !!e.cantina, fiducia: e.fiducia || null, misura: e.misura || null, forza: e.liForza || null, voci: e.voci || null, dlrVia: e.dlrVia || null,
              esito: (e.cross in vecchi) ? vecchi[e.cross] : null };
   });
   var giorni = Object.keys(reg).sort();
@@ -832,6 +832,7 @@ function wireRegistro(box) {
             '\nEsito: ' + t.esito + ' pip' +
             '\nSeme ' + t.seed + ' · superiore ' + t.sup + ' · inferiore ' + t.inf + ' · mutante L' + t.linea +
             '\nBazi: ' + (t.bazi || '') +
+            (t.misura ? '\nMisura: ' + (t.misura === 'piena' ? 'posizione piena' : 'mezza posizione') + (t.forza ? ' (conclusione ' + t.forza + ')' : '') : '') +
             (t.livello ? '\nLivello: ' + t.livello + (t.fiducia ? ' · fiducia ' + t.fiducia : '') + ' · ' + (t.voci || '') + (t.dlrVia ? ' · via DLR: ' + t.dlrVia : '') : '') +
             '\nDeciso da: ' + (t.decisore || ''));
         }
@@ -1240,7 +1241,10 @@ function renderReportTreSistemi() {
         // A+B+C+D (2.299 carte 65,6%): il sistema-trend concorde 71,1% (547 carte), tace 64,8%,
         // contraddice 61,4% (440). Non ferma il trade (le contraddette restano sopra il 60%): lo
         // gradua. "alta" = la voce del trend concorda, "bassa" = contraddice, "media" = tace.
-        e.fiducia = e.stDir ? (e.stDir === L.dir ? 'alta' : 'bassa') : 'media'; }
+        e.fiducia = e.stDir ? (e.stDir === L.dir ? 'alta' : 'bassa') : 'media';
+        // MISURA DELLA POSIZIONE (Edu, 24/10/2026: "Si"): piena sulle conclusioni forti di Leggo io, meta' su medie e deboli.
+        // 2020-26 spread incluso, Lio senza voci per forma: forte +12,8/+19,7 pip a trade, media +4,1/+8,1, debole +2,8/+3,8.
+        e.misura = L.liv === 'LI' ? (e.liForza === 'forte' ? 'piena' : 'metà') : null; }
       else { e.signal = 'NO TRADE'; e.segue = null; e.motivo = L.perche + ' · ' + L.voci; }
     } else if (e.signal !== 'NO TRADE') { e.signal = 'NO TRADE'; e.motivo = e.motivo || 'carta non leggibile'; }
     return e;
@@ -1281,6 +1285,7 @@ function renderReportTreSistemi() {
       livBadge(e.livello) + '<span style="' + css.name + '">' + e.cross + '</span>' + badge(e.signal) +
       '<span style="font-size:12px;opacity:.9">' + (e.segue ? 'segue il trend' : 'non segue il trend') + '</span>' +
       (e.fiducia ? '<span style="font-size:11px;font-weight:800;padding:1px 6px;border-radius:6px;margin-left:6px;color:#0e1022;background:' + (e.fiducia === 'alta' ? '#3fb950' : e.fiducia === 'bassa' ? '#e3b341' : '#8b949e') + '" title="fiducia dal sistema-trend">fiducia ' + e.fiducia + '</span>' : '') +
+      (e.misura ? '<span style="font-size:11px;font-weight:800;padding:1px 6px;border-radius:6px;margin-left:6px;color:#0e1022;background:' + (e.misura === 'piena' ? '#58a6ff' : '#d2a8ff') + '" title="misura della posizione: piena sulle conclusioni forti, meta\' su medie e deboli">' + (e.misura === 'piena' ? 'posizione piena' : 'mezza posizione') + ' · ' + (e.liForza || '') + '</span>' : '') +
       '<span style="' + css.note + '">' + e.voci + (e.dlrVia ? ' · via DLR: ' + e.dlrVia : '') +
       (e.avviso ? ' · <b style="color:#e3b341">' + e.avviso + '</b>' : '') + '</span></div>';
   }).join('') || '<div style="padding:8px 0;opacity:.7">Nessun cross da tradare oggi: nessun gradino della scala.</div>';
