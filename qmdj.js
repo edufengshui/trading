@@ -95,7 +95,48 @@
     return [[4, 9, 2], [3, 5, 7], [8, 1, 6]].map(function (r) { return r.map(cell).join(' | '); }).join('\n');
   }
 
-  var API = { oraria: oraria, giornaliera: giornaliera, testo: testo, hourGZ: hourGZ, juOraria: juOraria, juGiornaliera: juGiornaliera };
+
+  // REGOLA GIORNO CONTRO ORA (Edu, 24/10/2026) — solo carta ORARIA.
+  // Palazzo dello stelo del giorno = trend; palazzo dello stelo dell'ora = la giornata. Si confrontano i palazzi:
+  // forza = timeliness 旺4 相3 休2 囚1 死0 sul ramo del mese + sulla stagione (寅卯辰 legno, 巳午未 fuoco, 申酉戌 metallo, 亥子丑 acqua);
+  // vuoti del 旬 dell'ORA: palazzo vuoto = forza 0; palazzo a due rami vuoto a meta' = vuoto solo se lo stelo del di pan ha la
+  // polarita' del ramo vuoto. Controllo: vince chi controlla, 反侮 se il controllato e' piu' forte. Generazione: vince il generato.
+  // Ponte del Commander: se il suo palazzo e' generato da chi controlla e genera il controllato, l'esito si ribalta.
+  // Stesso palazzo, stesso elemento, forze pari: fermo. Vince il giorno -> SEGUE il trend; vince l'ora -> NON SEGUE.
+  // Stelo 甲 -> stelo del 旬 (遁甲); stelo solo al centro -> palazzo della stella Grass (芮).
+  var PEL = { 1:'W', 2:'E', 3:'L', 4:'L', 6:'M', 7:'M', 8:'E', 9:'F' };
+  var GEN = { L:'F', F:'E', E:'M', M:'W', W:'L' }, CTL = { L:'E', E:'W', W:'F', F:'M', M:'L' };
+  var BEL = { '子':'W','亥':'W','寅':'L','卯':'L','巳':'F','午':'F','申':'M','酉':'M','辰':'E','戌':'E','丑':'E','未':'E' };
+  var SEAS = { '寅':'L','卯':'L','辰':'L','巳':'F','午':'F','未':'F','申':'M','酉':'M','戌':'M','亥':'W','子':'W','丑':'W' };
+  var PBR = { 1:'子', 8:'丑寅', 3:'卯', 4:'辰巳', 9:'午', 2:'未申', 7:'酉', 6:'戌亥' };
+  function stemOf(gz) { var i = idx60(gz); return gz[0] === '甲' ? '戊己庚辛壬癸'[Math.floor(i / 10)] : gz[0]; }
+  function palOf(c, s) { var p; for (p = 1; p <= 9; p++) if (p !== 5 && c.palaces[p].tiH === s) return p;
+    for (p = 1; p <= 9; p++) if (p !== 5 && c.palaces[p].star === 'Grass') return p; return null; }
+  function tempo(pe, me) { return pe === me ? 4 : GEN[me] === pe ? 3 : GEN[pe] === me ? 2 : CTL[pe] === me ? 1 : 0; }
+  function vuotiDi(gz) { var s = Math.floor(idx60(gz) / 10) * 10; return [BR[(s + 10) % 12], BR[(s + 11) % 12]]; }
+  function vuoto(c, p, vu) { var d = PBR[p].split('').filter(function (b) { return vu.indexOf(b) >= 0; });
+    if (!d.length) return false; if (d.length === PBR[p].length) return true;
+    return ('甲丙戊庚壬'.indexOf(c.palaces[p].diH) >= 0) === ('子寅辰午申戌'.indexOf(d[0]) >= 0); }
+  function giornoOra(c) {
+    if (!c || c.tipo !== 'oraria') return null;
+    var mb = c.mese[1], vu = vuotiDi(c.pilastro), a = palOf(c, stemOf(c.giorno)), b = palOf(c, stemOf(c.pilastro));
+    var f = function (p) { return vuoto(c, p, vu) ? 0 : tempo(PEL[p], BEL[mb]) + tempo(PEL[p], SEAS[mb]); };
+    var r = { palGiorno: a, palOra: b, forzaGiorno: a && f(a), forzaOra: b && f(b), segue: null, motivo: '' };
+    if (!a || !b) { r.motivo = 'palazzo non trovato'; return r; }
+    if (a === b) { r.motivo = 'stesso palazzo: fermo'; return r; }
+    var x = PEL[a], y = PEL[b], sa = r.forzaGiorno, sb = r.forzaOra, w;
+    if (x === y) { r.motivo = 'stesso elemento: fermo'; return r; }
+    if (CTL[x] === y) { w = sa >= sb; r.motivo = 'il giorno controlla l\'ora' + (w ? '' : ' (反侮)'); }
+    else if (CTL[y] === x) { w = !(sb >= sa); r.motivo = 'l\'ora controlla il giorno' + (w ? ' (反侮)' : ''); }
+    else if (GEN[x] === y) { r.segue = false; r.motivo = 'il giorno genera l\'ora'; return r; }
+    else { r.segue = true; r.motivo = 'l\'ora genera il giorno'; return r; }
+    var ctl = CTL[x] === y ? a : b, sub = ctl === a ? b : a, k;
+    for (k = 1; k <= 9; k++) if (k !== 5 && c.palaces[k].deity === 'Commander') break;
+    if (k <= 9 && k !== a && k !== b && GEN[PEL[ctl]] === PEL[k] && GEN[PEL[k]] === PEL[sub]) { w = !w; r.motivo += ' · ponte del Commander: ribaltato'; }
+    r.segue = w; return r;
+  }
+
+  var API = { giornoOra: giornoOra, oraria: oraria, giornaliera: giornaliera, testo: testo, hourGZ: hourGZ, juOraria: juOraria, juGiornaliera: juGiornaliera };
   W.XKDGQimen = API;
   if (typeof module !== 'undefined') module.exports = API;
 })();
