@@ -421,12 +421,20 @@ function analizzaCrossPerReport(r, utcMs, dateStr) {
     var pb = window.XKDGPlumBlossom.read(r.seed, chart.dayBranch, chart.monthBranch,
       yearBranch, chart.dayStem || null, (r.emaRun != null) ? r.emaRun : null);
     if (!pb || pb.error) { out.signal = 'NO TRADE'; out.motivo = 'lettura Plum Blossom non disponibile'; return out; }
-    if (pb.segue === null) {
-      out.signal = 'NO TRADE';
-      out.motivo = pb.noTradeClash ? 'clash giorno/mese: la carta non scioglie' : 'pareggio non sciolto nella carta';
-      return out;
+    // PB CHE NON SCIOGLIE (24/10/2026). Scritta la lettura col PB muto (Edu: "Correggi assolutamente"): il pareggio non
+    // sciolto o il clash giorno/mese fanno tacere solo il PB e Leggo io legge con gli altri metodi. MISURA (misura_vivo.js
+    // ORARIO=full1h.json, 1.527 cross-giorno 2020-26): su quelle carte TUTTI i metodi stanno al 50% (LY 49,4 · lettura 49,6 ·
+    // DLR 51,7 · D 48,6 · PBF 50,1%); Lio 2020-23 729 trade 51,4% +61 · 2024-26 610 50,7% +772 · conclusione forte 48,5/45,0%.
+    // La carta che il PB non scioglie non si legge nemmeno con gli altri metodi: il fermo resta (default). In attesa di Edu:
+    // localStorage PB_MUTO_LEGGE=1 accende la lettura col PB muto (solo con SCALA=LEGGOIO).
+    var pbNullo = (pb.segue === null);
+    var scalaPB = (typeof localStorage !== 'undefined' && localStorage && localStorage.getItem('SCALA')) || 'LEGGOIO';
+    var pbMutoLegge = typeof localStorage !== 'undefined' && localStorage && localStorage.getItem('PB_MUTO_LEGGE') === '1';
+    if (pbNullo) {
+      out.pbMuto = pb.noTradeClash ? 'clash giorno/mese: la carta non scioglie' : 'pareggio non sciolto nella carta';
+      if (scalaPB !== 'LEGGOIO' || !pbMutoLegge) { out.signal = 'NO TRADE'; out.motivo = out.pbMuto; return out; }
     }
-    var pbDir = (dir === 'up') ? (pb.segue ? 'LONG' : 'SHORT') : (pb.segue ? 'SHORT' : 'LONG');
+    var pbDir = pbNullo ? null : (dir === 'up') ? (pb.segue ? 'LONG' : 'SHORT') : (pb.segue ? 'SHORT' : 'LONG');
 
     // --- Liu Yao: verdetto AUTONOMO del termometro sulla stessa carta.
     // POLITICA C→S2 (Edu, 28/08/2026): si opera la CONVALIDA (PB e LY concordano).
@@ -554,7 +562,10 @@ function analizzaCrossPerReport(r, utcMs, dateStr) {
             }
           }
         } catch (e5) { out.steloVoce = null; out.steloEl = null; }
-        if (lyDir === null) {
+        out.letta = true;                            // la carta e' stata letta: Leggo io puo' concludere anche col PB muto
+        if (pbNullo) {
+          out.classe = 'pb muto'; finale = null; decisore = out.pbMuto;
+        } else if (lyDir === null) {
           out.classe = 'tace';
           finale = pbDir; decisore = 'PB — il LY tace (riserva S2)';
         } else if (lyDir === pbDir) {
@@ -576,6 +587,7 @@ function analizzaCrossPerReport(r, utcMs, dateStr) {
     out.signal = finale;
     out.segue = (finale === out.trend);
     out.decisore = decisore;
+    if (pbNullo) { out.signal = 'NO TRADE'; out.segue = null; out.motivo = out.pbMuto; }   // decide Leggo io nel report
     // dati della carta, per poterla rileggere a fine giornata dal registro
     out.seed = r.seed;
     out.sup = (ly && ly.sup) || null;
@@ -1075,7 +1087,7 @@ function livelloTreSistemi(e) {
              ' · Semplificato ' + (e.sempDir ? e.sempDir + ' (' + e.sempRegola + ')' : 'tace') +
              ' · Sistema DLR per forma ' + (e.dlrfDir ? e.dlrfDir + ' (' + e.dlrfForma + ': ' + e.dlrfRegola + ')' : (e.dlrfForma ? 'tace (' + e.dlrfForma + ' senza regola)' : 'tace'));
   // Lo Spirito e lo stelo del giorno restano mostrati ma dal 16/09/2026 non contano piu' nella scala.
-  if (!pb) return { liv: null, dir: null, perche: 'carta non leggibile', voci: voci };
+  if (!pb && !e.letta) return { liv: null, dir: null, perche: 'carta non leggibile', voci: voci };   // 24/10: col PB muto legge Leggo io
   // LEGGO IO (S59, Edu 22/10/2026: "Leggo io dovrebbe scannerizzare tutti i metodi, uno per uno e giungere ad una
   // conclusione sensata. Rendilo il metodo che usa tutti gli altri"): leggo_io.js pesa ogni voce con la sua affidabilita'
   // misurata su carte non viste e conclude. Si trada solo la conclusione FORTE (margine >= 0,6): 2022-23 66,5% su 499,
@@ -1219,7 +1231,7 @@ function renderReportTreSistemi() {
   var utcMs = istanteUtcDelGiorno(dArr);
   var esiti = (forexData.rows || []).map(function (r) {
     var e = analizzaCrossPerReport(r, utcMs, forexData.date);
-    if (e.pbDir) {                                   // la carta e' leggibile: si applica la scala
+    if (e.pbDir || e.letta) {                        // la carta e' leggibile (anche col PB muto, 24/10/2026): si applica la scala
       var L = livelloTreSistemi(e);
       e.livello = L.liv; e.voci = L.voci;
       e.cantina = !!L.cantina;
