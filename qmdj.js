@@ -260,6 +260,14 @@
       if (mA && !mB) { r.segue = false; r.motivo += ' · mese opposto al giorno: non segue'; }
       else if (mB && !mA) { r.segue = true; r.motivo += ' · mese opposto all\'ora: segue'; }
     }
+    // ZFTY: la porta View dal palazzo opposto clasha il TY (o lo ZF), che non vince (Edu 25/10/2026, EURUSD 07/10). QMDJ_VIEW_CLASH: 'zfty' | 'tutti' | 'off'
+    var vc = W.QMDJ_VIEW_CLASH || 'zfty';
+    if ((vc === 'tutti' || (vc === 'zfty' && c._sis === 'zfty')) && r.segue !== null) {
+      var OPv = { 1:9, 9:1, 2:8, 8:2, 3:7, 7:3, 4:6, 6:4 }, vpz = null;
+      for (var kv = 1; kv <= 9; kv++) if (kv !== 5 && (c.palaces[kv].doorName || c.palaces[kv].door) === 'View') vpz = kv;
+      if (vpz && OPv[vpz] === r.palOra && OPv[vpz] !== r.palGiorno) { r.segue = true; r.motivo += ' · View clasha la controparte: segue'; }
+      else if (vpz && OPv[vpz] === r.palGiorno && OPv[vpz] !== r.palOra) { r.segue = false; r.motivo += ' · View clasha il trend: non segue'; }
+    }
     // Fan yin (Edu 25/10/2026, USDJPY 19/10): cielo rovesciato sulla terra (stelo del cielo = stelo della terra del palazzo opposto) -> non segue quasi mai
     var OPP = { 1:9, 9:1, 2:8, 8:2, 3:7, 7:3, 4:6, 6:4 }, fy = true, k;
     for (k in OPP) if (c.palaces[k].tiH !== c.palaces[OPP[k]].diH) { fy = false; break; }
