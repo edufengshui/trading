@@ -118,7 +118,7 @@
     var d = PBR[p].split('').filter(function (b) { return vu.indexOf(b) >= 0; });
     if (!d.length) return false; if (d.length === PBR[p].length) return true;
     return ('甲丙戊庚壬'.indexOf(c.palaces[p].diH) >= 0) === ('子寅辰午申戌'.indexOf(d[0]) >= 0); }
-  function giornoOra(c) {
+  function giornoOraBase(c) {
     if (!c || c.tipo !== 'oraria') return null;
     var trovaC = function () { for (var k = 1; k <= 9; k++) if (k !== 5 && c.palaces[k].deity === 'Commander') return k; return null; };
     var mb = c.mese[1], vu = vuotiDi(c.pilastro), a = palOf(c, stemOf(c.giorno)), b = palOf(c, stemOf(c.pilastro));
@@ -149,6 +149,19 @@
       if (cm && OPP[cm] === vinc) { v = !v; r.motivo += ' · Commander opposto al vincitore: ribaltato'; }
       r.segue = v; return r;
     }
+  }
+
+  // Combinazione dentro il palazzo (Edu 25/10/2026, EURJPY 19/12/2024): stelo del cielo e della terra in 五合 (甲己 乙庚 丙辛 丁壬 戊癸)
+  // -> il palazzo e' bloccato e non puo' vincere. DS bloccato -> non segue; HS bloccato -> segue; tutti e due -> fermo.
+  var HE = { '甲':'己','己':'甲','乙':'庚','庚':'乙','丙':'辛','辛':'丙','丁':'壬','壬':'丁','戊':'癸','癸':'戊' };
+  function bloccato(c, p) { return !!p && HE[c.palaces[p].tiH] === c.palaces[p].diH; }
+  function giornoOra(c) {
+    var r = giornoOraBase(c); if (!r) return r;
+    var ca = bloccato(c, r.palGiorno), cb = bloccato(c, r.palOra);
+    if (ca && cb) { r.segue = null; r.motivo += ' · giorno e ora bloccati da una combinazione: fermo'; }
+    else if (ca) { r.segue = false; r.motivo += ' · giorno bloccato da una combinazione: non segue'; }
+    else if (cb) { r.segue = true; r.motivo += ' · ora bloccata da una combinazione: segue'; }
+    return r;
   }
 
   var API = { giornoOra: giornoOra, oraria: oraria, giornaliera: giornaliera, testo: testo, hourGZ: hourGZ, juOraria: juOraria, juGiornaliera: juGiornaliera };
