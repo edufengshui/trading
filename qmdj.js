@@ -164,7 +164,24 @@
     return r;
   }
 
-  var API = { giornoOra: giornoOra, oraria: oraria, giornaliera: giornaliera, testo: testo, hourGZ: hourGZ, juOraria: juOraria, juGiornaliera: juGiornaliera };
+  // Wu contro Birth (Edu 25/10/2026), a CONFERMA di una lettura, indipendente dal trend:
+  // la porta Birth controlla il palazzo di Wu (戊 nel cielo) -> SHORT; Wu controlla Birth -> LONG.
+  function wuBirth(c) {
+    var w = null, b = null, p;
+    for (p = 1; p <= 9; p++) if (p !== 5) { if (c.palaces[p].tiH === '戊') w = p; if ((c.palaces[p].doorName || c.palaces[p].door) === 'Birth') b = p; }
+    if (!w || !b || w === b || PEL[w] === PEL[b]) return null;
+    if (CTL[PEL[b]] === PEL[w]) return 'SHORT';
+    if (CTL[PEL[w]] === PEL[b]) return 'LONG';
+    return null;
+  }
+  // Lettura completa: trend 'LONG'|'SHORT' -> { dir, segue, motivo, wuBirth, conferma (true/false/null) }
+  function lettura(c, trend) {
+    var g = giornoOra(c); if (!g) return null;
+    var dir = g.segue === null ? null : (g.segue ? trend : (trend === 'LONG' ? 'SHORT' : 'LONG')), wb = wuBirth(c);
+    return { dir: dir, segue: g.segue, motivo: g.motivo, wuBirth: wb, conferma: (dir && wb) ? wb === dir : null, giornoOra: g };
+  }
+
+  var API = { lettura: lettura, wuBirth: wuBirth, giornoOra: giornoOra, oraria: oraria, giornaliera: giornaliera, testo: testo, hourGZ: hourGZ, juOraria: juOraria, juGiornaliera: juGiornaliera };
   W.XKDGQimen = API;
   if (typeof module !== 'undefined') module.exports = API;
 })();
