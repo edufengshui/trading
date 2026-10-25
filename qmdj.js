@@ -227,7 +227,7 @@
     }
     // Mese (Edu 25/10/2026, AUDUSD 07/10): lo stelo del mese dal palazzo opposto clasha il DS o l'HS, che allora non vince; il clash e' piu' forte
     // quando stelo e ramo del mese stanno in palazzi opposti. QMDJ_MESE = 'off' | 'opposto' | 'forte' (solo con stelo e ramo opposti) | 'timely'.
-    var mm = W.QMDJ_MESE || 'off';
+    var mm = W.QMDJ_MESE || 'forte';   // ACCESO (Edu 25/10): solo con stelo e ramo del mese opposti
     if (mm !== 'off' && r.segue !== null) {
       var OPm = { 1:9, 9:1, 2:8, 8:2, 3:7, 7:3, 4:6, 6:4 }, PBm = { '子':1,'丑':8,'寅':8,'卯':3,'辰':4,'巳':4,'午':9,'未':2,'申':2,'酉':7,'戌':6,'亥':6 };
       var mp = palOf(c, stemOf(c.mese)), mbx = c.mese[1];
