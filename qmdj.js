@@ -114,7 +114,11 @@
     for (p = 1; p <= 9; p++) if (p !== 5 && c.palaces[p].star === 'Rice') return p; return null; }
   function tempo(pe, me) { return pe === me ? 4 : GEN[me] === pe ? 3 : GEN[pe] === me ? 2 : CTL[pe] === me ? 1 : 0; }
   function vuotiDi(gz) { var s = Math.floor(idx60(gz) / 10) * 10; return [BR[(s + 10) % 12], BR[(s + 11) % 12]]; }
-  function vuoto(c, p, vu) { if (PBR[p].indexOf(c.mese[1]) >= 0 || PBR[p].indexOf(c.giorno[1]) >= 0) return false;   // Edu 24/10: il ramo del mese o del giorno riempie il vuoto
+  // Tomba nel mese (Edu 25/10/2026, EURUSD 12/10): il palazzo il cui elemento ha la tomba nel ramo del mese vale come vuoto.
+  // Tombe: Legno 未, Fuoco 戌, Metallo 丑, Acqua 辰, Terra 辰 (da confermare con Edu: Terra 辰 o 戌).
+  var TOMBA = { L:'未', F:'戌', M:'丑', W:'辰', E:'辰' };
+  function vuoto(c, p, vu) { if (TOMBA[PEL[p]] === c.mese[1]) return true;
+    if (PBR[p].indexOf(c.mese[1]) >= 0 || PBR[p].indexOf(c.giorno[1]) >= 0) return false;   // Edu 24/10: il ramo del mese o del giorno riempie il vuoto
     var d = PBR[p].split('').filter(function (b) { return vu.indexOf(b) >= 0; });
     if (!d.length) return false; if (d.length === PBR[p].length) return true;
     return ('甲丙戊庚壬'.indexOf(c.palaces[p].diH) >= 0) === ('子寅辰午申戌'.indexOf(d[0]) >= 0); }
