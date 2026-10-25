@@ -210,6 +210,17 @@
       if (ka && !kb) { r.segue = false; r.motivo += ' · giorno colpito (clash + Zhi Shi opposto): non segue'; }
       else if (kb && !ka) { r.segue = true; r.motivo += ' · ora colpita (clash + Zhi Shi opposto): segue'; }
     }
+    // Tai Sui (Edu 25/10/2026, NZDUSD 07/10): lo stelo dell'anno e' il Tai Sui; se e' timely si oppone e clasha dal palazzo opposto
+    // al DS o all'HS, che allora non vince. QMDJ_TAISUI = 'mese' (timely = 旺/相 nel mese) | 'forza' (mese+stagione >= 5) | 'ctl' (mese + controlla) | 'off'.
+    var ts = W.QMDJ_TAISUI || 'off';
+    if (ts !== 'off' && r.segue !== null) {
+      var OPt = { 1:9, 9:1, 2:8, 8:2, 3:7, 7:3, 4:6, 6:4 }, tp = palOf(c, stemOf(c.anno)), mbt = c.mese[1];
+      var timely = function (p) { var m = tempo(PEL[p], BEL[mbt]); return ts === 'forza' ? m + tempo(PEL[p], SEAS[mbt]) >= 5 : m >= 3; };
+      var colpisce = function (p) { return p && tp && OPt[p] === tp && timely(tp) && (ts !== 'ctl' || CTL[PEL[tp]] === PEL[p]); };
+      var tA = colpisce(r.palGiorno), tB = colpisce(r.palOra);
+      if (tA && !tB) { r.segue = false; r.motivo += ' · Tai Sui timely opposto al giorno: non segue'; }
+      else if (tB && !tA) { r.segue = true; r.motivo += ' · Tai Sui timely opposto all\'ora: segue'; }
+    }
     // Fan yin (Edu 25/10/2026, USDJPY 19/10): cielo rovesciato sulla terra (stelo del cielo = stelo della terra del palazzo opposto) -> non segue quasi mai
     var OPP = { 1:9, 9:1, 2:8, 8:2, 3:7, 7:3, 4:6, 6:4 }, fy = true, k;
     for (k in OPP) if (c.palaces[k].tiH !== c.palaces[OPP[k]].diH) { fy = false; break; }
