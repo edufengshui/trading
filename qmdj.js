@@ -139,7 +139,10 @@
         var urta = function (t) { return t && t !== ns && (CLS[ns] === t || (YI[ns] && YI[t] && CHB[YI[ns]] === YI[t])); };
         if (W.QMDJ_CMD_CLASH !== false && (urta(c.palaces[np].tiH) || urta(c.palaces[np].diH))) return null;
         return np; }
-      for (var k = 1; k <= 9; k++) if (k !== 5 && c.palaces[k].deity === 'Commander') return k; return null; };
+      for (var k = 1; k <= 9; k++) if (k !== 5 && c.palaces[k].deity === 'Commander') {
+        // Edu 25/10/2026: il Commander sopra o sotto 庚 e' pessimo -> non agisce (QMDJ_CMD_GENG = 'ovunque' | 'inibita' | 'off')
+        if ((W.QMDJ_CMD_GENG || 'inibita') === 'ovunque' && (c.palaces[k].tiH === '庚' || c.palaces[k].diH === '庚')) return null;
+        return k; } return null; };
     var mb = c.mese[1], vu = vuotiDi(c.pilastro), a = palOf(c, stemOf(c.giorno)), b = palOf(c, stemOf(c.pilastro));
     // Il Commander rafforza il suo palazzo (Edu 25/10/2026): QMDJ_CMD_FORZA = punti in piu' (0 = spento)
     var cmF = c.pilastro[0] === '癸' ? +(W.QMDJ_CMD_FORZA || 0) : 0, cmP = cmF ? trovaC() : null;   // solo nell'ora 癸 (Edu 25/10)
@@ -210,6 +213,7 @@
     if (inib !== 'off') {
       var PB = { '子':1,'丑':8,'寅':8,'卯':3,'辰':4,'巳':4,'午':9,'未':2,'申':2,'酉':7,'戌':6,'亥':6 }, OPi = { 1:9, 9:1, 2:8, 8:2, 3:7, 7:3, 4:6, 6:4 };
       var cmO = null; for (k = 1; k <= 9; k++) if (k !== 5 && c.palaces[k].deity === 'Commander') cmO = k;
+      if (cmO && (W.QMDJ_CMD_GENG || 'inibita') !== 'off' && (c.palaces[cmO].tiH === '庚' || c.palaces[cmO].diH === '庚')) cmO = null;   // Commander con 庚: non inibisce
       var inibito = function (p, ramo) { if (!p || !OPi[p]) return false; var a1 = cmO === OPi[p], a2 = OPi[PB[ramo]] === p;
         return inib === 'una' ? (a1 || a2) : (a1 && a2); };
       var ia = inibito(r.palGiorno, c.giorno[1]), ib = inibito(r.palOra, c.pilastro[1]);
