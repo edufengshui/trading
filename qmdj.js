@@ -131,7 +131,14 @@
     // lo stelo della decade seguente (癸卯: 甲辰壬 -> il palazzo del 壬). SPENTO di default: QMDJ_CMD_SPOSTA=true per accenderlo.
     var trovaC = function () {
       if (W.QMDJ_CMD_SPOSTA === true && c.pilastro[0] === '癸') { var ns = '戊己庚辛壬癸'[(Math.floor(idx60(c.pilastro) / 10) + 1) % 6];
-        return palOf(c, ns); }
+        var np = palOf(c, ns); if (!np) return null;
+        // Edu 25/10/2026 (USDJPY 31/07/2024): se il nuovo Commander trova un clash nel palazzo (steli 甲庚 乙辛 丙壬 丁癸 o rami dei 六仪)
+        // ne esce limitato e non agisce.
+        var CLS = { '甲':'庚','庚':'甲','乙':'辛','辛':'乙','丙':'壬','壬':'丙','丁':'癸','癸':'丁' }, YI = { '戊':'子','己':'戌','庚':'申','辛':'午','壬':'辰','癸':'寅' },
+            CHB = { '子':'午','午':'子','丑':'未','未':'丑','寅':'申','申':'寅','卯':'酉','酉':'卯','辰':'戌','戌':'辰','巳':'亥','亥':'巳' };
+        var urta = function (t) { return t && t !== ns && (CLS[ns] === t || (YI[ns] && YI[t] && CHB[YI[ns]] === YI[t])); };
+        if (W.QMDJ_CMD_CLASH !== false && (urta(c.palaces[np].tiH) || urta(c.palaces[np].diH))) return null;
+        return np; }
       for (var k = 1; k <= 9; k++) if (k !== 5 && c.palaces[k].deity === 'Commander') return k; return null; };
     var mb = c.mese[1], vu = vuotiDi(c.pilastro), a = palOf(c, stemOf(c.giorno)), b = palOf(c, stemOf(c.pilastro));
     // Il Commander rafforza il suo palazzo (Edu 25/10/2026): QMDJ_CMD_FORZA = punti in piu' (0 = spento)
