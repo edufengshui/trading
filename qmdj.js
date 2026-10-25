@@ -212,7 +212,7 @@
     }
     // Tai Sui (Edu 25/10/2026, NZDUSD 07/10): lo stelo dell'anno e' il Tai Sui; se e' timely si oppone e clasha dal palazzo opposto
     // al DS o all'HS, che allora non vince. QMDJ_TAISUI = 'mese' (timely = 旺/相 nel mese) | 'forza' (mese+stagione >= 5) | 'ctl' (mese + controlla) | 'off'.
-    var ts = W.QMDJ_TAISUI || 'off';
+    var ts = W.QMDJ_TAISUI || 'forza';   // ACCESO (Edu 25/10): mese + stagione
     if (ts !== 'off' && r.segue !== null) {
       var OPt = { 1:9, 9:1, 2:8, 8:2, 3:7, 7:3, 4:6, 6:4 }, tp = palOf(c, stemOf(c.anno)), mbt = c.mese[1];
       var timely = function (p) { var m = tempo(PEL[p], BEL[mbt]); return ts === 'forza' ? m + tempo(PEL[p], SEAS[mbt]) >= 5 : m >= 3; };
