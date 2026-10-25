@@ -101,7 +101,7 @@
   // forza = timeliness 旺4 相3 休2 囚1 死0 sul ramo del mese + sulla stagione (寅卯辰 legno, 巳午未 fuoco, 申酉戌 metallo, 亥子丑 acqua);
   // vuoti del 旬 dell'ORA: palazzo vuoto = forza 0; palazzo a due rami vuoto a meta' = vuoto solo se lo stelo del di pan ha la
   // polarita' del ramo vuoto. Controllo: vince chi controlla, 反侮 se il controllato e' piu' forte. Generazione: vince il generato.
-  // Ponte del Commander o dello Zhi Shi (solo se il loro palazzo NON e' vuoto, Edu 24/10): se il suo palazzo e' generato da chi controlla e genera il controllato, l'esito si ribalta.
+  // Ponte del Commander, dello Zhi Shi o di Wu nel cielo (solo se il palazzo NON e' vuoto): se il suo palazzo e' generato da chi controlla e genera il controllato, il controllo non arriva e il trade NON SEGUE.
   // Stesso palazzo, stesso elemento, forze pari: fermo. Vince il giorno -> SEGUE il trend; vince l'ora -> NON SEGUE.
   // Stelo 甲 -> stelo del 旬 (遁甲); stelo solo al centro -> palazzo della stella Rice (天芮): Fowl segue sempre Rice (Edu).
   var PEL = { 1:'W', 2:'E', 3:'L', 4:'L', 6:'M', 7:'M', 8:'E', 9:'F' };
@@ -139,7 +139,9 @@
     var trova = function (f) { for (var k = 1; k <= 9; k++) if (k !== 5 && f(c.palaces[k])) return k; return null; };
     if (ponte(trova(function (d) { return d.deity === 'Commander'; }))) ponti.push('Commander');
     if (ponte(trova(function (d) { return d.zhiShi; }))) ponti.push('Zhi Shi');   // Edu 24/10/2026, EURJPY 22/10
-    if (ponti.length) { w = !w; r.motivo += ' · ponte ' + ponti.join(' + ') + ': ribaltato'; }
+    for (var q = 1; q <= 9; q++) if (q !== 5 && c.palaces[q].tiH === '戊' && ponte(q)) { ponti.push('Wu'); break; }   // Edu 25/10: Wu (indicatore economico) fa da ponte
+    // Edu 25/10/2026: col ponte il controllo non arriva e il trade NON SEGUE (se vinceva l'ora non segue comunque)
+    if (ponti.length) { w = false; r.motivo += ' · ponte ' + ponti.join(' + ') + ': non segue'; }
     return finale(w);
     // Commander nel palazzo opposto a chi vince: e' contro di lui, l'esito si ribalta (Edu 24/10, USDJPY 01/05/2024)
     function finale(v) {
