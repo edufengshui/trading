@@ -163,7 +163,11 @@
     else { w = true; r.motivo = 'l\'ora genera il giorno';
       if (vuoto(c, a, vu)) { w = false; r.motivo += ' (giorno vuoto: non generato)'; } return finale(w); }
     var ctl = CTL[x] === y ? a : b, sub = ctl === a ? b : a, ponti = [];
-    var ponte = function (k) { return k && k !== a && k !== b && !vuoto(c, k, vu) && GEN[PEL[ctl]] === PEL[k] && GEN[PEL[k]] === PEL[sub]; };
+    // Edu 25/10/2026 (AUDUSD 07/10): un palazzo ponte con clash interno non passa il qi. QMDJ_PONTE_CLASH=false per spegnerlo.
+    var CLp = { '甲':'庚','庚':'甲','乙':'辛','辛':'乙','丙':'壬','壬':'丙','丁':'癸','癸':'丁' }, YIp = { '戊':'子','己':'戌','庚':'申','辛':'午','壬':'辰','癸':'寅' },
+        CHp = { '子':'午','午':'子','丑':'未','未':'丑','寅':'申','申':'寅','卯':'酉','酉':'卯','辰':'戌','戌':'辰','巳':'亥','亥':'巳' };
+    var clashP = function (k) { var t = c.palaces[k].tiH, e = c.palaces[k].diH; return CLp[t] === e || (YIp[t] && YIp[e] && CHp[YIp[t]] === YIp[e]); };
+    var ponte = function (k) { return k && k !== a && k !== b && !vuoto(c, k, vu) && !(W.QMDJ_PONTE_CLASH === true && clashP(k)) && GEN[PEL[ctl]] === PEL[k] && GEN[PEL[k]] === PEL[sub]; };
     var trova = function (f) { for (var k = 1; k <= 9; k++) if (k !== 5 && f(c.palaces[k])) return k; return null; };
     if (ponte(trovaC())) ponti.push('Commander');
     if (ponte(trova(function (d) { return d.zhiShi; }))) ponti.push('Zhi Shi');   // Edu 24/10/2026, EURJPY 22/10
@@ -220,6 +224,17 @@
       var tA = colpisce(r.palGiorno), tB = colpisce(r.palOra);
       if (tA && !tB) { r.segue = false; r.motivo += ' · Tai Sui timely opposto al giorno: non segue'; }
       else if (tB && !tA) { r.segue = true; r.motivo += ' · Tai Sui timely opposto all\'ora: segue'; }
+    }
+    // Mese (Edu 25/10/2026, AUDUSD 07/10): lo stelo del mese dal palazzo opposto clasha il DS o l'HS, che allora non vince; il clash e' piu' forte
+    // quando stelo e ramo del mese stanno in palazzi opposti. QMDJ_MESE = 'off' | 'opposto' | 'forte' (solo con stelo e ramo opposti) | 'timely'.
+    var mm = W.QMDJ_MESE || 'off';
+    if (mm !== 'off' && r.segue !== null) {
+      var OPm = { 1:9, 9:1, 2:8, 8:2, 3:7, 7:3, 4:6, 6:4 }, PBm = { '子':1,'丑':8,'寅':8,'卯':3,'辰':4,'巳':4,'午':9,'未':2,'申':2,'酉':7,'戌':6,'亥':6 };
+      var mp = palOf(c, stemOf(c.mese)), mbx = c.mese[1];
+      var ok = mp && (mm === 'opposto' || (mm === 'forte' && OPm[mp] === PBm[mbx]) || (mm === 'timely' && tempo(PEL[mp], BEL[mbx]) + tempo(PEL[mp], SEAS[mbx]) >= 5));
+      var mA = ok && OPm[r.palGiorno] === mp, mB = ok && OPm[r.palOra] === mp;
+      if (mA && !mB) { r.segue = false; r.motivo += ' · mese opposto al giorno: non segue'; }
+      else if (mB && !mA) { r.segue = true; r.motivo += ' · mese opposto all\'ora: segue'; }
     }
     // Fan yin (Edu 25/10/2026, USDJPY 19/10): cielo rovesciato sulla terra (stelo del cielo = stelo della terra del palazzo opposto) -> non segue quasi mai
     var OPP = { 1:9, 9:1, 2:8, 8:2, 3:7, 7:3, 4:6, 6:4 }, fy = true, k;
