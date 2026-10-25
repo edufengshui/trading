@@ -204,6 +204,18 @@
     var OPP = { 1:9, 9:1, 2:8, 8:2, 3:7, 7:3, 4:6, 6:4 }, fy = true, k;
     for (k in OPP) if (c.palaces[k].tiH !== c.palaces[OPP[k]].diH) { fy = false; break; }
     if (fy) { r.segue = false; r.fanYin = true; r.motivo += ' · fan yin: non segue'; }
+    // Ora inibita (Edu 25/10/2026, USDCAD 12/10): il Commander nel palazzo opposto all'HS lo clasha E l'HS sta nel palazzo opposto al
+    // ramo dell'ora -> l'ora non funziona: segue (anche sopra il fan yin). Simmetrico per il giorno -> non segue. QMDJ_INIBITA = 'on' | 'off' | 'una'.
+    var inib = W.QMDJ_INIBITA || 'off';   // SPENTA di default (peggiora il 2024-26)
+    if (inib !== 'off') {
+      var PB = { '子':1,'丑':8,'寅':8,'卯':3,'辰':4,'巳':4,'午':9,'未':2,'申':2,'酉':7,'戌':6,'亥':6 }, OPi = { 1:9, 9:1, 2:8, 8:2, 3:7, 7:3, 4:6, 6:4 };
+      var cmO = null; for (k = 1; k <= 9; k++) if (k !== 5 && c.palaces[k].deity === 'Commander') cmO = k;
+      var inibito = function (p, ramo) { if (!p || !OPi[p]) return false; var a1 = cmO === OPi[p], a2 = OPi[PB[ramo]] === p;
+        return inib === 'una' ? (a1 || a2) : (a1 && a2); };
+      var ia = inibito(r.palGiorno, c.giorno[1]), ib = inibito(r.palOra, c.pilastro[1]);
+      if (ib && !ia) { r.segue = true; r.motivo += ' · ora inibita (Commander opposto + ora opposta al suo ramo): segue'; }
+      else if (ia && !ib) { r.segue = false; r.motivo += ' · giorno inibito (Commander opposto + giorno opposto al suo ramo): non segue'; }
+    }
     return r;
   }
 
