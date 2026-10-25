@@ -127,7 +127,12 @@
     return ('甲丙戊庚壬'.indexOf(c.palaces[p].diH) >= 0) === ('子寅辰午申戌'.indexOf(d[0]) >= 0); }
   function giornoOraBase(c) {
     if (!c || c.tipo !== 'oraria') return null;
-    var trovaC = function () { for (var k = 1; k <= 9; k++) if (k !== 5 && c.palaces[k].deity === 'Commander') return k; return null; };
+    // Ora 癸 = ultima della decade (Edu 25/10/2026, EURUSD 05/10): stessa carta, ma il Commander si sposta sul palazzo dove sta nel cielo
+    // lo stelo della decade seguente (癸卯: 甲辰壬 -> il palazzo del 壬). SPENTO di default: QMDJ_CMD_SPOSTA=true per accenderlo.
+    var trovaC = function () {
+      if (W.QMDJ_CMD_SPOSTA === true && c.pilastro[0] === '癸') { var ns = '戊己庚辛壬癸'[(Math.floor(idx60(c.pilastro) / 10) + 1) % 6];
+        return palOf(c, ns); }
+      for (var k = 1; k <= 9; k++) if (k !== 5 && c.palaces[k].deity === 'Commander') return k; return null; };
     var mb = c.mese[1], vu = vuotiDi(c.pilastro), a = palOf(c, stemOf(c.giorno)), b = palOf(c, stemOf(c.pilastro));
     var f = function (p) { return vuoto(c, p, vu) ? 0 : tempo(PEL[p], BEL[mb]) + tempo(PEL[p], SEAS[mb]); };
     var r = { palGiorno: a, palOra: b, forzaGiorno: a && f(a), forzaOra: b && f(b), segue: null, motivo: '' };
@@ -135,8 +140,9 @@
     if (a === b) { r.motivo = 'stesso palazzo: fermo'; return r; }
     var x = PEL[a], y = PEL[b], sa = r.forzaGiorno, sb = r.forzaOra, w;
     if (x === y) { r.motivo = 'stesso elemento: fermo'; return r; }
-    if (CTL[x] === y) { w = sa >= sb; r.motivo = 'il giorno controlla l\'ora' + (w ? '' : ' (反侮)'); }
-    else if (CTL[y] === x) { w = !(sb >= sa); r.motivo = 'l\'ora controlla il giorno' + (w ? ' (反侮)' : ''); }
+    var cmA = W.QMDJ_CMD_AIUTO === true ? trovaC() : null;   // opzione: il Commander nel palazzo che controlla impedisce il controllo rovesciato
+    if (CTL[x] === y) { w = sa >= sb || cmA === a; r.motivo = 'il giorno controlla l\'ora' + (w ? (sa >= sb ? '' : ' (col Commander)') : ' (反侮)'); }
+    else if (CTL[y] === x) { w = !(sb >= sa || cmA === b); r.motivo = 'l\'ora controlla il giorno' + (w ? ' (反侮)' : (sb >= sa ? '' : ' (col Commander)')); }
     else if (GEN[x] === y) { w = false; r.motivo = 'il giorno genera l\'ora';     // Edu 24/10: un palazzo vuoto non puo' essere generato
       if (vuoto(c, b, vu)) { w = true; r.motivo += ' (ora vuota: non generata)'; } return finale(w); }
     else { w = true; r.motivo = 'l\'ora genera il giorno';
@@ -144,7 +150,7 @@
     var ctl = CTL[x] === y ? a : b, sub = ctl === a ? b : a, ponti = [];
     var ponte = function (k) { return k && k !== a && k !== b && !vuoto(c, k, vu) && GEN[PEL[ctl]] === PEL[k] && GEN[PEL[k]] === PEL[sub]; };
     var trova = function (f) { for (var k = 1; k <= 9; k++) if (k !== 5 && f(c.palaces[k])) return k; return null; };
-    if (ponte(trova(function (d) { return d.deity === 'Commander'; }))) ponti.push('Commander');
+    if (ponte(trovaC())) ponti.push('Commander');
     if (ponte(trova(function (d) { return d.zhiShi; }))) ponti.push('Zhi Shi');   // Edu 24/10/2026, EURJPY 22/10
     for (var q = 1; q <= 9; q++) if (q !== 5 && c.palaces[q].tiH === '戊' && ponte(q)) { ponti.push('Wu'); break; }   // Edu 25/10: Wu (indicatore economico) fa da ponte
     // Edu 25/10/2026: il ponte e' un passamano, riceve il qi da chi controlla e lo passa al controllato (5 elementi): vince il controllato
