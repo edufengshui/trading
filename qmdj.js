@@ -142,9 +142,12 @@
     if (a === b) { r.motivo = 'stesso palazzo: fermo'; return r; }
     var x = PEL[a], y = PEL[b], sa = r.forzaGiorno, sb = r.forzaOra, w;
     if (x === y) { r.motivo = 'stesso elemento: fermo'; return r; }
+    // Regola del Dun (Edu 25/10/2026): Kan Gen Zhen Xun (1 8 3 4) e Li Kun Dui Qian (9 2 7 6) sono le due sezioni; DS e HS nella stessa
+    // sezione -> chi controlla vince sempre (niente controllo rovesciato). Opzione QMDJ_DUN=true.
+    var SEZ = { 1:0, 8:0, 3:0, 4:0, 9:1, 2:1, 7:1, 6:1 }, dun = W.QMDJ_DUN === true && SEZ[a] === SEZ[b];
     var cmA = W.QMDJ_CMD_AIUTO === true ? trovaC() : null;   // opzione: il Commander nel palazzo che controlla impedisce il controllo rovesciato
-    if (CTL[x] === y) { w = sa >= sb || cmA === a; r.motivo = 'il giorno controlla l\'ora' + (w ? (sa >= sb ? '' : ' (col Commander)') : ' (反侮)'); }
-    else if (CTL[y] === x) { w = !(sb >= sa || cmA === b); r.motivo = 'l\'ora controlla il giorno' + (w ? ' (反侮)' : (sb >= sa ? '' : ' (col Commander)')); }
+    if (CTL[x] === y) { w = sa >= sb || cmA === a || dun; r.motivo = 'il giorno controlla l\'ora' + (w ? (sa >= sb ? '' : ' (col Commander)') : ' (反侮)'); }
+    else if (CTL[y] === x) { w = !(sb >= sa || cmA === b || dun); r.motivo = 'l\'ora controlla il giorno' + (w ? ' (反侮)' : (sb >= sa ? '' : ' (col Commander)')); }
     else if (GEN[x] === y) { w = false; r.motivo = 'il giorno genera l\'ora';     // Edu 24/10: un palazzo vuoto non puo' essere generato
       if (vuoto(c, b, vu)) { w = true; r.motivo += ' (ora vuota: non generata)'; } return finale(w); }
     else { w = true; r.motivo = 'l\'ora genera il giorno';
