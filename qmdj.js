@@ -144,7 +144,9 @@
         // Edu 25/10/2026: il Commander sopra o sotto 庚 e' pessimo -> non agisce (QMDJ_CMD_GENG = 'ovunque' | 'inibita' | 'off')
         if ((W.QMDJ_CMD_GENG || 'inibita') === 'ovunque' && (c.palaces[k].tiH === '庚' || c.palaces[k].diH === '庚')) return null;
         return k; } return null; };
-    var mb = c.mese[1], vu = vuotiDi(c.pilastro), a = palOf(c, stemOf(c.giorno)), b = palOf(c, stemOf(c.pilastro));
+    // vuoti del 旬 dell'ora (default); QMDJ_VUOTI_ZFTY='giorno' usa quelli del giorno nello ZFTY, QMDJ_VUOTI='giorno' ovunque (prova 25/10)
+    var vgi = W.QMDJ_VUOTI === 'giorno' || (c._sis === 'zfty' && W.QMDJ_VUOTI_ZFTY === 'giorno');
+    var mb = c.mese[1], vu = vuotiDi(vgi ? c.giorno : c.pilastro), a = palOf(c, stemOf(c.giorno)), b = palOf(c, stemOf(c.pilastro));
     // Sistema ZFTY (Edu 25/10/2026): trend = palazzo dello Zhi Fu; controparte = Tian Yi, la stella originaria del palazzo dove sta lo Zhi Fu
     // (es. ZF su Qian -> Heart; il TY e' il palazzo dove ora sta Heart). Stesse regole del sistema DsHs.
     if (c._sis === 'zfty') {
