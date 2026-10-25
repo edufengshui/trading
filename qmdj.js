@@ -225,8 +225,9 @@
       var tA = colpisce(r.palGiorno), tB = colpisce(r.palOra);
       // Edu 25/10/2026 (GBPUSD 01/10): se il Tai Sui clasha il palazzo del Commander lo eccita ancora di piu' -> quel palazzo vince.
       // QMDJ_TS_CMD: true | 'neutro' (ogni Commander) | 'spostato' (solo il Commander spostato dell'ora 癸, Edu 25/10)
-      if (W.QMDJ_TS_CMD && r.palCmd && (W.QMDJ_TS_CMD !== 'spostato' || c.pilastro[0] === '癸')) {
-        var vince = W.QMDJ_TS_CMD !== 'neutro';   // 'neutro': il Tai Sui non danneggia ma non fa vincere
+      var tsc = W.QMDJ_TS_CMD === undefined ? 'spostato' : W.QMDJ_TS_CMD;   // ACCESO (Edu 25/10): 'spostato'
+      if (tsc && r.palCmd && (tsc !== 'spostato' || c.pilastro[0] === '癸')) {
+        var vince = tsc !== 'neutro';   // 'neutro': il Tai Sui non danneggia ma non fa vincere
         if (tA && r.palCmd === r.palGiorno) { tA = false; if (vince) r.segue = true; r.motivo += ' · Tai Sui eccita il Commander col giorno'; }
         if (tB && r.palCmd === r.palOra) { tB = false; if (vince) r.segue = false; r.motivo += ' · Tai Sui eccita il Commander con l\'ora'; }
       }
