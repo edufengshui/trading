@@ -134,7 +134,9 @@
         return palOf(c, ns); }
       for (var k = 1; k <= 9; k++) if (k !== 5 && c.palaces[k].deity === 'Commander') return k; return null; };
     var mb = c.mese[1], vu = vuotiDi(c.pilastro), a = palOf(c, stemOf(c.giorno)), b = palOf(c, stemOf(c.pilastro));
-    var f = function (p) { return vuoto(c, p, vu) ? 0 : tempo(PEL[p], BEL[mb]) + tempo(PEL[p], SEAS[mb]); };
+    // Il Commander rafforza il suo palazzo (Edu 25/10/2026): QMDJ_CMD_FORZA = punti in piu' (0 = spento)
+    var cmF = +(W.QMDJ_CMD_FORZA || 0), cmP = cmF ? trovaC() : null;
+    var f = function (p) { return vuoto(c, p, vu) ? 0 : tempo(PEL[p], BEL[mb]) + tempo(PEL[p], SEAS[mb]) + (p === cmP ? cmF : 0); };
     var r = { palGiorno: a, palOra: b, forzaGiorno: a && f(a), forzaOra: b && f(b), segue: null, motivo: '' };
     if (!a || !b) { r.motivo = 'palazzo non trovato'; return r; }
     if (a === b) { r.motivo = 'stesso palazzo: fermo'; return r; }
