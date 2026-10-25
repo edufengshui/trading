@@ -161,6 +161,10 @@
     if (ca && cb) { r.segue = null; r.motivo += ' · giorno e ora bloccati da una combinazione: fermo'; }
     else if (ca) { r.segue = false; r.motivo += ' · giorno bloccato da una combinazione: non segue'; }
     else if (cb) { r.segue = true; r.motivo += ' · ora bloccata da una combinazione: segue'; }
+    // Fan yin (Edu 25/10/2026, USDJPY 19/10): cielo rovesciato sulla terra (stelo del cielo = stelo della terra del palazzo opposto) -> non segue quasi mai
+    var OPP = { 1:9, 9:1, 2:8, 8:2, 3:7, 7:3, 4:6, 6:4 }, fy = true, k;
+    for (k in OPP) if (c.palaces[k].tiH !== c.palaces[OPP[k]].diH) { fy = false; break; }
+    if (fy) { r.segue = false; r.fanYin = true; r.motivo += ' · fan yin: non segue'; }
     return r;
   }
 
