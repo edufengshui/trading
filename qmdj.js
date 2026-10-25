@@ -130,7 +130,8 @@
     // Ora 癸 = ultima della decade (Edu 25/10/2026, EURUSD 05/10): stessa carta, ma il Commander si sposta sul palazzo dove sta nel cielo
     // lo stelo della decade seguente (癸卯: 甲辰壬 -> il palazzo del 壬). ACCESO (Edu 25/10): QMDJ_CMD_SPOSTA=false per spegnerlo.
     var trovaC = function () {
-      if (W.QMDJ_CMD_SPOSTA !== false && c.pilastro[0] === '癸') { var ns = '戊己庚辛壬癸'[(Math.floor(idx60(c.pilastro) / 10) + 1) % 6];
+      if (W.QMDJ_CMD_SPOSTA !== false && c.pilastro[0] === '癸' && !(c._sis === 'zfty' && W.QMDJ_ZFTY_SPOSTA !== true)) {   // nello ZFTY il Commander non si sposta
+        var ns = '戊己庚辛壬癸'[(Math.floor(idx60(c.pilastro) / 10) + 1) % 6];
         var np = palOf(c, ns); if (!np) return null;
         // Edu 25/10/2026 (USDJPY 31/07/2024): se il nuovo Commander trova un clash nel palazzo (steli 甲庚 乙辛 丙壬 丁癸 o rami dei 六仪)
         // ne esce limitato e non agisce.
@@ -150,6 +151,9 @@
       var HOME = { 1:'Grass', 2:'Rice', 3:'Aggressor', 4:'Assistant', 6:'Heart', 7:'Pillar', 8:'Official', 9:'Hero' };
       a = null; b = null; for (var z = 1; z <= 9; z++) if (z !== 5 && c.palaces[z].zhiFu) a = z;
       if (a) for (z = 1; z <= 9; z++) if (z !== 5 && c.palaces[z].star === HOME[a]) b = z;
+    }
+    if (c._sis === 'zfview') {   // prova: ZF contro il palazzo della porta View
+      a = null; b = null; for (var z2 = 1; z2 <= 9; z2++) if (z2 !== 5) { if (c.palaces[z2].zhiFu) a = z2; if ((c.palaces[z2].doorName || c.palaces[z2].door) === 'View') b = z2; }
     }
     // Il Commander rafforza il suo palazzo (Edu 25/10/2026): QMDJ_CMD_FORZA = punti in piu' (0 = spento)
     var cmF = c.pilastro[0] === '癸' ? +(W.QMDJ_CMD_FORZA || 0) : 0, cmP = cmF ? trovaC() : null;   // solo nell'ora 癸 (Edu 25/10)
@@ -179,7 +183,11 @@
     var trova = function (f) { for (var k = 1; k <= 9; k++) if (k !== 5 && f(c.palaces[k])) return k; return null; };
     if (ponte(trovaC())) ponti.push('Commander');
     if (ponte(trova(function (d) { return d.zhiShi; }))) ponti.push('Zhi Shi');   // Edu 24/10/2026, EURJPY 22/10
-    for (var q = 1; q <= 9; q++) if (q !== 5 && c.palaces[q].tiH === '戊' && ponte(q)) { ponti.push('Wu'); break; }   // Edu 25/10: Wu (indicatore economico) fa da ponte
+    for (var q = 1; q <= 9; q++) if (q !== 5 && c.palaces[q].tiH === '戊' && ponte(q)) { ponti.push('Wu'); break; }
+    // Nello ZFTY anche la porta View fa da ponte (Edu 25/10/2026, EURJPY 07/10). QMDJ_VIEW_PONTE: 'zfty' (default) | 'tutti' | 'off'
+    var vp = W.QMDJ_VIEW_PONTE || 'zfty';
+    if (vp === 'tutti' || (vp === 'zfty' && c._sis === 'zfty'))
+      for (var q2 = 1; q2 <= 9; q2++) if (q2 !== 5 && (c.palaces[q2].doorName || c.palaces[q2].door) === 'View' && ponte(q2)) { ponti.push('View'); break; }   // Edu 25/10: Wu (indicatore economico) fa da ponte
     // Edu 25/10/2026: il ponte e' un passamano, riceve il qi da chi controlla e lo passa al controllato (5 elementi): vince il controllato
     if (ponti.length) { w = (sub === a); r.motivo += ' · ponte ' + ponti.join(' + ') + ': passamano, vince ' + (w ? 'il giorno' : 'l\'ora'); }
     return finale(w);
