@@ -148,6 +148,7 @@
     var cmF = c.pilastro[0] === '癸' ? +(W.QMDJ_CMD_FORZA || 0) : 0, cmP = cmF ? trovaC() : null;   // solo nell'ora 癸 (Edu 25/10)
     var f = function (p) { return vuoto(c, p, vu) ? 0 : tempo(PEL[p], BEL[mb]) + tempo(PEL[p], SEAS[mb]) + (p === cmP ? cmF : 0); };
     var r = { palGiorno: a, palOra: b, forzaGiorno: a && f(a), forzaOra: b && f(b), segue: null, motivo: '' };
+    r.palCmd = trovaC();
     if (!a || !b) { r.motivo = 'palazzo non trovato'; return r; }
     if (a === b) { r.motivo = 'stesso palazzo: fermo'; return r; }
     var x = PEL[a], y = PEL[b], sa = r.forzaGiorno, sb = r.forzaOra, w;
@@ -222,6 +223,12 @@
       var timely = function (p) { var m = tempo(PEL[p], BEL[mbt]); return ts === 'forza' ? m + tempo(PEL[p], SEAS[mbt]) >= 5 : m >= 3; };
       var colpisce = function (p) { return p && tp && OPt[p] === tp && timely(tp) && (ts !== 'ctl' || CTL[PEL[tp]] === PEL[p]); };
       var tA = colpisce(r.palGiorno), tB = colpisce(r.palOra);
+      // Edu 25/10/2026 (GBPUSD 01/10): se il Tai Sui clasha il palazzo del Commander lo eccita ancora di piu' -> quel palazzo vince.
+      if (W.QMDJ_TS_CMD && r.palCmd) {   // SPENTO di default (peggiora): true | 'neutro'
+        var vince = W.QMDJ_TS_CMD !== 'neutro';   // 'neutro': il Tai Sui non danneggia ma non fa vincere
+        if (tA && r.palCmd === r.palGiorno) { tA = false; if (vince) r.segue = true; r.motivo += ' · Tai Sui eccita il Commander col giorno'; }
+        if (tB && r.palCmd === r.palOra) { tB = false; if (vince) r.segue = false; r.motivo += ' · Tai Sui eccita il Commander con l\'ora'; }
+      }
       if (tA && !tB) { r.segue = false; r.motivo += ' · Tai Sui timely opposto al giorno: non segue'; }
       else if (tB && !tA) { r.segue = true; r.motivo += ' · Tai Sui timely opposto all\'ora: segue'; }
     }
