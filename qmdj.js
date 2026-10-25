@@ -128,9 +128,9 @@
   function giornoOraBase(c) {
     if (!c || c.tipo !== 'oraria') return null;
     // Ora 癸 = ultima della decade (Edu 25/10/2026, EURUSD 05/10): stessa carta, ma il Commander si sposta sul palazzo dove sta nel cielo
-    // lo stelo della decade seguente (癸卯: 甲辰壬 -> il palazzo del 壬). SPENTO di default: QMDJ_CMD_SPOSTA=true per accenderlo.
+    // lo stelo della decade seguente (癸卯: 甲辰壬 -> il palazzo del 壬). ACCESO (Edu 25/10): QMDJ_CMD_SPOSTA=false per spegnerlo.
     var trovaC = function () {
-      if (W.QMDJ_CMD_SPOSTA === true && c.pilastro[0] === '癸') { var ns = '戊己庚辛壬癸'[(Math.floor(idx60(c.pilastro) / 10) + 1) % 6];
+      if (W.QMDJ_CMD_SPOSTA !== false && c.pilastro[0] === '癸') { var ns = '戊己庚辛壬癸'[(Math.floor(idx60(c.pilastro) / 10) + 1) % 6];
         var np = palOf(c, ns); if (!np) return null;
         // Edu 25/10/2026 (USDJPY 31/07/2024): se il nuovo Commander trova un clash nel palazzo (steli 甲庚 乙辛 丙壬 丁癸 o rami dei 六仪)
         // ne esce limitato e non agisce.
