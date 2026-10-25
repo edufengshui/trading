@@ -144,6 +144,13 @@
         if ((W.QMDJ_CMD_GENG || 'inibita') === 'ovunque' && (c.palaces[k].tiH === '庚' || c.palaces[k].diH === '庚')) return null;
         return k; } return null; };
     var mb = c.mese[1], vu = vuotiDi(c.pilastro), a = palOf(c, stemOf(c.giorno)), b = palOf(c, stemOf(c.pilastro));
+    // Sistema ZFTY (Edu 25/10/2026): trend = palazzo dello Zhi Fu; controparte = Tian Yi, la stella originaria del palazzo dove sta lo Zhi Fu
+    // (es. ZF su Qian -> Heart; il TY e' il palazzo dove ora sta Heart). Stesse regole del sistema DsHs.
+    if (c._sis === 'zfty') {
+      var HOME = { 1:'Grass', 2:'Rice', 3:'Aggressor', 4:'Assistant', 6:'Heart', 7:'Pillar', 8:'Official', 9:'Hero' };
+      a = null; b = null; for (var z = 1; z <= 9; z++) if (z !== 5 && c.palaces[z].zhiFu) a = z;
+      if (a) for (z = 1; z <= 9; z++) if (z !== 5 && c.palaces[z].star === HOME[a]) b = z;
+    }
     // Il Commander rafforza il suo palazzo (Edu 25/10/2026): QMDJ_CMD_FORZA = punti in piu' (0 = spento)
     var cmF = c.pilastro[0] === '癸' ? +(W.QMDJ_CMD_FORZA || 0) : 0, cmP = cmF ? trovaC() : null;   // solo nell'ora 癸 (Edu 25/10)
     var f = function (p) { return vuoto(c, p, vu) ? 0 : tempo(PEL[p], BEL[mb]) + tempo(PEL[p], SEAS[mb]) + (p === cmP ? cmF : 0); };
@@ -276,7 +283,8 @@
     return null;
   }
   // Lettura completa: trend 'LONG'|'SHORT' -> { dir, segue, motivo, wuBirth, conferma (true/false/null) }
-  function lettura(c, trend) {
+  function lettura(c, trend, sis) {
+    if (c) c._sis = sis || 'dshs';
     var g = giornoOra(c); if (!g) return null;
     var dir = g.segue === null ? null : (g.segue ? trend : (trend === 'LONG' ? 'SHORT' : 'LONG')), wb = wuBirth(c);
     return { dir: dir, segue: g.segue, motivo: g.motivo, wuBirth: wb, conferma: (dir && wb) ? wb === dir : null, giornoOra: g };
