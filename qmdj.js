@@ -82,9 +82,12 @@
     if (c) { c.pilastro = gz; c.jiu = info; }
     return c;
   }
+  // Ora 癸 = ultima ora della decade (Edu 25/10/2026, EURUSD 05/10): si guarda il PROSSIMO Commander (il 旬 seguente).
+  // Il motore ricava 旬 e passo del 值使 dal pilastro: gli si passa il 癸 della decade dopo (stesso stelo, +10 nel ciclo).
   function oraria(utcMs, seedBranch) {
     var g = giornoLondra(utcMs), info = juOraria(g.p.day, g.t), gz = hourGZ(g.p.day[0], seedBranch);
-    var c = carta(g.t, gz, info); if (c) { c.tipo = 'oraria'; c.giorno = g.p.day; c.mese = g.p.month; c.anno = g.p.year; } return c;
+    var gzM = (W.QMDJ_PROSSIMO === true && gz[0] === '癸') ? gz[0] + BR[(idx60(gz) + 10) % 12] : gz;   // SPENTO di default: QMDJ_PROSSIMO=true per accenderlo (peggiora il 2024-26)
+    var c = carta(g.t, gzM, info); if (c) { c.pilastro = gz; if (gzM !== gz) c.prossimoComandante = gzM; } if (c) { c.tipo = 'oraria'; c.giorno = g.p.day; c.mese = g.p.month; c.anno = g.p.year; } return c;
   }
   function giornaliera(utcMs) {
     var g = giornoLondra(utcMs), info = juGiornaliera(g.t); if (!info) return null;
