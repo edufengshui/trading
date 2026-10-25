@@ -189,6 +189,13 @@
     if (ca && cb) { r.segue = null; r.motivo += ' · giorno e ora bloccati da una combinazione: fermo'; }
     else if (ca) { r.segue = false; r.motivo += ' · giorno bloccato da una combinazione: non segue'; }
     else if (cb) { r.segue = true; r.motivo += ' · ora bloccata da una combinazione: segue'; }
+    // DS/HS sopra 庚 (verifica 25/10/2026: il Commander su 庚 e' pessimo per dottrina, si estende a DS e HS?) -> non vince. QMDJ_GENG_DSHS=true.
+    if (W.QMDJ_GENG_DSHS === true && r.segue !== null) {
+      var gA = r.palGiorno && c.palaces[r.palGiorno].diH === '庚' && c.palaces[r.palGiorno].tiH !== '庚',
+          gB = r.palOra && c.palaces[r.palOra].diH === '庚' && c.palaces[r.palOra].tiH !== '庚';
+      if (gA && !gB) { r.segue = false; r.motivo += ' · giorno sopra 庚: non segue'; }
+      else if (gB && !gA) { r.segue = true; r.motivo += ' · ora sopra 庚: segue'; }
+    }
     // Palazzo colpito (Edu 25/10/2026, EURGBP 20/10: "l'ora e' in clash e lo ZS dal palazzo opposto clasha"): palazzo con clash interno
     // (steli o rami dei 六仪) e lo Zhi Shi nel palazzo opposto -> non puo' vincere. QMDJ_COLPITO = 'zs' (default) | 'zscmd' | 'solozs' | 'soloclash' | 'off'.
     var mod = W.QMDJ_COLPITO || 'zs';
