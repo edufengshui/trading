@@ -186,6 +186,20 @@
     if (ca && cb) { r.segue = null; r.motivo += ' · giorno e ora bloccati da una combinazione: fermo'; }
     else if (ca) { r.segue = false; r.motivo += ' · giorno bloccato da una combinazione: non segue'; }
     else if (cb) { r.segue = true; r.motivo += ' · ora bloccata da una combinazione: segue'; }
+    // Palazzo colpito (Edu 25/10/2026, EURGBP 20/10: "l'ora e' in clash e lo ZS dal palazzo opposto clasha"): palazzo con clash interno
+    // (steli o rami dei 六仪) e lo Zhi Shi nel palazzo opposto -> non puo' vincere. QMDJ_COLPITO = 'zs' (default) | 'zscmd' | 'solozs' | 'off'.
+    var mod = W.QMDJ_COLPITO || 'zs';
+    if (mod !== 'off' && r.segue !== null) {
+      var CLS = { '甲':'庚','庚':'甲','乙':'辛','辛':'乙','丙':'壬','壬':'丙','丁':'癸','癸':'丁' }, YI = { '戊':'子','己':'戌','庚':'申','辛':'午','壬':'辰','癸':'寅' },
+          CHB = { '子':'午','午':'子','丑':'未','未':'丑','寅':'申','申':'寅','卯':'酉','酉':'卯','辰':'戌','戌':'辰','巳':'亥','亥':'巳' };
+      var OPq = { 1:9, 9:1, 2:8, 8:2, 3:7, 7:3, 4:6, 6:4 };
+      var clashI = function (p) { var t = c.palaces[p].tiH, e = c.palaces[p].diH; return CLS[t] === e || (YI[t] && YI[e] && CHB[YI[t]] === YI[e]); };
+      var colpito = function (p) { if (!p || !OPq[p]) return false; var o = c.palaces[OPq[p]];
+        var att = o.zhiShi || (mod === 'zscmd' && o.deity === 'Commander'); return att && (mod === 'solozs' || clashI(p)); };
+      var ka = colpito(r.palGiorno), kb = colpito(r.palOra);
+      if (ka && !kb) { r.segue = false; r.motivo += ' · giorno colpito (clash + Zhi Shi opposto): non segue'; }
+      else if (kb && !ka) { r.segue = true; r.motivo += ' · ora colpita (clash + Zhi Shi opposto): segue'; }
+    }
     // Fan yin (Edu 25/10/2026, USDJPY 19/10): cielo rovesciato sulla terra (stelo del cielo = stelo della terra del palazzo opposto) -> non segue quasi mai
     var OPP = { 1:9, 9:1, 2:8, 8:2, 3:7, 7:3, 4:6, 6:4 }, fy = true, k;
     for (k in OPP) if (c.palaces[k].tiH !== c.palaces[OPP[k]].diH) { fy = false; break; }
