@@ -182,8 +182,12 @@
     // sezione -> chi controlla vince sempre (niente controllo rovesciato). Opzione QMDJ_DUN=true.
     var SEZ = { 1:0, 8:0, 3:0, 4:0, 9:1, 2:1, 7:1, 6:1 }, dun = W.QMDJ_DUN === true && SEZ[a] === SEZ[b];
     var cmA = W.QMDJ_CMD_AIUTO === true ? trovaC() : null;   // opzione: il Commander nel palazzo che controlla impedisce il controllo rovesciato
-    if (CTL[x] === y) { w = sa >= sb || (cmA === a && !(W.QMDJ_CMD_AIUTO_PIENO && sa === 0)) || dun; r.motivo = 'il giorno controlla l\'ora' + (w ? (sa >= sb ? '' : (dun ? ' (stesso Dun)' : ' (col Commander)')) : ' (反侮)'); }
-    else if (CTL[y] === x) { w = !(sb >= sa || (cmA === b && !(W.QMDJ_CMD_AIUTO_PIENO && sb === 0)) || dun); r.motivo = 'l\'ora controlla il giorno' + (w ? ' (反侮)' : (sb >= sa ? '' : (dun ? ' (stesso Dun)' : ' (col Commander)'))); }
+    // Edu 26/10/2026 (USDCHF 13/10): il TY con Birth controlla lo ZF -> il controllo tiene (niente controllo rovesciato).
+    // QMDJ_BIRTH_CTL: 'zfty' (default, Edu 26/10 19:14) | 'tutti' | 'off'; QMDJ_BIRTH_CTL_WU (default on): anche lo stelo 戊 nel cielo.
+    var bcm = W.QMDJ_BIRTH_CTL || 'zfty', bOk = bcm === 'tutti' || (bcm === 'zfty' && c._sis === 'zfty');
+    var econ = function (p) { if (!bOk) return false; var d = c.palaces[p]; return (d.doorName || d.door) === 'Birth' || (W.QMDJ_BIRTH_CTL_WU !== false && d.tiH === '戊'); };
+    if (CTL[x] === y) { w = sa >= sb || (cmA === a && !(W.QMDJ_CMD_AIUTO_PIENO && sa === 0)) || dun || econ(a); r.motivo = 'il giorno controlla l\'ora' + (w ? (sa >= sb ? '' : (dun ? ' (stesso Dun)' : (econ(a) ? ' (con Birth)' : ' (col Commander)'))) : ' (反侮)'); }
+    else if (CTL[y] === x) { w = !(sb >= sa || (cmA === b && !(W.QMDJ_CMD_AIUTO_PIENO && sb === 0)) || dun || econ(b)); r.motivo = 'l\'ora controlla il giorno' + (w ? ' (反侮)' : (sb >= sa ? '' : (dun ? ' (stesso Dun)' : (econ(b) ? ' (con Birth)' : ' (col Commander)')))); }
     else if (GEN[x] === y) { w = false; r.motivo = 'il giorno genera l\'ora';     // Edu 24/10: un palazzo vuoto non puo' essere generato
       if (vuoto(c, b, vu)) { w = true; r.motivo += ' (ora vuota: non generata)'; } return finale(w); }
     else { w = true; r.motivo = 'l\'ora genera il giorno';
