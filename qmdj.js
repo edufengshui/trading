@@ -182,8 +182,8 @@
     // sezione -> chi controlla vince sempre (niente controllo rovesciato). Opzione QMDJ_DUN=true.
     var SEZ = { 1:0, 8:0, 3:0, 4:0, 9:1, 2:1, 7:1, 6:1 }, dun = W.QMDJ_DUN === true && SEZ[a] === SEZ[b];
     var cmA = W.QMDJ_CMD_AIUTO === true ? trovaC() : null;   // opzione: il Commander nel palazzo che controlla impedisce il controllo rovesciato
-    if (CTL[x] === y) { w = sa >= sb || cmA === a || dun; r.motivo = 'il giorno controlla l\'ora' + (w ? (sa >= sb ? '' : (dun ? ' (stesso Dun)' : ' (col Commander)')) : ' (反侮)'); }
-    else if (CTL[y] === x) { w = !(sb >= sa || cmA === b || dun); r.motivo = 'l\'ora controlla il giorno' + (w ? ' (反侮)' : (sb >= sa ? '' : (dun ? ' (stesso Dun)' : ' (col Commander)'))); }
+    if (CTL[x] === y) { w = sa >= sb || (cmA === a && !(W.QMDJ_CMD_AIUTO_PIENO && sa === 0)) || dun; r.motivo = 'il giorno controlla l\'ora' + (w ? (sa >= sb ? '' : (dun ? ' (stesso Dun)' : ' (col Commander)')) : ' (反侮)'); }
+    else if (CTL[y] === x) { w = !(sb >= sa || (cmA === b && !(W.QMDJ_CMD_AIUTO_PIENO && sb === 0)) || dun); r.motivo = 'l\'ora controlla il giorno' + (w ? ' (反侮)' : (sb >= sa ? '' : (dun ? ' (stesso Dun)' : ' (col Commander)'))); }
     else if (GEN[x] === y) { w = false; r.motivo = 'il giorno genera l\'ora';     // Edu 24/10: un palazzo vuoto non puo' essere generato
       if (vuoto(c, b, vu)) { w = true; r.motivo += ' (ora vuota: non generata)'; } return finale(w); }
     else { w = true; r.motivo = 'l\'ora genera il giorno';
@@ -331,10 +331,11 @@
         if (!inSt(p)) return false;
         if (W.QMDJ_STADI_FORTE && (p === r.palGiorno ? r.forzaGiorno : r.forzaOra) >= W.QMDJ_STADI_FORTE) return false;   // palazzo forte: lo stadio non basta
         if (W.QMDJ_STADI_COMB && (p === r.palGiorno ? r.forzaGiorno : r.forzaOra) > W.QMDJ_STADI_COMB - 1) return false;   // con forza combinata sopra soglia non perde
+        if (smod === 'clash' || smod === 'ctpsoloclash') return clI(p);   // Edu 26/10/2026 (ZFTY): stadio negativo + clash nel palazzo
         if (smod === 'tutti' || smod === 'ctp') return true;
         var okc = stadiDi(p).indexOf(10) >= 0 || clI(p); if (smod === 'ctpclash') return okc; return okc && !aiutato(p); };
       var combo = W.QMDJ_STADI_NO_COMB && /bloccat/.test(r.motivo || '');
-      var stA = !combo && smod === 'tutti' && perde(r.palGiorno), stB = !combo && perde(r.palOra);
+      var stA = !combo && (smod === 'tutti' || smod === 'clash') && perde(r.palGiorno), stB = !combo && perde(r.palOra);
       if (stB && !stA) { r.segue = true; r.motivo += ' · controparte nello stadio ' + stadiDi(r.palOra).join('/') + ': segue'; }
       else if (stA && !stB) { r.segue = false; r.motivo += ' · trend nello stadio ' + stadiDi(r.palGiorno).join('/') + ': non segue'; }
     }
