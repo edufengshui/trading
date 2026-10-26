@@ -308,6 +308,7 @@
         if ((d.deity === 'Commander' || d.zhiShi) && (q === p || GEN[PEL[q]] === PEL[p])) return true; } return false; };
       var perde = function (p) { if (!p) return false; var sv = stadio(c.palaces[p].tiH, c.mese[1]);
         if (stadi.indexOf(sv) < 0) return false;
+        if (W.QMDJ_STADI_FORTE && (p === r.palGiorno ? r.forzaGiorno : r.forzaOra) >= W.QMDJ_STADI_FORTE) return false;   // palazzo forte: lo stadio non basta
         if (smod === 'tutti' || smod === 'ctp') return true;
         var okc = sv === 10 || clI(p); if (smod === 'ctpclash') return okc; return okc && !aiutato(p); };
       var stA = smod === 'tutti' && perde(r.palGiorno), stB = perde(r.palOra);
