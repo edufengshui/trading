@@ -279,6 +279,8 @@
     if ((vc === 'tutti' || (vc === 'zfty' && c._sis === 'zfty')) && r.segue !== null && !(W.QMDJ_VIEW_DOPO_COMB !== false && (ca || cb))) {
       var OPv = { 1:9, 9:1, 2:8, 8:2, 3:7, 7:3, 4:6, 6:4 }, vpz = null;
       for (var kv = 1; kv <= 9; kv++) if (kv !== 5 && (c.palaces[kv].doorName || c.palaces[kv].door) === 'View') vpz = kv;
+      // prova: View sopra o sotto 庚 non agisce (come il Commander). QMDJ_VIEW_GENG=true
+      if (vpz && W.QMDJ_VIEW_GENG === true && (c.palaces[vpz].tiH === '庚' || c.palaces[vpz].diH === '庚')) vpz = null;
       // Edu 26/10/2026 (EURJPY 12/10): View clasha ma non ribalta se il palazzo colpito e' forte. QMDJ_VIEW_FORTE: soglia di forza (default 5),
       // 'rel' = non ribalta se il colpito e' forte almeno quanto il palazzo di View, 0 = nessun limite.
       var vfs = W.QMDJ_VIEW_FORTE === undefined ? 5 : W.QMDJ_VIEW_FORTE, mbv = c.mese[1];
