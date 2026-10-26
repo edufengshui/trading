@@ -262,6 +262,15 @@
       if (mA && !mB) { r.segue = false; r.motivo += ' · mese opposto al giorno: non segue'; }
       else if (mB && !mA) { r.segue = true; r.motivo += ' · mese opposto all\'ora: segue'; }
     }
+    // Controparte con clash interno (Edu 26/10/2026, EURGBP 20/10 ZFTY: "il TY ha un clash interno") -> non vince: segue.
+    // QMDJ_CTP_CLASH: 'zfty' (default) | 'tutti' | 'off'
+    var ccl = W.QMDJ_CTP_CLASH || 'off';   // SPENTA (peggiora tutto)
+    if ((ccl === 'tutti' || (ccl === 'zfty' && c._sis === 'zfty')) && r.segue === false && r.palOra && r.palOra !== r.palGiorno) {
+      var CLc = { '甲':'庚','庚':'甲','乙':'辛','辛':'乙','丙':'壬','壬':'丙','丁':'癸','癸':'丁' }, YIc = { '戊':'子','己':'戌','庚':'申','辛':'午','壬':'辰','癸':'寅' },
+          CHc = { '子':'午','午':'子','丑':'未','未':'丑','寅':'申','申':'寅','卯':'酉','酉':'卯','辰':'戌','戌':'辰','巳':'亥','亥':'巳' };
+      var tc = c.palaces[r.palOra].tiH, ec = c.palaces[r.palOra].diH;
+      if (CLc[tc] === ec || (YIc[tc] && YIc[ec] && CHc[YIc[tc]] === YIc[ec])) { r.segue = true; r.motivo += ' · controparte con clash interno: segue'; }
+    }
     // ZFTY: la porta View dal palazzo opposto clasha il TY (o lo ZF), che non vince (Edu 25/10/2026, EURUSD 07/10). QMDJ_VIEW_CLASH: 'zfty' | 'tutti' | 'off'
     var vc = W.QMDJ_VIEW_CLASH || 'tutti';   // ACCESO in DsHs e ZFTY (Edu 25/10)
     // Edu 26/10/2026 (EURJPY 29/09): la combinazione che blocca un palazzo viene prima: se c'e', View non ribalta (QMDJ_VIEW_DOPO_COMB=false per spegnerlo)
