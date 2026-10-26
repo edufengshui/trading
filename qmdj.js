@@ -202,6 +202,10 @@
     var vp = W.QMDJ_VIEW_PONTE || 'zfty';
     if (vp === 'tutti' || (vp === 'zfty' && c._sis === 'zfty'))
       for (var q2 = 1; q2 <= 9; q2++) if (q2 !== 5 && (c.palaces[q2].doorName || c.palaces[q2].door) === 'View' && ponte(q2)) { ponti.push('View'); break; }   // Edu 25/10: Wu (indicatore economico) fa da ponte
+    // Edu 26/10/2026 (USDJPY 11/07/2024): anche la porta Birth fa da ponte. QMDJ_BIRTH_PONTE: 'zfty' | 'tutti' | 'off' (default)
+    var bp = W.QMDJ_BIRTH_PONTE || 'off';
+    if (bp === 'tutti' || (bp === 'zfty' && c._sis === 'zfty'))
+      for (var q3 = 1; q3 <= 9; q3++) if (q3 !== 5 && (c.palaces[q3].doorName || c.palaces[q3].door) === 'Birth' && ponte(q3)) { ponti.push('Birth'); break; }
     // Edu 25/10/2026: il ponte e' un passamano, riceve il qi da chi controlla e lo passa al controllato (5 elementi): vince il controllato
     if (ponti.length) { w = (sub === a); r.motivo += ' · ponte ' + ponti.join(' + ') + ': passamano, vince ' + (w ? 'il giorno' : 'l\'ora'); }
     return finale(w);
