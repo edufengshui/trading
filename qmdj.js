@@ -290,6 +290,18 @@
       if (vpz && OPv[vpz] === r.palOra && OPv[vpz] !== r.palGiorno && !(W.QMDJ_VIEW_FORTE_SOLO_TREND === false && regge(r.palOra))) { r.segue = true; r.motivo += ' · View clasha la controparte: segue'; }
       else if (vpz && OPv[vpz] === r.palGiorno && OPv[vpz] !== r.palOra && !regge(r.palGiorno)) { r.segue = false; r.motivo += ' · View clasha il trend: non segue'; }
     }
+    // Stadi di vita (十二长生) dello stelo del cielo del palazzo nel ramo del mese (Edu 26/10/2026, GBPUSD 07/10: 乙 in 酉 = 10, Vanishing 绝).
+    // 1 长生 2 沐浴 3 冠带 4 临官 5 帝旺 6 衰 7 病 8 死 9 墓 10 绝 11 胎 12 养. Il palazzo in uno stadio di QMDJ_STADI (default [10]) non vince.
+    var stadi = W.QMDJ_STADI || [];   // SPENTO di default: es. QMDJ_STADI=[10]
+    if (stadi.length && r.segue !== null && r.palGiorno !== r.palOra) {
+      var SH = { '甲':'亥','丙':'寅','戊':'寅','庚':'巳','壬':'申','乙':'午','丁':'酉','己':'酉','辛':'子','癸':'卯' };
+      var stadio = function (st, br) { var a = BR.indexOf(SH[st]), b = BR.indexOf(br), yang = '甲丙戊庚壬'.indexOf(st) >= 0;
+        return ((yang ? b - a : a - b) % 12 + 12) % 12 + 1; };
+      var stA = r.palGiorno && stadi.indexOf(stadio(c.palaces[r.palGiorno].tiH, c.mese[1])) >= 0,
+          stB = r.palOra && stadi.indexOf(stadio(c.palaces[r.palOra].tiH, c.mese[1])) >= 0;
+      if (stB && !stA) { r.segue = true; r.motivo += ' · controparte nello stadio ' + stadio(c.palaces[r.palOra].tiH, c.mese[1]) + ': segue'; }
+      else if (stA && !stB) { r.segue = false; r.motivo += ' · trend nello stadio ' + stadio(c.palaces[r.palGiorno].tiH, c.mese[1]) + ': non segue'; }
+    }
     // Fan yin (Edu 25/10/2026, USDJPY 19/10): cielo rovesciato sulla terra (stelo del cielo = stelo della terra del palazzo opposto) -> non segue quasi mai
     var OPP = { 1:9, 9:1, 2:8, 8:2, 3:7, 7:3, 4:6, 6:4 }, fy = true, k;
     for (k in OPP) if (c.palaces[k].tiH !== c.palaces[OPP[k]].diH) { fy = false; break; }
