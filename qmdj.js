@@ -306,6 +306,27 @@
       if (vpz && OPv[vpz] === r.palOra && OPv[vpz] !== r.palGiorno && !(W.QMDJ_VIEW_FORTE_SOLO_TREND === false && regge(r.palOra))) { r.segue = true; r.motivo += ' · View clasha la controparte: segue'; }
       else if (vpz && OPv[vpz] === r.palGiorno && OPv[vpz] !== r.palOra && !regge(r.palGiorno)) { r.segue = false; r.motivo += ' · View clasha il trend: non segue'; }
     }
+    // View drena il Commander (Edu 26/10/2026, USDJPY 13/10): porta View nel palazzo generato dal palazzo del ZF -> il trend si svuota: non segue.
+    // QMDJ_VIEW_DRENA: 'zf' (default nello ZFTY) | 'tutti' (anche la controparte drenata -> segue) | 'off'. QMDJ_VIEW_DRENA_VUOTO: anche View vuoto.
+    var vdr = W.QMDJ_VIEW_DRENA || 'off';
+    if (vdr !== 'off' && c._sis === 'zfty' && r.segue !== null && r.palGiorno !== r.palOra) {
+      var vq = null; for (var q4 = 1; q4 <= 9; q4++) if (q4 !== 5 && (c.palaces[q4].doorName || c.palaces[q4].door) === 'View') vq = q4;
+      var vponte = /ponte[^·]*View/.test(r.motivo || '');   // se View fa gia' da ponte passa il qi, non drena
+      if (vq && !(vponte && W.QMDJ_VIEW_DRENA_PONTE !== true) && (W.QMDJ_VIEW_DRENA_VUOTO || !vuoto(c, vq, vuotiDi(c.pilastro)))) {
+        var drA = vq !== r.palGiorno && GEN[PEL[r.palGiorno]] === PEL[vq], drB = vq !== r.palOra && GEN[PEL[r.palOra]] === PEL[vq];
+        // Flusso del qi (Edu 26/10/2026 18:54): "il TY genera lo ZF che genera View: lo ZF perde energia, il qi arriva su Kan che Gen controlla:
+        // vince il TY". Catena g -> h -> View: il qi finisce su View, che g controlla sempre (due passi nel ciclo) -> vince chi genera.
+        // QMDJ_VIEW_DRENA='flusso' = solo questa catena; 'flussozf' = catena + drenaggio semplice del ZF negli altri casi.
+        var gAB = GEN[PEL[r.palGiorno]] === PEL[r.palOra], gBA = GEN[PEL[r.palOra]] === PEL[r.palGiorno];
+        if (vdr === 'flusso' || vdr === 'flussozf') {
+          if (gBA && drA) { r.segue = false; r.motivo += ' · flusso: TY genera ZF genera View, il qi finisce su View che il TY controlla: non segue'; }
+          else if (gAB && drB && W.QMDJ_FLUSSO_SOLO_ZF !== true) { r.segue = true; r.motivo += ' · flusso: ZF genera TY genera View, il qi finisce su View che lo ZF controlla: segue'; }
+          else if (vdr === 'flussozf' && drA && !drB && !gAB) { r.segue = false; r.motivo += ' · View drena il Commander: non segue'; }
+        }
+        else if (drA && !drB) { r.segue = false; r.motivo += ' · View drena il Commander: non segue'; }
+        else if (vdr === 'tutti' && drB && !drA && vdr !== 'flusso') { r.segue = true; r.motivo += ' · View drena la controparte: segue'; }
+      }
+    }
     // Stadi di vita (十二长生) dello stelo del cielo del palazzo nel ramo del mese (Edu 26/10/2026, GBPUSD 07/10: 乙 in 酉 = 10, Vanishing 绝).
     // 1 长生 2 沐浴 3 冠带 4 临官 5 帝旺 6 衰 7 病 8 死 9 墓 10 绝 11 胎 12 养. Il palazzo in uno stadio di QMDJ_STADI (default [10]) non vince.
     var stadi = W.QMDJ_STADI || [];   // SPENTO di default: es. QMDJ_STADI=[10]
