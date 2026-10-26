@@ -165,8 +165,13 @@
     var stadioP = function (st) { if (!SHp[st]) return 0; var a0 = BR.indexOf(SHp[st]), b0 = BR.indexOf(mb), yg = '甲丙戊庚壬'.indexOf(st) >= 0;
       return ((yg ? b0 - a0 : a0 - b0) % 12 + 12) % 12 + 1; };
     var PESO = W.QMDJ_STADI_PESO || null;
+    var PRp = { 1:['子'], 8:['丑','寅'], 3:['卯'], 4:['辰','巳'], 9:['午'], 2:['未','申'], 7:['酉'], 6:['戌','亥'] };
+    var stadioPB = function (st, b) { if (!SHp[st]) return 0; var a0 = BR.indexOf(SHp[st]), b0 = BR.indexOf(b), yg = '甲丙戊庚壬'.indexOf(st) >= 0;
+      return ((yg ? b0 - a0 : a0 - b0) % 12 + 12) % 12 + 1; };
+    var pesoP = function (p) { var st = c.palaces[p].tiH; if ((W.QMDJ_STADI_POS || 'luoshu') === 'mese') return PESO[stadioP(st)] || 0;
+      return Math.min.apply(null, PRp[p].map(function (b) { return PESO[stadioPB(st, b)] || 0; })); };
     var f = function (p) { if (vuoto(c, p, vu)) return 0; var v = tempo(PEL[p], BEL[mb]) + tempo(PEL[p], SEAS[mb]) + (p === cmP ? cmF : 0);
-      if (PESO) { var pp = PESO[stadioP(c.palaces[p].tiH)] || 0; v = Math.max(0, v + pp); } return v; };
+      if (PESO) { var pp = pesoP(p); v = Math.max(0, v + pp); } return v; };
     var r = { palGiorno: a, palOra: b, forzaGiorno: a && f(a), forzaOra: b && f(b), segue: null, motivo: '' };
     r.palCmd = trovaC();
     if (!a || !b) { r.motivo = 'palazzo non trovato'; return r; }
@@ -313,15 +318,25 @@
       var clI = function (p) { var t = c.palaces[p].tiH, e = c.palaces[p].diH; return CLs[t] === e || (YIs[t] && YIs[e] && CHs[YIs[t]] === YIs[e]); };
       var aiutato = function (p) { for (var q = 1; q <= 9; q++) { if (q === 5) continue; var d = c.palaces[q];
         if ((d.deity === 'Commander' || d.zhiShi) && (q === p || GEN[PEL[q]] === PEL[p])) return true; } return false; };
-      var perde = function (p) { if (!p) return false; var sv = stadio(c.palaces[p].tiH, c.mese[1]);
-        if (stadi.indexOf(sv) < 0) return false;
+      // Edu 26/10/2026: lo stadio si legge sulla posizione nel Luoshu (rami del palazzo), non sul mese. QMDJ_STADI_POS='luoshu' (default) | 'mese'.
+      // Palazzi d'angolo con due rami: QMDJ_STADI_ANGOLO = 'uno' (basta un ramo) | 'tutti' | 'primo' | 'secondo'.
+      var PRAMI = { 1:['子'], 8:['丑','寅'], 3:['卯'], 4:['辰','巳'], 9:['午'], 2:['未','申'], 7:['酉'], 6:['戌','亥'] };
+      var spos = W.QMDJ_STADI_POS || 'luoshu', sang = W.QMDJ_STADI_ANGOLO || 'uno';
+      var stadiDi = function (p) { var st = c.palaces[p].tiH; if (spos === 'mese') return [stadio(st, c.mese[1])];
+        var rr = PRAMI[p]; if (rr.length > 1 && sang === 'primo') rr = [rr[0]]; if (rr.length > 1 && sang === 'secondo') rr = [rr[1]];
+        return rr.map(function (b) { return stadio(st, b); }); };
+      var inSt = function (p) { var a = stadiDi(p).map(function (x) { return stadi.indexOf(x) >= 0; });
+        return sang === 'tutti' ? a.every(Boolean) : a.some(Boolean); };
+      var perde = function (p) { if (!p) return false; var sv = stadiDi(p).join('/');
+        if (!inSt(p)) return false;
         if (W.QMDJ_STADI_FORTE && (p === r.palGiorno ? r.forzaGiorno : r.forzaOra) >= W.QMDJ_STADI_FORTE) return false;   // palazzo forte: lo stadio non basta
         if (W.QMDJ_STADI_COMB && (p === r.palGiorno ? r.forzaGiorno : r.forzaOra) > W.QMDJ_STADI_COMB - 1) return false;   // con forza combinata sopra soglia non perde
         if (smod === 'tutti' || smod === 'ctp') return true;
-        var okc = sv === 10 || clI(p); if (smod === 'ctpclash') return okc; return okc && !aiutato(p); };
-      var stA = smod === 'tutti' && perde(r.palGiorno), stB = perde(r.palOra);
-      if (stB && !stA) { r.segue = true; r.motivo += ' · controparte nello stadio ' + stadio(c.palaces[r.palOra].tiH, c.mese[1]) + ': segue'; }
-      else if (stA && !stB) { r.segue = false; r.motivo += ' · trend nello stadio ' + stadio(c.palaces[r.palGiorno].tiH, c.mese[1]) + ': non segue'; }
+        var okc = stadiDi(p).indexOf(10) >= 0 || clI(p); if (smod === 'ctpclash') return okc; return okc && !aiutato(p); };
+      var combo = W.QMDJ_STADI_NO_COMB && /bloccat/.test(r.motivo || '');
+      var stA = !combo && smod === 'tutti' && perde(r.palGiorno), stB = !combo && perde(r.palOra);
+      if (stB && !stA) { r.segue = true; r.motivo += ' · controparte nello stadio ' + stadiDi(r.palOra).join('/') + ': segue'; }
+      else if (stA && !stB) { r.segue = false; r.motivo += ' · trend nello stadio ' + stadiDi(r.palGiorno).join('/') + ': non segue'; }
     }
     // Fan yin (Edu 25/10/2026, USDJPY 19/10): cielo rovesciato sulla terra (stelo del cielo = stelo della terra del palazzo opposto) -> non segue quasi mai
     var OPP = { 1:9, 9:1, 2:8, 8:2, 3:7, 7:3, 4:6, 6:4 }, fy = true, k;
