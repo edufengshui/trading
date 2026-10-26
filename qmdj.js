@@ -319,10 +319,14 @@
       var zq = null; for (var q5 = 1; q5 <= 9; q5++) if (q5 !== 5 && c.palaces[q5].zhiShi) zq = q5;
       if (zq && zq !== r.palGiorno && zq !== r.palOra) {
         var mbz = c.mese[1], fz = vuoto(c, zq, vuotiDi(c.pilastro)) ? 0 : tempo(PEL[zq], BEL[mbz]) + tempo(PEL[zq], SEAS[mbz]);
+        // Edu 26/10/2026 (USDJPY 15/08/2024): un ponte (Commander, Wu, View, Birth) fra lo ZS e il palazzo che controlla gli passa il qi -> lo ZS non agisce
+        var vuZ = vuotiDi(c.pilastro);
+        var pontato = function (tg) { for (var k = 1; k <= 9; k++) { if (k === 5 || k === zq || k === tg || vuoto(c, k, vuZ)) continue; var d = c.palaces[k], dn = d.doorName || d.door;
+          var PS = W.QMDJ_ZS_PONTI || 'Birth'; if (((PS.indexOf('Commander') >= 0 && d.deity === 'Commander') || (PS.indexOf('Wu') >= 0 && d.tiH === '戊') || (PS.indexOf('View') >= 0 && dn === 'View') || (PS.indexOf('Birth') >= 0 && dn === 'Birth')) && GEN[PEL[zq]] === PEL[k] && GEN[PEL[k]] === PEL[tg]) return true; } return false; };
         var bersF = W.QMDJ_ZS_FLUSSO_DEBOLE;   // opzionale: il palazzo controllato dallo ZS deve avere forza <= soglia
         if (fz >= +zsf) {
-          if (GEN[PEL[r.palOra]] === PEL[zq] && CTL[PEL[zq]] === PEL[r.palGiorno] && !(bersF !== undefined && r.forzaGiorno > bersF)) { r.segue = false; r.motivo += ' · TY genera lo ZS (forza ' + fz + ') che controlla lo ZF: non segue'; }
-          else if (W.QMDJ_ZS_FLUSSO_SPECCHIO !== false && GEN[PEL[r.palGiorno]] === PEL[zq] && CTL[PEL[zq]] === PEL[r.palOra] && !(bersF !== undefined && r.forzaOra > bersF)) { r.segue = true; r.motivo += ' · ZF genera lo ZS (forza ' + fz + ') che controlla il TY: segue'; }
+          if (GEN[PEL[r.palOra]] === PEL[zq] && CTL[PEL[zq]] === PEL[r.palGiorno] && !(W.QMDJ_ZS_FLUSSO_PONTE !== false && pontato(r.palGiorno)) && !(bersF !== undefined && r.forzaGiorno > bersF)) { r.segue = false; r.motivo += ' · TY genera lo ZS (forza ' + fz + ') che controlla lo ZF: non segue'; }
+          else if (W.QMDJ_ZS_FLUSSO_SPECCHIO !== false && GEN[PEL[r.palGiorno]] === PEL[zq] && CTL[PEL[zq]] === PEL[r.palOra] && !(W.QMDJ_ZS_FLUSSO_PONTE !== false && pontato(r.palOra)) && !(bersF !== undefined && r.forzaOra > bersF)) { r.segue = true; r.motivo += ' · ZF genera lo ZS (forza ' + fz + ') che controlla il TY: segue'; }
         }
       }
     }
