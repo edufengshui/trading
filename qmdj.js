@@ -193,6 +193,7 @@
     var CLp = { '甲':'庚','庚':'甲','乙':'辛','辛':'乙','丙':'壬','壬':'丙','丁':'癸','癸':'丁' }, YIp = { '戊':'子','己':'戌','庚':'申','辛':'午','壬':'辰','癸':'寅' },
         CHp = { '子':'午','午':'子','丑':'未','未':'丑','寅':'申','申':'寅','卯':'酉','酉':'卯','辰':'戌','戌':'辰','巳':'亥','亥':'巳' };
     var clashP = function (k) { var t = c.palaces[k].tiH, e = c.palaces[k].diH; return CLp[t] === e || (YIp[t] && YIp[e] && CHp[YIp[t]] === YIp[e]); };
+    var pontePieno = function (k) { return k && k !== a && k !== b && GEN[PEL[ctl]] === PEL[k] && GEN[PEL[k]] === PEL[sub]; };   // anche vuoto
     var ponte = function (k) { return k && k !== a && k !== b && !vuoto(c, k, vu) && !(W.QMDJ_PONTE_CLASH === true && clashP(k)) && GEN[PEL[ctl]] === PEL[k] && GEN[PEL[k]] === PEL[sub]; };
     var trova = function (f) { for (var k = 1; k <= 9; k++) if (k !== 5 && f(c.palaces[k])) return k; return null; };
     if (ponte(trovaC())) ponti.push('Commander');
@@ -201,7 +202,7 @@
     // Nello ZFTY anche la porta View fa da ponte (Edu 25/10/2026, EURJPY 07/10). QMDJ_VIEW_PONTE: 'zfty' (default) | 'tutti' | 'off'
     var vp = W.QMDJ_VIEW_PONTE || 'zfty';
     if (vp === 'tutti' || (vp === 'zfty' && c._sis === 'zfty'))
-      for (var q2 = 1; q2 <= 9; q2++) if (q2 !== 5 && (c.palaces[q2].doorName || c.palaces[q2].door) === 'View' && ponte(q2)) { ponti.push('View'); break; }   // Edu 25/10: Wu (indicatore economico) fa da ponte
+      for (var q2 = 1; q2 <= 9; q2++) if (q2 !== 5 && (c.palaces[q2].doorName || c.palaces[q2].door) === 'View' && (ponte(q2) || (W.QMDJ_VIEW_PONTE_VUOTO && pontePieno(q2)))) { ponti.push('View'); break; }   // Edu 25/10: Wu (indicatore economico) fa da ponte
     // Edu 26/10/2026 (USDJPY 11/07/2024): anche la porta Birth fa da ponte. QMDJ_BIRTH_PONTE: 'zfty' | 'tutti' | 'off' (default)
     var bp = W.QMDJ_BIRTH_PONTE || 'zfty';   // acceso nello ZFTY (Edu 26/10 18:42)
     if (bp === 'tutti' || (bp === 'zfty' && c._sis === 'zfty'))
@@ -308,11 +309,11 @@
     }
     // View drena il Commander (Edu 26/10/2026, USDJPY 13/10): porta View nel palazzo generato dal palazzo del ZF -> il trend si svuota: non segue.
     // QMDJ_VIEW_DRENA: 'zf' (default nello ZFTY) | 'tutti' (anche la controparte drenata -> segue) | 'off'. QMDJ_VIEW_DRENA_VUOTO: anche View vuoto.
-    var vdr = W.QMDJ_VIEW_DRENA || 'off';
+    var vdr = W.QMDJ_VIEW_DRENA || 'flusso';   // acceso nello ZFTY: catena del flusso nei due versi (Edu 26/10 19:01)
     if (vdr !== 'off' && c._sis === 'zfty' && r.segue !== null && r.palGiorno !== r.palOra) {
       var vq = null; for (var q4 = 1; q4 <= 9; q4++) if (q4 !== 5 && (c.palaces[q4].doorName || c.palaces[q4].door) === 'View') vq = q4;
       var vponte = /ponte[^·]*View/.test(r.motivo || '');   // se View fa gia' da ponte passa il qi, non drena
-      if (vq && !(vponte && W.QMDJ_VIEW_DRENA_PONTE !== true) && (W.QMDJ_VIEW_DRENA_VUOTO || !vuoto(c, vq, vuotiDi(c.pilastro)))) {
+      if (vq && !(vponte && W.QMDJ_VIEW_DRENA_PONTE !== true) && (W.QMDJ_VIEW_DRENA_VUOTO !== false || !vuoto(c, vq, vuotiDi(c.pilastro)))) {
         var drA = vq !== r.palGiorno && GEN[PEL[r.palGiorno]] === PEL[vq], drB = vq !== r.palOra && GEN[PEL[r.palOra]] === PEL[vq];
         // Flusso del qi (Edu 26/10/2026 18:54): "il TY genera lo ZF che genera View: lo ZF perde energia, il qi arriva su Kan che Gen controlla:
         // vince il TY". Catena g -> h -> View: il qi finisce su View, che g controlla sempre (due passi nel ciclo) -> vince chi genera.
@@ -321,6 +322,7 @@
         if (vdr === 'flusso' || vdr === 'flussozf') {
           if (gBA && drA) { r.segue = false; r.motivo += ' · flusso: TY genera ZF genera View, il qi finisce su View che il TY controlla: non segue'; }
           else if (gAB && drB && W.QMDJ_FLUSSO_SOLO_ZF !== true) { r.segue = true; r.motivo += ' · flusso: ZF genera TY genera View, il qi finisce su View che lo ZF controlla: segue'; }
+          else if (W.QMDJ_FLUSSO_CTL && drA && CTL[PEL[r.palOra]] === PEL[r.palGiorno]) { r.segue = W.QMDJ_FLUSSO_CTL === 'segue'; r.motivo += ' · TY controlla ZF, ZF genera View che controlla il TY: ' + (r.segue ? 'segue' : 'non segue'); }
           else if (vdr === 'flussozf' && drA && !drB && !gAB) { r.segue = false; r.motivo += ' · View drena il Commander: non segue'; }
         }
         else if (drA && !drB) { r.segue = false; r.motivo += ' · View drena il Commander: non segue'; }
