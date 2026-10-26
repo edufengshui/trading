@@ -203,7 +203,7 @@
     if (vp === 'tutti' || (vp === 'zfty' && c._sis === 'zfty'))
       for (var q2 = 1; q2 <= 9; q2++) if (q2 !== 5 && (c.palaces[q2].doorName || c.palaces[q2].door) === 'View' && ponte(q2)) { ponti.push('View'); break; }   // Edu 25/10: Wu (indicatore economico) fa da ponte
     // Edu 26/10/2026 (USDJPY 11/07/2024): anche la porta Birth fa da ponte. QMDJ_BIRTH_PONTE: 'zfty' | 'tutti' | 'off' (default)
-    var bp = W.QMDJ_BIRTH_PONTE || 'off';
+    var bp = W.QMDJ_BIRTH_PONTE || 'zfty';   // acceso nello ZFTY (Edu 26/10 18:42)
     if (bp === 'tutti' || (bp === 'zfty' && c._sis === 'zfty'))
       for (var q3 = 1; q3 <= 9; q3++) if (q3 !== 5 && (c.palaces[q3].doorName || c.palaces[q3].door) === 'Birth' && ponte(q3)) { ponti.push('Birth'); break; }
     // Edu 25/10/2026: il ponte e' un passamano, riceve il qi da chi controlla e lo passa al controllato (5 elementi): vince il controllato
@@ -228,7 +228,7 @@
     else if (ca) { r.segue = false; r.motivo += ' · giorno bloccato da una combinazione: non segue'; }
     else if (cb) { r.segue = true; r.motivo += ' · ora bloccata da una combinazione: segue'; }
     // DS/HS sopra 庚 (verifica 25/10/2026: il Commander su 庚 e' pessimo per dottrina, si estende a DS e HS?) -> non vince. QMDJ_GENG_DSHS=true.
-    if (W.QMDJ_GENG_DSHS === true && r.segue !== null) {
+    if ((W.QMDJ_GENG_DSHS === true || (c._sis === 'zfty' && W.QMDJ_GENG_ZFTY !== false)) && r.segue !== null) {   // ZFTY: acceso (Edu 26/10 18:42)
       var gA = r.palGiorno && c.palaces[r.palGiorno].diH === '庚' && c.palaces[r.palGiorno].tiH !== '庚',
           gB = r.palOra && c.palaces[r.palOra].diH === '庚' && c.palaces[r.palOra].tiH !== '庚';
       if (gA && !gB) { r.segue = false; r.motivo += ' · giorno sopra 庚: non segue'; }
