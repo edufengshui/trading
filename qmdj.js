@@ -297,8 +297,20 @@
       var SH = { '甲':'亥','丙':'寅','戊':'寅','庚':'巳','壬':'申','乙':'午','丁':'酉','己':'酉','辛':'子','癸':'卯' };
       var stadio = function (st, br) { var a = BR.indexOf(SH[st]), b = BR.indexOf(br), yang = '甲丙戊庚壬'.indexOf(st) >= 0;
         return ((yang ? b - a : a - b) % 12 + 12) % 12 + 1; };
-      var stA = r.palGiorno && stadi.indexOf(stadio(c.palaces[r.palGiorno].tiH, c.mese[1])) >= 0,
-          stB = r.palOra && stadi.indexOf(stadio(c.palaces[r.palOra].tiH, c.mese[1])) >= 0;
+      // QMDJ_STADI_MODO (Edu 26/10/2026: "8-9-10, con 10 il peggiore; il clash con HS/TY a questi stadi e senza aiuti dovrebbe perdere sempre"):
+      //  'tutti' (default) = entrambi i palazzi; 'ctp' = solo la controparte (HS/TY); 'ctpclash' = controparte: stadio 10 sempre, 8-9 solo con
+      //  clash interno; 'ctpclashaiuto' = come ctpclash ma solo senza aiuti (Commander o Zhi Shi nel palazzo o in quello che lo genera).
+      var smod = W.QMDJ_STADI_MODO || 'tutti';
+      var CLs = { '甲':'庚','庚':'甲','乙':'辛','辛':'乙','丙':'壬','壬':'丙','丁':'癸','癸':'丁' }, YIs = { '戊':'子','己':'戌','庚':'申','辛':'午','壬':'辰','癸':'寅' },
+          CHs = { '子':'午','午':'子','丑':'未','未':'丑','寅':'申','申':'寅','卯':'酉','酉':'卯','辰':'戌','戌':'辰','巳':'亥','亥':'巳' };
+      var clI = function (p) { var t = c.palaces[p].tiH, e = c.palaces[p].diH; return CLs[t] === e || (YIs[t] && YIs[e] && CHs[YIs[t]] === YIs[e]); };
+      var aiutato = function (p) { for (var q = 1; q <= 9; q++) { if (q === 5) continue; var d = c.palaces[q];
+        if ((d.deity === 'Commander' || d.zhiShi) && (q === p || GEN[PEL[q]] === PEL[p])) return true; } return false; };
+      var perde = function (p) { if (!p) return false; var sv = stadio(c.palaces[p].tiH, c.mese[1]);
+        if (stadi.indexOf(sv) < 0) return false;
+        if (smod === 'tutti' || smod === 'ctp') return true;
+        var okc = sv === 10 || clI(p); if (smod === 'ctpclash') return okc; return okc && !aiutato(p); };
+      var stA = smod === 'tutti' && perde(r.palGiorno), stB = perde(r.palOra);
       if (stB && !stA) { r.segue = true; r.motivo += ' · controparte nello stadio ' + stadio(c.palaces[r.palOra].tiH, c.mese[1]) + ': segue'; }
       else if (stA && !stB) { r.segue = false; r.motivo += ' · trend nello stadio ' + stadio(c.palaces[r.palGiorno].tiH, c.mese[1]) + ': non segue'; }
     }
