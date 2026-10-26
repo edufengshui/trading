@@ -159,7 +159,14 @@
     }
     // Il Commander rafforza il suo palazzo (Edu 25/10/2026): QMDJ_CMD_FORZA = punti in piu' (0 = spento)
     var cmF = c.pilastro[0] === '癸' ? +(W.QMDJ_CMD_FORZA || 0) : 0, cmP = cmF ? trovaC() : null;   // solo nell'ora 癸 (Edu 25/10)
-    var f = function (p) { return vuoto(c, p, vu) ? 0 : tempo(PEL[p], BEL[mb]) + tempo(PEL[p], SEAS[mb]) + (p === cmP ? cmF : 0); };
+    // Edu 26/10/2026: "se il palazzo e' forte bilancia lo stelo, si devono considerare tutti e due" -> forza = palazzo + peso dello stadio di vita
+    // dello stelo del cielo nel mese. QMDJ_STADI_PESO = { stadio: punti } (es. {8:-1,9:-2,10:-3}); vuoto = nessun peso.
+    var SHp = { '甲':'亥','丙':'寅','戊':'寅','庚':'巳','壬':'申','乙':'午','丁':'酉','己':'酉','辛':'子','癸':'卯' };
+    var stadioP = function (st) { if (!SHp[st]) return 0; var a0 = BR.indexOf(SHp[st]), b0 = BR.indexOf(mb), yg = '甲丙戊庚壬'.indexOf(st) >= 0;
+      return ((yg ? b0 - a0 : a0 - b0) % 12 + 12) % 12 + 1; };
+    var PESO = W.QMDJ_STADI_PESO || null;
+    var f = function (p) { if (vuoto(c, p, vu)) return 0; var v = tempo(PEL[p], BEL[mb]) + tempo(PEL[p], SEAS[mb]) + (p === cmP ? cmF : 0);
+      if (PESO) { var pp = PESO[stadioP(c.palaces[p].tiH)] || 0; v = Math.max(0, v + pp); } return v; };
     var r = { palGiorno: a, palOra: b, forzaGiorno: a && f(a), forzaOra: b && f(b), segue: null, motivo: '' };
     r.palCmd = trovaC();
     if (!a || !b) { r.motivo = 'palazzo non trovato'; return r; }
@@ -309,6 +316,7 @@
       var perde = function (p) { if (!p) return false; var sv = stadio(c.palaces[p].tiH, c.mese[1]);
         if (stadi.indexOf(sv) < 0) return false;
         if (W.QMDJ_STADI_FORTE && (p === r.palGiorno ? r.forzaGiorno : r.forzaOra) >= W.QMDJ_STADI_FORTE) return false;   // palazzo forte: lo stadio non basta
+        if (W.QMDJ_STADI_COMB && (p === r.palGiorno ? r.forzaGiorno : r.forzaOra) > W.QMDJ_STADI_COMB - 1) return false;   // con forza combinata sopra soglia non perde
         if (smod === 'tutti' || smod === 'ctp') return true;
         var okc = sv === 10 || clI(p); if (smod === 'ctpclash') return okc; return okc && !aiutato(p); };
       var stA = smod === 'tutti' && perde(r.palGiorno), stB = perde(r.palOra);
