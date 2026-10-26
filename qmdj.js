@@ -264,7 +264,8 @@
     }
     // ZFTY: la porta View dal palazzo opposto clasha il TY (o lo ZF), che non vince (Edu 25/10/2026, EURUSD 07/10). QMDJ_VIEW_CLASH: 'zfty' | 'tutti' | 'off'
     var vc = W.QMDJ_VIEW_CLASH || 'tutti';   // ACCESO in DsHs e ZFTY (Edu 25/10)
-    if ((vc === 'tutti' || (vc === 'zfty' && c._sis === 'zfty')) && r.segue !== null) {
+    // Edu 26/10/2026 (EURJPY 29/09): la combinazione che blocca un palazzo viene prima: se c'e', View non ribalta (QMDJ_VIEW_DOPO_COMB=false per spegnerlo)
+    if ((vc === 'tutti' || (vc === 'zfty' && c._sis === 'zfty')) && r.segue !== null && !(W.QMDJ_VIEW_DOPO_COMB !== false && (ca || cb))) {
       var OPv = { 1:9, 9:1, 2:8, 8:2, 3:7, 7:3, 4:6, 6:4 }, vpz = null;
       for (var kv = 1; kv <= 9; kv++) if (kv !== 5 && (c.palaces[kv].doorName || c.palaces[kv].door) === 'View') vpz = kv;
       if (vpz && OPv[vpz] === r.palOra && OPv[vpz] !== r.palGiorno) { r.segue = true; r.motivo += ' · View clasha la controparte: segue'; }
