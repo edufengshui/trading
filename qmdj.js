@@ -268,8 +268,13 @@
     if ((vc === 'tutti' || (vc === 'zfty' && c._sis === 'zfty')) && r.segue !== null && !(W.QMDJ_VIEW_DOPO_COMB !== false && (ca || cb))) {
       var OPv = { 1:9, 9:1, 2:8, 8:2, 3:7, 7:3, 4:6, 6:4 }, vpz = null;
       for (var kv = 1; kv <= 9; kv++) if (kv !== 5 && (c.palaces[kv].doorName || c.palaces[kv].door) === 'View') vpz = kv;
-      if (vpz && OPv[vpz] === r.palOra && OPv[vpz] !== r.palGiorno) { r.segue = true; r.motivo += ' · View clasha la controparte: segue'; }
-      else if (vpz && OPv[vpz] === r.palGiorno && OPv[vpz] !== r.palOra) { r.segue = false; r.motivo += ' · View clasha il trend: non segue'; }
+      // Edu 26/10/2026 (EURJPY 12/10): View clasha ma non ribalta se il palazzo colpito e' forte. QMDJ_VIEW_FORTE: soglia di forza (default 5),
+      // 'rel' = non ribalta se il colpito e' forte almeno quanto il palazzo di View, 0 = nessun limite.
+      var vfs = W.QMDJ_VIEW_FORTE === undefined ? 5 : W.QMDJ_VIEW_FORTE, mbv = c.mese[1];
+      var fzv = function (p) { return vuoto(c, p, vuotiDi(c.pilastro)) ? 0 : tempo(PEL[p], BEL[mbv]) + tempo(PEL[p], SEAS[mbv]); };
+      var regge = function (p) { return vfs === 'rel' ? fzv(p) >= fzv(vpz) : (vfs > 0 && fzv(p) >= vfs); };
+      if (vpz && OPv[vpz] === r.palOra && OPv[vpz] !== r.palGiorno && !regge(r.palOra)) { r.segue = true; r.motivo += ' · View clasha la controparte: segue'; }
+      else if (vpz && OPv[vpz] === r.palGiorno && OPv[vpz] !== r.palOra && !regge(r.palGiorno)) { r.segue = false; r.motivo += ' · View clasha il trend: non segue'; }
     }
     // Fan yin (Edu 25/10/2026, USDJPY 19/10): cielo rovesciato sulla terra (stelo del cielo = stelo della terra del palazzo opposto) -> non segue quasi mai
     var OPP = { 1:9, 9:1, 2:8, 8:2, 3:7, 7:3, 4:6, 6:4 }, fy = true, k;
