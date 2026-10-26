@@ -311,6 +311,21 @@
       if (vpz && OPv[vpz] === r.palOra && OPv[vpz] !== r.palGiorno && !(W.QMDJ_VIEW_FORTE_SOLO_TREND === false && regge(r.palOra))) { r.segue = true; r.motivo += ' · View clasha la controparte: segue'; }
       else if (vpz && OPv[vpz] === r.palGiorno && OPv[vpz] !== r.palOra && !regge(r.palGiorno)) { r.segue = false; r.motivo += ' · View clasha il trend: non segue'; }
     }
+    // Flusso via Zhi Shi (Edu 26/10/2026, EURUSD 19/10): "il TY genera lo ZS molto vibrante che controlla lo ZF" -> vince il TY: non segue.
+    // Specchio: lo ZF genera lo ZS che controlla il TY -> segue. QMDJ_ZS_FLUSSO = soglia di forza dello ZS (es. 5) | 'off' (default);
+    // QMDJ_ZS_FLUSSO_SPECCHIO (default on).
+    var zsf = W.QMDJ_ZS_FLUSSO;
+    if (zsf !== undefined && zsf !== 'off' && c._sis === 'zfty' && r.segue !== null && r.palGiorno !== r.palOra) {
+      var zq = null; for (var q5 = 1; q5 <= 9; q5++) if (q5 !== 5 && c.palaces[q5].zhiShi) zq = q5;
+      if (zq && zq !== r.palGiorno && zq !== r.palOra) {
+        var mbz = c.mese[1], fz = vuoto(c, zq, vuotiDi(c.pilastro)) ? 0 : tempo(PEL[zq], BEL[mbz]) + tempo(PEL[zq], SEAS[mbz]);
+        var bersF = W.QMDJ_ZS_FLUSSO_DEBOLE;   // opzionale: il palazzo controllato dallo ZS deve avere forza <= soglia
+        if (fz >= +zsf) {
+          if (GEN[PEL[r.palOra]] === PEL[zq] && CTL[PEL[zq]] === PEL[r.palGiorno] && !(bersF !== undefined && r.forzaGiorno > bersF)) { r.segue = false; r.motivo += ' · TY genera lo ZS (forza ' + fz + ') che controlla lo ZF: non segue'; }
+          else if (W.QMDJ_ZS_FLUSSO_SPECCHIO !== false && GEN[PEL[r.palGiorno]] === PEL[zq] && CTL[PEL[zq]] === PEL[r.palOra] && !(bersF !== undefined && r.forzaOra > bersF)) { r.segue = true; r.motivo += ' · ZF genera lo ZS (forza ' + fz + ') che controlla il TY: segue'; }
+        }
+      }
+    }
     // View drena il Commander (Edu 26/10/2026, USDJPY 13/10): porta View nel palazzo generato dal palazzo del ZF -> il trend si svuota: non segue.
     // QMDJ_VIEW_DRENA: 'zf' (default nello ZFTY) | 'tutti' (anche la controparte drenata -> segue) | 'off'. QMDJ_VIEW_DRENA_VUOTO: anche View vuoto.
     var vdr = W.QMDJ_VIEW_DRENA || 'flusso';   // acceso nello ZFTY: catena del flusso nei due versi (Edu 26/10 19:01)
