@@ -129,6 +129,7 @@
   // rami: 六仪 degli steli + porta e stella (palazzo d'origine); QMDJ_TRIGONO_PILASTRI=true: anche i rami dei pilastri.
   var YIR = { '戊':'子','己':'戌','庚':'申','辛':'午','壬':'辰','癸':'寅' };
   var SANHE = [['申子辰','辰'], ['亥卯未','未'], ['寅午戌','戌'], ['巳酉丑','丑']];
+  var SANHUI = [['亥子丑','辰'], ['寅卯辰','未'], ['巳午未','戌'], ['申酉戌','丑']];   // trigoni direzionali: Acqua, Legno, Fuoco, Metallo
   var DOORHOME = { Rest:1, Birth:8, Injury:3, Delusion:4, View:9, Death:2, Shocking:7, Open:6 };
   var STARHOME = { Grass:1, Rice:2, Aggressor:3, Assistant:4, Heart:6, Pillar:7, Official:8, Hero:9 };
   function trigonoInTomba(c, p) {
@@ -144,8 +145,9 @@
     }
     if (W.QMDJ_TRIGONO_PAL) PBR[p].split('').forEach(function (b) { br[b] = 1; });   // prova: anche i rami del palazzo
     var mn = W.QMDJ_TRIGONO_MIN || 3;   // prova: 2 = basta un mezzo trigono
-    for (var i = 0; i < SANHE.length; i++) { var t = SANHE[i][0], n = (br[t[0]] ? 1 : 0) + (br[t[1]] ? 1 : 0) + (br[t[2]] ? 1 : 0);
-      if (n >= mn && SANHE[i][1] === c.mese[1]) return true; }
+    var LISTA = W.QMDJ_TRIGONO_DIR === false ? SANHE : SANHE.concat(SANHUI);   // Edu 27/10: anche i trigoni direzionali (三会)
+    for (var i = 0; i < LISTA.length; i++) { var t = LISTA[i][0], n = (br[t[0]] ? 1 : 0) + (br[t[1]] ? 1 : 0) + (br[t[2]] ? 1 : 0);
+      if (n >= mn && LISTA[i][1] === c.mese[1]) return true; }
     return false;
   }
   function vuoto(c, p, vu) { if (TOMBA[PEL[p]] === c.mese[1]) return true;
