@@ -123,7 +123,25 @@
   var CLV = { '甲':'庚','庚':'甲','乙':'辛','辛':'乙','丙':'壬','壬':'丙','丁':'癸','癸':'丁' }, YIV = { '戊':'子','己':'戌','庚':'申','辛':'午','壬':'辰','癸':'寅' },
       CHV = { '子':'午','午':'子','丑':'未','未':'丑','寅':'申','申':'寅','卯':'酉','酉':'卯','辰':'戌','戌':'辰','巳':'亥','亥':'巳' };
   function clashInterno(c, p) { var t = c.palaces[p].tiH, e = c.palaces[p].diH; return CLV[t] === e || !!(YIV[t] && YIV[e] && CHV[YIV[t]] === YIV[e]); }
+  // Trigono in tomba (Edu 27/10/2026, AUDUSD 14/10: "Ji, Gui e Wu dentro View sono un trigono di fuoco in tomba nel mese Xu"): i rami portati
+  // dagli steli del palazzo (六仪: 戊子 己戌 庚申 辛午 壬辰 癸寅; uno stelo dei pilastri porta il suo ramo) formano un 三合 completo il cui
+  // elemento ha la tomba nel ramo del mese -> il palazzo vale come vuoto. QMDJ_TRIGONO: 'tutti' | 'zfty' | 'dshs' | 'off' (default);
+  // QMDJ_TRIGONO_PILASTRI=false: solo i rami dei 六仪.
+  var YIR = { '戊':'子','己':'戌','庚':'申','辛':'午','壬':'辰','癸':'寅' };
+  var SANHE = [['申子辰','辰'], ['亥卯未','未'], ['寅午戌','戌'], ['巳酉丑','丑']];
+  function trigonoInTomba(c, p) {
+    var d = c.palaces[p], st = [d.tiH, d.diH]; if (d.ti2H) st.push(d.ti2H);
+    var br = {}, pil = [c.pilastro, c.giorno, c.mese, c.anno];
+    st.forEach(function (x) { if (YIR[x]) br[YIR[x]] = 1;
+      if (W.QMDJ_TRIGONO_PILASTRI !== false) pil.forEach(function (g) { if (g && g[0] === x) br[g[1]] = 1; }); });
+    if (W.QMDJ_TRIGONO_PAL) PBR[p].split('').forEach(function (b) { br[b] = 1; });   // prova: anche i rami del palazzo
+    var mn = W.QMDJ_TRIGONO_MIN || 3;   // prova: 2 = basta un mezzo trigono
+    for (var i = 0; i < SANHE.length; i++) { var t = SANHE[i][0], n = (br[t[0]] ? 1 : 0) + (br[t[1]] ? 1 : 0) + (br[t[2]] ? 1 : 0);
+      if (n >= mn && SANHE[i][1] === c.mese[1]) return true; }
+    return false;
+  }
   function vuoto(c, p, vu) { if (TOMBA[PEL[p]] === c.mese[1]) return true;
+    var tgm = W.QMDJ_TRIGONO || 'off'; if ((tgm === 'tutti' || tgm === c._sis) && trigonoInTomba(c, p)) return true;
     if (PBR[p].indexOf(c.mese[1]) >= 0 || PBR[p].indexOf(c.giorno[1]) >= 0) return false;   // Edu 24/10: il ramo del mese o del giorno riempie il vuoto
     // Edu 25/10 e 27/10/2026: "un palazzo con un clash interno non e' mai vuoto". QMDJ_CLASH_PIENO: 'tutti' | 'zfty' | 'dshs' | 'off' (default)
     var cpm = W.QMDJ_CLASH_PIENO || 'off';
