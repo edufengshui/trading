@@ -232,7 +232,7 @@
   function bloccato(c, p) { return !!p && HE[c.palaces[p].tiH] === c.palaces[p].diH; }
   function giornoOra(c) {
     var r = giornoOraBase(c); if (!r) return r;
-    var ca = bloccato(c, r.palGiorno), cb = bloccato(c, r.palOra);
+    var ca = W.QMDJ_COMB !== false && bloccato(c, r.palGiorno), cb = W.QMDJ_COMB !== false && bloccato(c, r.palOra);
     if (ca && cb) { r.segue = null; r.motivo += ' · giorno e ora bloccati da una combinazione: fermo'; }
     else if (ca) { r.segue = false; r.motivo += ' · giorno bloccato da una combinazione: non segue'; }
     else if (cb) { r.segue = true; r.motivo += ' · ora bloccata da una combinazione: segue'; }
@@ -396,7 +396,7 @@
     // Fan yin (Edu 25/10/2026, USDJPY 19/10): cielo rovesciato sulla terra (stelo del cielo = stelo della terra del palazzo opposto) -> non segue quasi mai
     var OPP = { 1:9, 9:1, 2:8, 8:2, 3:7, 7:3, 4:6, 6:4 }, fy = true, k;
     for (k in OPP) if (c.palaces[k].tiH !== c.palaces[OPP[k]].diH) { fy = false; break; }
-    if (fy) { r.segue = false; r.fanYin = true; r.motivo += ' · fan yin: non segue'; }
+    if (fy && W.QMDJ_FANYIN !== false) { r.segue = false; r.fanYin = true; r.motivo += ' · fan yin: non segue'; }
     // Ora inibita (Edu 25/10/2026, USDCAD 12/10): il Commander nel palazzo opposto all'HS lo clasha E l'HS sta nel palazzo opposto al
     // ramo dell'ora -> l'ora non funziona: segue (anche sopra il fan yin). Simmetrico per il giorno -> non segue. QMDJ_INIBITA = 'on' | 'off' | 'una'.
     var inib = W.QMDJ_INIBITA || 'off';   // SPENTA di default (peggiora il 2024-26)
@@ -424,9 +424,21 @@
     return null;
   }
   // Lettura completa: trend 'LONG'|'SHORT' -> { dir, segue, motivo, wuBirth, conferma (true/false/null) }
+  // Regole per metodo (Edu 27/10/2026: "se una regola peggiora tanto su un metodo e non su un altro, spegnila solo su quello").
+  // QMDJ_PER = { dshs: { QMDJ_X: valore, ... }, zfty: { ... } }: valori applicati solo durante la lettura di quel metodo.
+  // Un valore impostato a mano (globale) vince su quello del metodo. QMDJ_PER = {} per spegnere tutte le regole per metodo.
+  var PER_DEFAULT = {
+    dshs: { QMDJ_STADI_PESO: { 8: -1, 9: -2, 10: -3 } },            // 27/10: palazzo forte bilancia lo stelo (+93 | +190)
+    zfty: { QMDJ_PONTE_CLASH: true, QMDJ_CMD_AIUTO: true }           // 27/10: ponte con clash non passa il qi, Commander tiene il controllo (+568 | +675)
+  };
+  function conPer(sis, fn) {
+    var per = (W.QMDJ_PER || PER_DEFAULT)[sis] || {}, messi = [], k;
+    for (k in per) if (W[k] === undefined) { W[k] = per[k]; messi.push(k); }
+    try { return fn(); } finally { for (var i = 0; i < messi.length; i++) delete W[messi[i]]; }
+  }
   function lettura(c, trend, sis) {
     if (c) c._sis = sis || 'dshs';
-    var g = giornoOra(c); if (!g) return null;
+    var g = conPer(c ? c._sis : 'dshs', function () { return giornoOra(c); }); if (!g) return null;
     var dir = g.segue === null ? null : (g.segue ? trend : (trend === 'LONG' ? 'SHORT' : 'LONG')), wb = wuBirth(c);
     return { dir: dir, segue: g.segue, motivo: g.motivo, wuBirth: wb, conferma: (dir && wb) ? wb === dir : null, giornoOra: g };
   }
