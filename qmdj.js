@@ -441,7 +441,8 @@
   // Un valore impostato a mano (globale) vince su quello del metodo. QMDJ_PER = {} per spegnere tutte le regole per metodo.
   var PER_DEFAULT = {
     dshs: { QMDJ_STADI_PESO: { 8: -1, 9: -2, 10: -3 } },            // 27/10: palazzo forte bilancia lo stelo (+93 | +190)
-    zfty: { QMDJ_PONTE_CLASH: true, QMDJ_CMD_AIUTO: true }           // 27/10: ponte con clash non passa il qi, Commander tiene il controllo (+568 | +675)
+    zfty: { QMDJ_PONTE_CLASH: true, QMDJ_CMD_AIUTO: true,            // 27/10: ponte con clash non passa il qi, Commander tiene il controllo (+568 | +675)
+            QMDJ_CLASH_PIENO: 'tutti', QMDJ_PONTE_BIRTH: 'tutti', QMDJ_PONTE_BIRTH_PIENO: true }   // 27/10 11:54: clash interno = mai vuoto; Birth frena il ponte
   };
   function conPer(sis, fn) {
     var per = (W.QMDJ_PER || PER_DEFAULT)[sis] || {}, messi = [], k;
