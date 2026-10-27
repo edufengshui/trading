@@ -124,16 +124,24 @@
       CHV = { '子':'午','午':'子','丑':'未','未':'丑','寅':'申','申':'寅','卯':'酉','酉':'卯','辰':'戌','戌':'辰','巳':'亥','亥':'巳' };
   function clashInterno(c, p) { var t = c.palaces[p].tiH, e = c.palaces[p].diH; return CLV[t] === e || !!(YIV[t] && YIV[e] && CHV[YIV[t]] === YIV[e]); }
   // Trigono in tomba (Edu 27/10/2026, AUDUSD 14/10: "Ji, Gui e Wu dentro View sono un trigono di fuoco in tomba nel mese Xu"): i rami portati
-  // dagli steli del palazzo (六仪: 戊子 己戌 庚申 辛午 壬辰 癸寅; uno stelo dei pilastri porta il suo ramo) formano un 三合 completo il cui
+  // dagli steli del palazzo (六仪: 戊子 己戌 庚申 辛午 壬辰 癸寅; porte e stelle i rami del loro palazzo d'origine) formano un 三合 completo il cui
   // elemento ha la tomba nel ramo del mese -> il palazzo vale come vuoto. QMDJ_TRIGONO: 'tutti' | 'zfty' | 'dshs' | 'off' (default);
-  // QMDJ_TRIGONO_PILASTRI=false: solo i rami dei 六仪.
+  // rami: 六仪 degli steli + porta e stella (palazzo d'origine); QMDJ_TRIGONO_PILASTRI=true: anche i rami dei pilastri.
   var YIR = { '戊':'子','己':'戌','庚':'申','辛':'午','壬':'辰','癸':'寅' };
   var SANHE = [['申子辰','辰'], ['亥卯未','未'], ['寅午戌','戌'], ['巳酉丑','丑']];
+  var DOORHOME = { Rest:1, Birth:8, Injury:3, Delusion:4, View:9, Death:2, Shocking:7, Open:6 };
+  var STARHOME = { Grass:1, Rice:2, Aggressor:3, Assistant:4, Heart:6, Pillar:7, Official:8, Hero:9 };
   function trigonoInTomba(c, p) {
     var d = c.palaces[p], st = [d.tiH, d.diH]; if (d.ti2H) st.push(d.ti2H);
     var br = {}, pil = [c.pilastro, c.giorno, c.mese, c.anno];
     st.forEach(function (x) { if (YIR[x]) br[YIR[x]] = 1;
-      if (W.QMDJ_TRIGONO_PILASTRI !== false) pil.forEach(function (g) { if (g && g[0] === x) br[g[1]] = 1; }); });
+      if (W.QMDJ_TRIGONO_PILASTRI === true) pil.forEach(function (g) { if (g && g[0] === x) br[g[1]] = 1; }); });
+    // Edu 27/10/2026: "nel qimen anche le porte e le stelle contengono i rami" (quelli del loro palazzo d'origine): View/Hero 午 ecc.
+    if (W.QMDJ_TRIGONO_PS !== false) {
+      var dn = d.doorName || d.door, hp = DOORHOME[dn], sp = STARHOME[d.star];
+      if (hp) PBR[hp].split('').forEach(function (b) { br[b] = 1; });
+      if (sp) PBR[sp].split('').forEach(function (b) { br[b] = 1; });
+    }
     if (W.QMDJ_TRIGONO_PAL) PBR[p].split('').forEach(function (b) { br[b] = 1; });   // prova: anche i rami del palazzo
     var mn = W.QMDJ_TRIGONO_MIN || 3;   // prova: 2 = basta un mezzo trigono
     for (var i = 0; i < SANHE.length; i++) { var t = SANHE[i][0], n = (br[t[0]] ? 1 : 0) + (br[t[1]] ? 1 : 0) + (br[t[2]] ? 1 : 0);
@@ -460,7 +468,8 @@
   var PER_DEFAULT = {
     dshs: { QMDJ_STADI_PESO: { 8: -1, 9: -2, 10: -3 } },            // 27/10: palazzo forte bilancia lo stelo (+93 | +190)
     zfty: { QMDJ_PONTE_CLASH: true, QMDJ_CMD_AIUTO: true,            // 27/10: ponte con clash non passa il qi, Commander tiene il controllo (+568 | +675)
-            QMDJ_CLASH_PIENO: 'tutti', QMDJ_PONTE_BIRTH: 'tutti', QMDJ_PONTE_BIRTH_PIENO: true }   // 27/10 11:54: clash interno = mai vuoto; Birth frena il ponte
+            QMDJ_CLASH_PIENO: 'tutti', QMDJ_PONTE_BIRTH: 'tutti', QMDJ_PONTE_BIRTH_PIENO: true,
+            QMDJ_TRIGONO: 'tutti' }   // 27/10 12:50: trigono (六仪 + porte + stelle) in tomba nel mese = vuoto   // 27/10 11:54: clash interno = mai vuoto; Birth frena il ponte
   };
   function conPer(sis, fn) {
     var per = (W.QMDJ_PER || PER_DEFAULT)[sis] || {}, messi = [], k;
