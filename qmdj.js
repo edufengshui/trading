@@ -207,6 +207,10 @@
     var vp = W.QMDJ_VIEW_PONTE || 'zfty';
     if (vp === 'tutti' || (vp === 'zfty' && c._sis === 'zfty'))
       for (var q2 = 1; q2 <= 9; q2++) if (q2 !== 5 && (c.palaces[q2].doorName || c.palaces[q2].door) === 'View' && (ponte(q2) || (W.QMDJ_VIEW_PONTE_VUOTO && pontePieno(q2)))) { ponti.push('View'); break; }   // Edu 25/10: Wu (indicatore economico) fa da ponte
+    // Edu 27/10/2026 (USDJPY 28/03/2022): anche lo stelo del mese nel cielo fa da ponte. QMDJ_MESE_PONTE: 'zfty' | 'tutti' | 'off' (default)
+    var mp = W.QMDJ_MESE_PONTE || 'off';
+    if (mp === 'tutti' || (mp === 'zfty' && c._sis === 'zfty'))
+      for (var q6 = 1; q6 <= 9; q6++) if (q6 !== 5 && c.palaces[q6].tiH === c.mese[0] && ponte(q6)) { ponti.push('stelo del mese'); break; }
     // Edu 26/10/2026 (USDJPY 11/07/2024): anche la porta Birth fa da ponte. QMDJ_BIRTH_PONTE: 'zfty' | 'tutti' | 'off' (default)
     var bp = W.QMDJ_BIRTH_PONTE || 'zfty';   // acceso nello ZFTY (Edu 26/10 18:42)
     if (bp === 'tutti' || (bp === 'zfty' && c._sis === 'zfty'))
@@ -322,7 +326,7 @@
         // Edu 26/10/2026 (USDJPY 15/08/2024): un ponte (Commander, Wu, View, Birth) fra lo ZS e il palazzo che controlla gli passa il qi -> lo ZS non agisce
         var vuZ = vuotiDi(c.pilastro);
         var pontato = function (tg) { for (var k = 1; k <= 9; k++) { if (k === 5 || k === zq || k === tg || vuoto(c, k, vuZ)) continue; var d = c.palaces[k], dn = d.doorName || d.door;
-          var PS = W.QMDJ_ZS_PONTI || 'Birth'; if (((PS.indexOf('Commander') >= 0 && d.deity === 'Commander') || (PS.indexOf('Wu') >= 0 && d.tiH === '戊') || (PS.indexOf('View') >= 0 && dn === 'View') || (PS.indexOf('Birth') >= 0 && dn === 'Birth')) && GEN[PEL[zq]] === PEL[k] && GEN[PEL[k]] === PEL[tg]) return true; } return false; };
+          var PS = W.QMDJ_ZS_PONTI || 'Birth'; if (((PS.indexOf('Commander') >= 0 && d.deity === 'Commander') || (PS.indexOf('Wu') >= 0 && d.tiH === '戊') || (PS.indexOf('View') >= 0 && dn === 'View') || (PS.indexOf('Birth') >= 0 && dn === 'Birth') || (PS.indexOf('Mese') >= 0 && d.tiH === c.mese[0])) && GEN[PEL[zq]] === PEL[k] && GEN[PEL[k]] === PEL[tg]) return true; } return false; };
         var bersF = W.QMDJ_ZS_FLUSSO_DEBOLE;   // opzionale: il palazzo controllato dallo ZS deve avere forza <= soglia
         if (fz >= +zsf) {
           if (GEN[PEL[r.palOra]] === PEL[zq] && CTL[PEL[zq]] === PEL[r.palGiorno] && !(W.QMDJ_ZS_FLUSSO_PONTE !== false && pontato(r.palGiorno)) && !(bersF !== undefined && r.forzaGiorno > bersF)) { r.segue = false; r.motivo += ' · TY genera lo ZS (forza ' + fz + ') che controlla lo ZF: non segue'; }
