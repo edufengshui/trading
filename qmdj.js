@@ -120,8 +120,14 @@
   // Tomba nel mese (Edu 25/10/2026, EURUSD 12/10): il palazzo il cui elemento ha la tomba nel ramo del mese vale come vuoto.
   // Tombe: Legno 未, Fuoco 戌, Metallo 丑, Acqua 辰; la Terra non ha tomba.
   var TOMBA = { L:'未', F:'戌', M:'丑', W:'辰' };   // la Terra non ha tomba (Edu 25/10)
+  var CLV = { '甲':'庚','庚':'甲','乙':'辛','辛':'乙','丙':'壬','壬':'丙','丁':'癸','癸':'丁' }, YIV = { '戊':'子','己':'戌','庚':'申','辛':'午','壬':'辰','癸':'寅' },
+      CHV = { '子':'午','午':'子','丑':'未','未':'丑','寅':'申','申':'寅','卯':'酉','酉':'卯','辰':'戌','戌':'辰','巳':'亥','亥':'巳' };
+  function clashInterno(c, p) { var t = c.palaces[p].tiH, e = c.palaces[p].diH; return CLV[t] === e || !!(YIV[t] && YIV[e] && CHV[YIV[t]] === YIV[e]); }
   function vuoto(c, p, vu) { if (TOMBA[PEL[p]] === c.mese[1]) return true;
     if (PBR[p].indexOf(c.mese[1]) >= 0 || PBR[p].indexOf(c.giorno[1]) >= 0) return false;   // Edu 24/10: il ramo del mese o del giorno riempie il vuoto
+    // Edu 25/10 e 27/10/2026: "un palazzo con un clash interno non e' mai vuoto". QMDJ_CLASH_PIENO: 'tutti' | 'zfty' | 'dshs' | 'off' (default)
+    var cpm = W.QMDJ_CLASH_PIENO || 'off';
+    if ((cpm === 'tutti' || cpm === c._sis) && clashInterno(c, p)) return false;
     var d = PBR[p].split('').filter(function (b) { return vu.indexOf(b) >= 0; });
     if (!d.length) return false; if (d.length === PBR[p].length) return true;
     return ('甲丙戊庚壬'.indexOf(c.palaces[p].diH) >= 0) === ('子寅辰午申戌'.indexOf(d[0]) >= 0); }
@@ -198,7 +204,13 @@
         CHp = { '子':'午','午':'子','丑':'未','未':'丑','寅':'申','申':'寅','卯':'酉','酉':'卯','辰':'戌','戌':'辰','巳':'亥','亥':'巳' };
     var clashP = function (k) { var t = c.palaces[k].tiH, e = c.palaces[k].diH; return CLp[t] === e || (YIp[t] && YIp[e] && CHp[YIp[t]] === YIp[e]); };
     var pontePieno = function (k) { return k && k !== a && k !== b && GEN[PEL[ctl]] === PEL[k] && GEN[PEL[k]] === PEL[sub]; };   // anche vuoto
-    var ponte = function (k) { return k && k !== a && k !== b && !vuoto(c, k, vu) && !(W.QMDJ_PONTE_CLASH === true && clashP(k)) && GEN[PEL[ctl]] === PEL[k] && GEN[PEL[k]] === PEL[sub]; };
+    // Edu 27/10/2026 (EURJPY 12/08/2020): "Birth controlla View" -> un ponte controllato dal palazzo di Birth non passa il qi.
+    // QMDJ_PONTE_BIRTH: 'zfty' | 'tutti' | 'off' (default); QMDJ_PONTE_BIRTH_PIENO: Birth deve stare in un palazzo non vuoto.
+    var pbm = W.QMDJ_PONTE_BIRTH || 'off', pbOk = pbm === 'tutti' || (pbm === 'zfty' && c._sis === 'zfty'), pBirth = null;
+    if (pbOk) for (var qb = 1; qb <= 9; qb++) if (qb !== 5 && (c.palaces[qb].doorName || c.palaces[qb].door) === 'Birth') pBirth = qb;
+    if (pBirth && W.QMDJ_PONTE_BIRTH_PIENO && vuoto(c, pBirth, vu)) pBirth = null;
+    var frenato = function (k) { return pBirth && pBirth !== k && CTL[PEL[pBirth]] === PEL[k]; };
+    var ponte = function (k) { if (frenato(k)) return false; return k && k !== a && k !== b && !vuoto(c, k, vu) && !(W.QMDJ_PONTE_CLASH === true && clashP(k)) && GEN[PEL[ctl]] === PEL[k] && GEN[PEL[k]] === PEL[sub]; };
     var trova = function (f) { for (var k = 1; k <= 9; k++) if (k !== 5 && f(c.palaces[k])) return k; return null; };
     if (ponte(trovaC())) ponti.push('Commander');
     if (ponte(trova(function (d) { return d.zhiShi; }))) ponti.push('Zhi Shi');   // Edu 24/10/2026, EURJPY 22/10
