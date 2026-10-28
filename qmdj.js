@@ -436,6 +436,10 @@
     // Fan yin (Edu 25/10/2026, USDJPY 19/10): cielo rovesciato sulla terra (stelo del cielo = stelo della terra del palazzo opposto) -> non segue quasi mai
     var OPP = { 1:9, 9:1, 2:8, 8:2, 3:7, 7:3, 4:6, 6:4 }, fy = true, k;
     for (k in OPP) if (c.palaces[k].tiH !== c.palaces[OPP[k]].diH) { fy = false; break; }
+    // Edu 28/10/2026 (USDJPY 18/09): "segue perche' Wu su Kan fa da ponte" -> il ponte vince il fan yin.
+    // QMDJ_FANYIN_PONTE: 'wu' (solo il ponte Wu) | 'tutti' (qualsiasi ponte) | 'off' (default)
+    var fyp = W.QMDJ_FANYIN_PONTE || 'off', mpt = /ponte ([^:]*):/.exec(r.motivo || '');
+    if (fy && mpt && (fyp === 'tutti' || (fyp === 'wu' && /Wu/.test(mpt[1])))) { fy = false; r.motivo += ' · fan yin superato dal ponte ' + mpt[1]; }
     if (fy && W.QMDJ_FANYIN !== false) { r.segue = false; r.fanYin = true; r.motivo += ' · fan yin: non segue'; }
     // Ora inibita (Edu 25/10/2026, USDCAD 12/10): il Commander nel palazzo opposto all'HS lo clasha E l'HS sta nel palazzo opposto al
     // ramo dell'ora -> l'ora non funziona: segue (anche sopra il fan yin). Simmetrico per il giorno -> non segue. QMDJ_INIBITA = 'on' | 'off' | 'una'.
@@ -471,7 +475,7 @@
     dshs: { QMDJ_STADI_PESO: { 8: -1, 9: -2, 10: -3 } },            // 27/10: palazzo forte bilancia lo stelo (+93 | +190)
     zfty: { QMDJ_PONTE_CLASH: true, QMDJ_CMD_AIUTO: true,            // 27/10: ponte con clash non passa il qi, Commander tiene il controllo (+568 | +675)
             QMDJ_CLASH_PIENO: 'tutti', QMDJ_PONTE_BIRTH: 'tutti', QMDJ_PONTE_BIRTH_PIENO: true,
-            QMDJ_TRIGONO: 'tutti' }   // 27/10 12:50: trigono (六仪 + porte + stelle) in tomba nel mese = vuoto   // 27/10 11:54: clash interno = mai vuoto; Birth frena il ponte
+            QMDJ_TRIGONO: 'tutti', QMDJ_FANYIN_PONTE: 'wu' }   // 28/10: il ponte Wu vince il fan yin   // 27/10 12:50: trigono (六仪 + porte + stelle) in tomba nel mese = vuoto   // 27/10 11:54: clash interno = mai vuoto; Birth frena il ponte
   };
   function conPer(sis, fn) {
     var per = (W.QMDJ_PER || PER_DEFAULT)[sis] || {}, messi = [], k;
