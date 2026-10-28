@@ -74,7 +74,11 @@
     for (var p = 1; p <= 9; p++) { if (p === 5) continue; var h = STARHOME[c.palaces[p].star]; if (h !== OPP[p]) fan = false; if (h !== p) fu = false; }
     return fan ? 'fan yin' : fu ? 'fu yin' : 'normale'; }
   function ore(c) { var ds = c.giorno[0], L = [], t = tipoCarta(c);
-    for (var i = 0; i < 12; i++) { var o = oraCommander(c, hourGZ(ds, BR[i])); if (o) { o.carta = t; o.verso = o.ecc ? (t === 'normale' ? 'trend' : 'contro il trend') : null; } L.push(o); }
+    // Edu 28/10/2026 (USDCAD 13/10): il mese che sta nel palazzo opposto al Commander lo rende molto untimely -> l'ora non accende niente
+    var pc = palCommander(c), spento = !!(pc && PB[OPP[pc]] && PB[OPP[pc]].indexOf(c.mese[1]) >= 0);
+    for (var i = 0; i < 12; i++) { var o = oraCommander(c, hourGZ(ds, BR[i]));
+      if (o) { o.carta = t; o.spento = spento && t === 'normale'; o.verso = !o.ecc ? null : o.spento ? 'niente (mese opposto al Commander)' : (t === 'normale' ? 'trend' : 'contro il trend'); }
+      L.push(o); }
     return L; }
   // barre GMT della giornata di trading (00..20) che cadono in ogni ramo: 子 23-01 -> solo 00
   function oreGMT(hb) { var i = BR.indexOf(hb); if (i === 0) return [0]; var h = [2 * i - 1, 2 * i]; return h.filter(function (x) { return x <= 20; }); }
