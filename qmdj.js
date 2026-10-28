@@ -155,7 +155,7 @@
   }
   function vuoto(c, p, vu) { if (TOMBA[PEL[p]] === c.mese[1]) return true;
     var tgm = W.QMDJ_TRIGONO || 'off'; if ((tgm === 'tutti' || tgm === c._sis) && trigonoInTomba(c, p)) return true;
-    if (PBR[p].indexOf(c.mese[1]) >= 0 || PBR[p].indexOf(c.giorno[1]) >= 0) return false;   // Edu 24/10: il ramo del mese o del giorno riempie il vuoto
+    if (PBR[p].indexOf(c.mese[1]) >= 0 || (W.QMDJ_GIORNO_RIEMPIE !== false && PBR[p].indexOf(c.giorno[1]) >= 0)) return false;   // QMDJ_GIORNO_RIEMPIE=false: solo il mese riempie (prova 28/10)   // Edu 24/10: il ramo del mese o del giorno riempie il vuoto
     // Edu 25/10 e 27/10/2026: "un palazzo con un clash interno non e' mai vuoto". QMDJ_CLASH_PIENO: 'tutti' | 'zfty' | 'dshs' | 'off' (default)
     var cpm = W.QMDJ_CLASH_PIENO || 'off';
     if ((cpm === 'tutti' || cpm === c._sis) && clashInterno(c, p)) return false;
@@ -435,6 +435,20 @@
       var stA = !combo && (smod === 'tutti' || smod === 'clash') && perde(r.palGiorno), stB = !combo && perde(r.palOra);
       if (stB && !stA) { r.segue = true; r.motivo += ' · controparte nello stadio ' + stadiDi(r.palOra).join('/') + ': segue'; }
       else if (stA && !stB) { r.segue = false; r.motivo += ' · trend nello stadio ' + stadiDi(r.palGiorno).join('/') + ': non segue'; }
+    }
+    // Steli nello stesso palazzo (Edu 28/10/2026, EURJPY 18/09: "lo ZF ha 丙 che controlla 庚, e 丙 e' il Tai Sui: non lo vedo bene").
+    // Lo stelo della terra che controlla quello del cielo indebolisce il palazzo, che non vince. QMDJ_STELI_INT:
+    // 'terra' (terra controlla cielo) | 'tutti' (anche cielo controlla terra) | 'taisui' (solo se chi controlla e' il Tai Sui) | 'off' (default)
+    var sim = W.QMDJ_STELI_INT || 'off';
+    if (sim !== 'off' && r.segue !== null && r.palGiorno && r.palOra && r.palGiorno !== r.palOra) {
+      var SEL = { '甲':'L','乙':'L','丙':'F','丁':'F','戊':'E','己':'E','庚':'M','辛':'M','壬':'W','癸':'W' }, ts0 = c.anno && c.anno[0];
+      var danno = function (p) { var t = c.palaces[p].tiH, e = c.palaces[p].diH;
+        var tc = CTL[SEL[e]] === SEL[t], cc = CTL[SEL[t]] === SEL[e];
+        if (sim === 'terra') return tc; if (sim === 'tutti') return tc || cc;
+        if (sim === 'taisui') return (tc && e === ts0) || (cc && t === ts0); return false; };
+      var dA2 = danno(r.palGiorno), dB2 = danno(r.palOra);
+      if (dA2 && !dB2 && r.segue) { r.segue = false; r.motivo += ' · steli in controllo nel palazzo del trend: non segue'; }
+      else if (dB2 && !dA2 && !r.segue) { r.segue = true; r.motivo += ' · steli in controllo nel palazzo della controparte: segue'; }
     }
     // Fan yin (Edu 25/10/2026, USDJPY 19/10): cielo rovesciato sulla terra (stelo del cielo = stelo della terra del palazzo opposto) -> non segue quasi mai
     var OPP = { 1:9, 9:1, 2:8, 8:2, 3:7, 7:3, 4:6, 6:4 }, fy = true, k;
