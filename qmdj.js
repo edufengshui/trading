@@ -275,6 +275,7 @@
   function bloccato(c, p) { return !!p && HE[c.palaces[p].tiH] === c.palaces[p].diH; }
   function giornoOra(c) {
     var r = giornoOraBase(c); if (!r) return r;
+    r.base = r.segue; r.baseMotivo = r.motivo;   // per la lettura ragionata: la relazione di base e' il primo argomento
     var ca = W.QMDJ_COMB !== false && bloccato(c, r.palGiorno), cb = W.QMDJ_COMB !== false && bloccato(c, r.palOra);
     if (ca && cb) { r.segue = null; r.motivo += ' · giorno e ora bloccati da una combinazione: fermo'; }
     else if (ca) { r.segue = false; r.motivo += ' · giorno bloccato da una combinazione: non segue'; }
@@ -538,11 +539,26 @@
     for (k in per) if (W[k] === undefined) { W[k] = per[k]; messi.push(k); }
     try { return fn(); } finally { for (var i = 0; i < messi.length; i++) delete W[messi[i]]; }
   }
+  // LETTURA RAGIONATA (Edu 28/10/2026: "Lio non scorre un elenco di regole, ragiona e giunge a conclusioni: fai lo stesso nel qimen").
+  // Gli argomenti sono le regole che scattano sulla carta, ciascuna col suo verso (segue / non segue): la relazione di base e poi
+  // ogni passaggio del motivo. argomenti(g) -> [{ k: chiave, v: true|false }].
+  function chiave(t) { return t.replace(/\(forza \d+\)/g, '').replace(/\s+/g, ' ').replace(/: (non )?segue$/, '').replace(/: fermo$/, '').trim(); }
+  function argomenti(g) {
+    var out = [], parti = (g.motivo || '').split(' · '), nb = (g.baseMotivo || '').split(' · ').length;
+    for (var i = 0; i < parti.length; i++) {
+      var t = parti[i], v;
+      if (i < nb) { if (i === nb - 1 && g.base !== null && g.base !== undefined) out.push({ k: 'base: ' + chiave(parti.slice(0, nb).join(' · ')), v: g.base }); continue; }
+      if (/non segue$/.test(t)) v = false; else if (/segue$/.test(t)) v = true;
+      else if (/vince il giorno$/.test(t)) v = true; else if (/vince l'ora$/.test(t)) v = false; else continue;
+      out.push({ k: chiave(t), v: v });
+    }
+    return out;
+  }
   function lettura(c, trend, sis) {
     if (c) c._sis = sis || 'dshs';
     var g = conPer(c ? c._sis : 'dshs', function () { return giornoOra(c); }); if (!g) return null;
     var dir = g.segue === null ? null : (g.segue ? trend : (trend === 'LONG' ? 'SHORT' : 'LONG')), wb = wuBirth(c);
-    return { dir: dir, segue: g.segue, motivo: g.motivo, wuBirth: wb, conferma: (dir && wb) ? wb === dir : null, giornoOra: g };
+    return { dir: dir, segue: g.segue, motivo: g.motivo, wuBirth: wb, conferma: (dir && wb) ? wb === dir : null, giornoOra: g, argomenti: argomenti(g) };
   }
 
   var API = { lettura: lettura, wuBirth: wuBirth, giornoOra: giornoOra, oraria: oraria, giornaliera: giornaliera, testo: testo, hourGZ: hourGZ, juOraria: juOraria, juGiornaliera: juGiornaliera };
