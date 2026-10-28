@@ -283,6 +283,15 @@
     if ((W.QMDJ_GENG_DSHS === true || (c._sis === 'zfty' && W.QMDJ_GENG_ZFTY !== false)) && r.segue !== null) {   // ZFTY: acceso (Edu 26/10 18:42)
       var gA = r.palGiorno && c.palaces[r.palGiorno].diH === '庚' && c.palaces[r.palGiorno].tiH !== '庚',
           gB = r.palOra && c.palaces[r.palOra].diH === '庚' && c.palaces[r.palOra].tiH !== '庚';
+      // Edu 28/10/2026 (EURUSD 19/08): "a generare il Commander ci sono i due 丙 di mese e anno, lo ZF sta nel palazzo del Tai Sui e il TY e'
+      // molto debole: nonostante lo ZF su 庚 il Commander vince". Sostegni: ts = ramo dell'anno nel palazzo; gen = stelo del mese o dell'anno
+      // (nel cielo) in un palazzo che lo genera; deb = l'altro ha forza <= QMDJ_GENG_ECC_DEBOLE (1). QMDJ_GENG_ECC: 'off' | 'uno' | 'due' | 'tre' | 'ts' | 'gen' | 'deb'
+      var gem = W.QMDJ_GENG_ECC || 'off';
+      var sost = function (p, fo) { var n = { ts: PBR[p].indexOf(c.anno[1]) >= 0, gen: false, deb: fo <= (W.QMDJ_GENG_ECC_DEBOLE === undefined ? 1 : W.QMDJ_GENG_ECC_DEBOLE) };
+        for (var q = 1; q <= 9; q++) if (q !== 5 && q !== p && (c.palaces[q].tiH === c.mese[0] || c.palaces[q].tiH === c.anno[0]) && GEN[PEL[q]] === PEL[p]) n.gen = true;
+        var k = (n.ts ? 1 : 0) + (n.gen ? 1 : 0) + (n.deb ? 1 : 0);
+        return gem === 'uno' ? k >= 1 : gem === 'due' ? k >= 2 : gem === 'tre' ? k >= 3 : !!n[gem]; };
+      if (gem !== 'off') { if (gA && sost(r.palGiorno, r.forzaOra)) gA = false; if (gB && sost(r.palOra, r.forzaGiorno)) gB = false; }
       if (gA && !gB) { r.segue = false; r.motivo += ' · giorno sopra 庚: non segue'; }
       else if (gB && !gA) { r.segue = true; r.motivo += ' · ora sopra 庚: segue'; }
     }
@@ -522,7 +531,7 @@
             QMDJ_CLASH_PIENO: 'tutti', QMDJ_PONTE_BIRTH: 'tutti', QMDJ_PONTE_BIRTH_PIENO: true,
             QMDJ_TRIGONO: 'tutti', QMDJ_FANYIN_PONTE: 'wu',   // 28/10: il ponte Wu vince il fan yin
             QMDJ_BIRTH_DEATH: 'fanyin', QMDJ_MESE_LATO: 'fermo',
-            QMDJ_GENG_BING: 'perde' }   // 28/10: 庚/丙 conflittuale, dopo la regola del 庚 sotto lo ZF/Commander   // 28/10: Birth batte Death salvo mese contrario; il ramo del mese decide fan yin e fermi   // 27/10 12:50: trigono (六仪 + porte + stelle) in tomba nel mese = vuoto   // 27/10 11:54: clash interno = mai vuoto; Birth frena il ponte
+            QMDJ_GENG_BING: 'perde', QMDJ_GENG_ECC: 'tre' }   // 28/10: lo ZF su 庚 vince se generato da steli mese/anno, nel palazzo del Tai Sui e col TY debole   // 28/10: 庚/丙 conflittuale, dopo la regola del 庚 sotto lo ZF/Commander   // 28/10: Birth batte Death salvo mese contrario; il ramo del mese decide fan yin e fermi   // 27/10 12:50: trigono (六仪 + porte + stelle) in tomba nel mese = vuoto   // 27/10 11:54: clash interno = mai vuoto; Birth frena il ponte
   };
   function conPer(sis, fn) {
     var per = (W.QMDJ_PER || PER_DEFAULT)[sis] || {}, messi = [], k;
