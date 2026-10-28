@@ -116,6 +116,9 @@
   function palOf(c, s) { var p; for (p = 1; p <= 9; p++) if (p !== 5 && c.palaces[p].tiH === s) return p;
     for (p = 1; p <= 9; p++) if (p !== 5 && c.palaces[p].star === 'Rice') return p; return null; }
   function tempo(pe, me) { return pe === me ? 4 : GEN[me] === pe ? 3 : GEN[pe] === me ? 2 : CTL[pe] === me ? 1 : 0; }
+  // Quali vuoti usare (Edu 28/10/2026: "cosa succede se usiamo i vuoti del giorno?"). QMDJ_VUOTI: 'ora' (default) | 'giorno' | 'entrambi'
+  function vuotiCarta(c) { var m = W.QMDJ_VUOTI || 'ora'; if (m === 'giorno') return vuotiDi(c.giorno);
+    if (m === 'entrambi') return vuotiDi(c.pilastro).concat(vuotiDi(c.giorno)); return vuotiDi(c.pilastro); }
   function vuotiDi(gz) { var s = Math.floor(idx60(gz) / 10) * 10; return [BR[(s + 10) % 12], BR[(s + 11) % 12]]; }
   // Tomba nel mese (Edu 25/10/2026, EURUSD 12/10): il palazzo il cui elemento ha la tomba nel ramo del mese vale come vuoto.
   // Tombe: Legno 未, Fuoco 戌, Metallo 丑, Acqua 辰; la Terra non ha tomba.
@@ -180,7 +183,7 @@
         return k; } return null; };
     // vuoti del 旬 dell'ora (default); QMDJ_VUOTI_ZFTY='giorno' usa quelli del giorno nello ZFTY, QMDJ_VUOTI='giorno' ovunque (prova 25/10)
     var vgi = W.QMDJ_VUOTI === 'giorno' || (c._sis === 'zfty' && W.QMDJ_VUOTI_ZFTY === 'giorno');
-    var mb = c.mese[1], vu = vuotiDi(vgi ? c.giorno : c.pilastro), a = palOf(c, stemOf(c.giorno)), b = palOf(c, stemOf(c.pilastro));
+    var mb = c.mese[1], vu = vgi ? vuotiDi(c.giorno) : vuotiCarta(c), a = palOf(c, stemOf(c.giorno)), b = palOf(c, stemOf(c.pilastro));
     // Sistema ZFTY (Edu 25/10/2026): trend = palazzo dello Zhi Fu; controparte = Tian Yi, la stella originaria del palazzo dove sta lo Zhi Fu
     // (es. ZF su Qian -> Heart; il TY e' il palazzo dove ora sta Heart). Stesse regole del sistema DsHs.
     if (c._sis === 'zfty') {
@@ -350,7 +353,7 @@
       // Edu 26/10/2026 (EURJPY 12/10): View clasha ma non ribalta se il palazzo colpito e' forte. QMDJ_VIEW_FORTE: soglia di forza (default 5),
       // 'rel' = non ribalta se il colpito e' forte almeno quanto il palazzo di View, 0 = nessun limite.
       var vfs = W.QMDJ_VIEW_FORTE === undefined ? 5 : W.QMDJ_VIEW_FORTE, mbv = c.mese[1];
-      var fzv = function (p) { return vuoto(c, p, vuotiDi(c.pilastro)) ? 0 : tempo(PEL[p], BEL[mbv]) + tempo(PEL[p], SEAS[mbv]); };
+      var fzv = function (p) { return vuoto(c, p, vuotiCarta(c)) ? 0 : tempo(PEL[p], BEL[mbv]) + tempo(PEL[p], SEAS[mbv]); };
       var regge = function (p) { return vfs === 'rel' ? fzv(p) >= fzv(vpz) : (vfs > 0 && fzv(p) >= vfs); };
       if (vpz && OPv[vpz] === r.palOra && OPv[vpz] !== r.palGiorno && !(W.QMDJ_VIEW_FORTE_SOLO_TREND === false && regge(r.palOra))) { r.segue = true; r.motivo += ' · View clasha la controparte: segue'; }
       else if (vpz && OPv[vpz] === r.palGiorno && OPv[vpz] !== r.palOra && !regge(r.palGiorno)) { r.segue = false; r.motivo += ' · View clasha il trend: non segue'; }
@@ -362,9 +365,9 @@
     if (zsf !== undefined && zsf !== 'off' && c._sis === 'zfty' && r.segue !== null && r.palGiorno !== r.palOra) {
       var zq = null; for (var q5 = 1; q5 <= 9; q5++) if (q5 !== 5 && c.palaces[q5].zhiShi) zq = q5;
       if (zq && zq !== r.palGiorno && zq !== r.palOra) {
-        var mbz = c.mese[1], fz = vuoto(c, zq, vuotiDi(c.pilastro)) ? 0 : tempo(PEL[zq], BEL[mbz]) + tempo(PEL[zq], SEAS[mbz]);
+        var mbz = c.mese[1], fz = vuoto(c, zq, vuotiCarta(c)) ? 0 : tempo(PEL[zq], BEL[mbz]) + tempo(PEL[zq], SEAS[mbz]);
         // Edu 26/10/2026 (USDJPY 15/08/2024): un ponte (Commander, Wu, View, Birth) fra lo ZS e il palazzo che controlla gli passa il qi -> lo ZS non agisce
-        var vuZ = vuotiDi(c.pilastro);
+        var vuZ = vuotiCarta(c);
         var pontato = function (tg) { for (var k = 1; k <= 9; k++) { if (k === 5 || k === zq || k === tg || vuoto(c, k, vuZ)) continue; var d = c.palaces[k], dn = d.doorName || d.door;
           var PS = W.QMDJ_ZS_PONTI || 'Birth'; if (((PS.indexOf('Commander') >= 0 && d.deity === 'Commander') || (PS.indexOf('Wu') >= 0 && d.tiH === '戊') || (PS.indexOf('View') >= 0 && dn === 'View') || (PS.indexOf('Birth') >= 0 && dn === 'Birth') || (PS.indexOf('Mese') >= 0 && d.tiH === c.mese[0])) && GEN[PEL[zq]] === PEL[k] && GEN[PEL[k]] === PEL[tg]) return true; } return false; };
         var bersF = W.QMDJ_ZS_FLUSSO_DEBOLE;   // opzionale: il palazzo controllato dallo ZS deve avere forza <= soglia
@@ -380,7 +383,7 @@
     if (vdr !== 'off' && c._sis === 'zfty' && r.segue !== null && r.palGiorno !== r.palOra) {
       var vq = null; for (var q4 = 1; q4 <= 9; q4++) if (q4 !== 5 && (c.palaces[q4].doorName || c.palaces[q4].door) === 'View') vq = q4;
       var vponte = /ponte[^·]*View/.test(r.motivo || '');   // se View fa gia' da ponte passa il qi, non drena
-      if (vq && !(vponte && W.QMDJ_VIEW_DRENA_PONTE !== true) && (W.QMDJ_VIEW_DRENA_VUOTO !== false || !vuoto(c, vq, vuotiDi(c.pilastro)))) {
+      if (vq && !(vponte && W.QMDJ_VIEW_DRENA_PONTE !== true) && (W.QMDJ_VIEW_DRENA_VUOTO !== false || !vuoto(c, vq, vuotiCarta(c)))) {
         var drA = vq !== r.palGiorno && GEN[PEL[r.palGiorno]] === PEL[vq], drB = vq !== r.palOra && GEN[PEL[r.palOra]] === PEL[vq];
         // Flusso del qi (Edu 26/10/2026 18:54): "il TY genera lo ZF che genera View: lo ZF perde energia, il qi arriva su Kan che Gen controlla:
         // vince il TY". Catena g -> h -> View: il qi finisce su View, che g controlla sempre (due passi nel ciclo) -> vince chi genera.
