@@ -56,8 +56,8 @@
     if (ps !== pc) return out;
     out.ecc = true;
     var i, L = contiene(c, pc);
-    for (i = 0; i < L.length; i++) if (L[i][0] === hb) { out.forma = 'identica'; out.motivo = st + ' col Commander, ' + hb + ' ' + L[i][1]; return out; }
     for (i = 0; i < L.length; i++) if (clash(hb, L[i][0])) { out.forma = 'opposta'; out.motivo = st + ' col Commander, ' + hb + ' clasha ' + L[i][0] + ' ' + L[i][1]; return out; }
+    for (i = 0; i < L.length; i++) if (L[i][0] === hb) { out.forma = 'identica'; out.motivo = st + ' col Commander, ' + hb + ' ' + L[i][1]; return out; }
     for (var p = 1; p <= 9; p++) {
       if (p === 5 || p === pc || GEN[PEL[p]] !== PEL[pc]) continue;
       var M = contiene(c, p);
@@ -67,11 +67,19 @@
     return out;
   }
 
-  function ore(c) { var ds = c.giorno[0], L = []; for (var i = 0; i < 12; i++) L.push(oraCommander(c, hourGZ(ds, BR[i]))); return L; }
+  // Tipo di carta (Edu 28/10/2026): nel fan yin (stelle nel palazzo opposto) e nel fu yin (stelle a casa, tutto fermo:
+  // il clash dell'ora rompe la stabilita') l'ora del Commander va CONTRO il trend; nelle altre carte il trend accelera.
+  var OPP = { 1: 9, 9: 1, 2: 8, 8: 2, 3: 7, 7: 3, 4: 6, 6: 4 };
+  function tipoCarta(c) { var fan = true, fu = true;
+    for (var p = 1; p <= 9; p++) { if (p === 5) continue; var h = STARHOME[c.palaces[p].star]; if (h !== OPP[p]) fan = false; if (h !== p) fu = false; }
+    return fan ? 'fan yin' : fu ? 'fu yin' : 'normale'; }
+  function ore(c) { var ds = c.giorno[0], L = [], t = tipoCarta(c);
+    for (var i = 0; i < 12; i++) { var o = oraCommander(c, hourGZ(ds, BR[i])); if (o) { o.carta = t; o.verso = o.ecc ? (t === 'normale' ? 'trend' : 'contro il trend') : null; } L.push(o); }
+    return L; }
   // barre GMT della giornata di trading (00..20) che cadono in ogni ramo: 子 23-01 -> solo 00
   function oreGMT(hb) { var i = BR.indexOf(hb); if (i === 0) return [0]; var h = [2 * i - 1, 2 * i]; return h.filter(function (x) { return x <= 20; }); }
 
-  var API = { ore: ore, oraCommander: oraCommander, oreGMT: oreGMT, hourGZ: hourGZ };
+  var API = { ore: ore, oraCommander: oraCommander, tipoCarta: tipoCarta, oreGMT: oreGMT, hourGZ: hourGZ };
   W.XKDGQimenOre = API;
   if (typeof module !== 'undefined') module.exports = API;
 })();
