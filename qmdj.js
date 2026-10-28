@@ -125,7 +125,7 @@
   var TOMBA = { L:'未', F:'戌', M:'丑', W:'辰' };   // la Terra non ha tomba (Edu 25/10)
   var CLV = { '甲':'庚','庚':'甲','乙':'辛','辛':'乙','丙':'壬','壬':'丙','丁':'癸','癸':'丁' }, YIV = { '戊':'子','己':'戌','庚':'申','辛':'午','壬':'辰','癸':'寅' },
       CHV = { '子':'午','午':'子','丑':'未','未':'丑','寅':'申','申':'寅','卯':'酉','酉':'卯','辰':'戌','戌':'辰','巳':'亥','亥':'巳' };
-  function clashInterno(c, p) { var t = c.palaces[p].tiH, e = c.palaces[p].diH; return CLV[t] === e || !!(YIV[t] && YIV[e] && CHV[YIV[t]] === YIV[e]); }
+  function clashInterno(c, p) { var t = c.palaces[p].tiH, e = c.palaces[p].diH; if (W.QMDJ_GENG_BING_CLASH && ((t === '庚' && e === '丙') || (t === '丙' && e === '庚'))) return true; return CLV[t] === e || !!(YIV[t] && YIV[e] && CHV[YIV[t]] === YIV[e]); }
   // Trigono in tomba (Edu 27/10/2026, AUDUSD 14/10: "Ji, Gui e Wu dentro View sono un trigono di fuoco in tomba nel mese Xu"): i rami portati
   // dagli steli del palazzo (六仪: 戊子 己戌 庚申 辛午 壬辰 癸寅; porte e stelle i rami del loro palazzo d'origine) formano un 三合 completo il cui
   // elemento ha la tomba nel ramo del mese -> il palazzo vale come vuoto. QMDJ_TRIGONO: 'tutti' | 'zfty' | 'dshs' | 'off' (default);
@@ -439,6 +439,13 @@
     // Steli nello stesso palazzo (Edu 28/10/2026, EURJPY 18/09: "lo ZF ha 丙 che controlla 庚, e 丙 e' il Tai Sui: non lo vedo bene").
     // Lo stelo della terra che controlla quello del cielo indebolisce il palazzo, che non vince. QMDJ_STELI_INT:
     // 'terra' (terra controlla cielo) | 'tutti' (anche cielo controlla terra) | 'taisui' (solo se chi controlla e' il Tai Sui) | 'off' (default)
+    // Edu 28/10/2026: "la combinazione stessa di 庚 su 丙 o viceversa e' conflittuale" -> il palazzo con 庚/丙 non vince. QMDJ_GENG_BING: 'perde' | 'off'
+    if ((W.QMDJ_GENG_BING || 'off') === 'perde' && r.segue !== null && r.palGiorno && r.palOra && r.palGiorno !== r.palOra) {
+      var gb = function (p) { var t = c.palaces[p].tiH, e = c.palaces[p].diH; return (t === '庚' && e === '丙') || (t === '丙' && e === '庚'); };
+      var gA = gb(r.palGiorno), gB = gb(r.palOra);
+      if (gA && !gB && r.segue) { r.segue = false; r.motivo += ' · 庚/丙 nel palazzo del trend: non segue'; }
+      else if (gB && !gA && !r.segue) { r.segue = true; r.motivo += ' · 庚/丙 nel palazzo della controparte: segue'; }
+    }
     var sim = W.QMDJ_STELI_INT || 'off';
     if (sim !== 'off' && r.segue !== null && r.palGiorno && r.palOra && r.palGiorno !== r.palOra) {
       var SEL = { '甲':'L','乙':'L','丙':'F','丁':'F','戊':'E','己':'E','庚':'M','辛':'M','壬':'W','癸':'W' }, ts0 = c.anno && c.anno[0];
