@@ -157,6 +157,8 @@
     var tgm = W.QMDJ_TRIGONO || 'off'; if ((tgm === 'tutti' || tgm === c._sis) && trigonoInTomba(c, p)) return true;
     if (PBR[p].indexOf(c.mese[1]) >= 0 || (W.QMDJ_GIORNO_RIEMPIE !== false && PBR[p].indexOf(c.giorno[1]) >= 0)) return false;   // QMDJ_GIORNO_RIEMPIE=false: solo il mese riempie (prova 28/10)   // Edu 24/10: il ramo del mese o del giorno riempie il vuoto
     // Edu 25/10 e 27/10/2026: "un palazzo con un clash interno non e' mai vuoto". QMDJ_CLASH_PIENO: 'tutti' | 'zfty' | 'dshs' | 'off' (default)
+    // 旺相不空 (prova 28/10, USDCAD 14/08): un palazzo molto in stagione (mese+stagione >= QMDJ_TIMELY_PIENO) non e' vuoto.
+    if (W.QMDJ_TIMELY_PIENO && tempo(PEL[p], BEL[c.mese[1]]) + tempo(PEL[p], SEAS[c.mese[1]]) >= W.QMDJ_TIMELY_PIENO) return false;
     var cpm = W.QMDJ_CLASH_PIENO || 'off';
     if ((cpm === 'tutti' || cpm === c._sis) && clashInterno(c, p)) return false;
     var d = PBR[p].split('').filter(function (b) { return vu.indexOf(b) >= 0; });
