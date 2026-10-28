@@ -135,6 +135,22 @@
   var SANHUI = [['亥子丑','辰'], ['寅卯辰','未'], ['巳午未','戌'], ['申酉戌','丑']];   // trigoni direzionali: Acqua, Legno, Fuoco, Metallo
   var DOORHOME = { Rest:1, Birth:8, Injury:3, Delusion:4, View:9, Death:2, Shocking:7, Open:6 };
   var STARHOME = { Grass:1, Rice:2, Aggressor:3, Assistant:4, Heart:6, Pillar:7, Official:8, Hero:9 };
+  // Trigono vivo (Edu 28/10/2026, USDCAD 14/08: "Qian porta un trigono d'Acqua completo 申子辰, il mese 申 e' la nascita dell'Acqua:
+  // trigono vivo, non in tomba... e i rami dei tre attori non sono vuoti"). Rami come nel trigono in tomba (六仪 + porta + stella).
+  // modo 'vivo' = elemento non in tomba nel mese; 'nascita' = il mese e' la nascita (长生) o il ramo forte del trigono.
+  function rami3(c, p) { var d = c.palaces[p], br = {}, st = [d.tiH, d.diH]; if (d.ti2H) st.push(d.ti2H);
+    st.forEach(function (x) { if (YIR[x]) br[YIR[x]] = 1; });
+    var dn = d.doorName || d.door, hp = DOORHOME[dn], sp = STARHOME[d.star];
+    if (hp) PBR[hp].split('').forEach(function (b) { br[b] = 1; }); if (sp) PBR[sp].split('').forEach(function (b) { br[b] = 1; });
+    return br; }
+  function trigonoVivo(c, p, modo) { var br = rami3(c, p), vu = vuotiCarta(c), L = SANHE.concat(SANHUI);
+    for (var i = 0; i < L.length; i++) { var t = L[i][0];
+      if (!(br[t[0]] && br[t[1]] && br[t[2]])) continue;
+      if (vu.indexOf(t[0]) >= 0 || vu.indexOf(t[1]) >= 0 || vu.indexOf(t[2]) >= 0) continue;   // gli attori non devono essere vuoti
+      if (L[i][1] === c.mese[1]) continue;   // in tomba
+      if (modo === 'nascita' && t.indexOf(c.mese[1]) < 0) continue;   // il mese e' uno dei tre rami (nascita / apice / tomba esclusa sopra)
+      return true; }
+    return false; }
   function trigonoInTomba(c, p) {
     var d = c.palaces[p], st = [d.tiH, d.diH]; if (d.ti2H) st.push(d.ti2H);
     var br = {}, pil = [c.pilastro, c.giorno, c.mese, c.anno];
@@ -448,6 +464,17 @@
       if (stB && !stA) { r.segue = true; r.motivo += ' · controparte nello stadio ' + stadiDi(r.palOra).join('/') + ': segue'; }
       else if (stA && !stB) { r.segue = false; r.motivo += ' · trend nello stadio ' + stadiDi(r.palGiorno).join('/') + ': non segue'; }
     }
+    // Il palazzo vivo vince (Edu 28/10/2026, USDCAD 14/08): con un trigono vivo (QMDJ_TRIGONO_VIVO 'vivo' | 'nascita') -- e, se vuoto, in
+    // stagione (旺相不空, QMDJ_TIMELY_PIENO) -- il palazzo vince anche contro 庚, flusso e altre regole. QMDJ_VIVO_FORTE: forza minima (0).
+    var tvm = W.QMDJ_TRIGONO_VIVO || 'off';
+    if (tvm !== 'off' && r.segue !== null && r.palGiorno && r.palOra && r.palGiorno !== r.palOra) {
+      var fmin = W.QMDJ_VIVO_FORTE || 0, mbv2 = c.mese[1];
+      var fz2 = function (p) { return tempo(PEL[p], BEL[mbv2]) + tempo(PEL[p], SEAS[mbv2]); };
+      var viv = function (p) { return trigonoVivo(c, p, tvm) && fz2(p) >= fmin && !vuoto(c, p, vuotiCarta(c)); };
+      var vA = viv(r.palGiorno), vB = viv(r.palOra);
+      if (vA && !vB && !r.segue) { r.segue = true; r.motivo += ' · trigono vivo nel palazzo del trend: segue'; }
+      else if (vB && !vA && r.segue) { r.segue = false; r.motivo += ' · trigono vivo nel palazzo della controparte: non segue'; }
+    }
     // Steli nello stesso palazzo (Edu 28/10/2026, EURJPY 18/09: "lo ZF ha 丙 che controlla 庚, e 丙 e' il Tai Sui: non lo vedo bene").
     // Lo stelo della terra che controlla quello del cielo indebolisce il palazzo, che non vince. QMDJ_STELI_INT:
     // 'terra' (terra controlla cielo) | 'tutti' (anche cielo controlla terra) | 'taisui' (solo se chi controlla e' il Tai Sui) | 'off' (default)
@@ -534,7 +561,8 @@
             QMDJ_CLASH_PIENO: 'tutti', QMDJ_PONTE_BIRTH: 'tutti', QMDJ_PONTE_BIRTH_PIENO: true,
             QMDJ_TRIGONO: 'tutti', QMDJ_FANYIN_PONTE: 'wu',   // 28/10: il ponte Wu vince il fan yin
             QMDJ_BIRTH_DEATH: 'fanyin', QMDJ_MESE_LATO: 'fermo',
-            QMDJ_GENG_BING: 'perde', QMDJ_GENG_ECC: 'tre' }   // 28/10: lo ZF su 庚 vince se generato da steli mese/anno, nel palazzo del Tai Sui e col TY debole   // 28/10: 庚/丙 conflittuale, dopo la regola del 庚 sotto lo ZF/Commander   // 28/10: Birth batte Death salvo mese contrario; il ramo del mese decide fan yin e fermi   // 27/10 12:50: trigono (六仪 + porte + stelle) in tomba nel mese = vuoto   // 27/10 11:54: clash interno = mai vuoto; Birth frena il ponte
+            QMDJ_GENG_BING: 'perde', QMDJ_GENG_ECC: 'tre',
+            QMDJ_TIMELY_PIENO: 8, QMDJ_TRIGONO_VIVO: 'nascita' }   // 28/10: 旺相不空 + trigono vivo (mese nel trigono, attori non vuoti) vince   // 28/10: lo ZF su 庚 vince se generato da steli mese/anno, nel palazzo del Tai Sui e col TY debole   // 28/10: 庚/丙 conflittuale, dopo la regola del 庚 sotto lo ZF/Commander   // 28/10: Birth batte Death salvo mese contrario; il ramo del mese decide fan yin e fermi   // 27/10 12:50: trigono (六仪 + porte + stelle) in tomba nel mese = vuoto   // 27/10 11:54: clash interno = mai vuoto; Birth frena il ponte
   };
   function conPer(sis, fn) {
     var per = (W.QMDJ_PER || PER_DEFAULT)[sis] || {}, messi = [], k;
