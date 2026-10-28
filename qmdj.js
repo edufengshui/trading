@@ -440,7 +440,8 @@
     // Lo stelo della terra che controlla quello del cielo indebolisce il palazzo, che non vince. QMDJ_STELI_INT:
     // 'terra' (terra controlla cielo) | 'tutti' (anche cielo controlla terra) | 'taisui' (solo se chi controlla e' il Tai Sui) | 'off' (default)
     // Edu 28/10/2026: "la combinazione stessa di 庚 su 丙 o viceversa e' conflittuale" -> il palazzo con 庚/丙 non vince. QMDJ_GENG_BING: 'perde' | 'off'
-    if ((W.QMDJ_GENG_BING || 'off') === 'perde' && r.segue !== null && r.palGiorno && r.palOra && r.palGiorno !== r.palOra) {
+    // Edu 28/10 (USDJPY 30/07/2026): il Commander/ZF sopra 庚 viene prima -> se la regola del 庚 ha gia' deciso, 庚/丙 non ribalta.
+    if ((W.QMDJ_GENG_BING || 'off') === 'perde' && r.segue !== null && r.palGiorno && r.palOra && r.palGiorno !== r.palOra && !(W.QMDJ_GENG_BING_DOPO !== false && /sopra 庚/.test(r.motivo || ''))) {
       var gb = function (p) { var t = c.palaces[p].tiH, e = c.palaces[p].diH; return (t === '庚' && e === '丙') || (t === '丙' && e === '庚'); };
       var gA = gb(r.palGiorno), gB = gb(r.palOra);
       if (gA && !gB && r.segue) { r.segue = false; r.motivo += ' · 庚/丙 nel palazzo del trend: non segue'; }
@@ -520,7 +521,8 @@
     zfty: { QMDJ_PONTE_CLASH: true, QMDJ_CMD_AIUTO: true,            // 27/10: ponte con clash non passa il qi, Commander tiene il controllo (+568 | +675)
             QMDJ_CLASH_PIENO: 'tutti', QMDJ_PONTE_BIRTH: 'tutti', QMDJ_PONTE_BIRTH_PIENO: true,
             QMDJ_TRIGONO: 'tutti', QMDJ_FANYIN_PONTE: 'wu',   // 28/10: il ponte Wu vince il fan yin
-            QMDJ_BIRTH_DEATH: 'fanyin', QMDJ_MESE_LATO: 'fermo' }   // 28/10: Birth batte Death salvo mese contrario; il ramo del mese decide fan yin e fermi   // 27/10 12:50: trigono (六仪 + porte + stelle) in tomba nel mese = vuoto   // 27/10 11:54: clash interno = mai vuoto; Birth frena il ponte
+            QMDJ_BIRTH_DEATH: 'fanyin', QMDJ_MESE_LATO: 'fermo',
+            QMDJ_GENG_BING: 'perde' }   // 28/10: 庚/丙 conflittuale, dopo la regola del 庚 sotto lo ZF/Commander   // 28/10: Birth batte Death salvo mese contrario; il ramo del mese decide fan yin e fermi   // 27/10 12:50: trigono (六仪 + porte + stelle) in tomba nel mese = vuoto   // 27/10 11:54: clash interno = mai vuoto; Birth frena il ponte
   };
   function conPer(sis, fn) {
     var per = (W.QMDJ_PER || PER_DEFAULT)[sis] || {}, messi = [], k;
