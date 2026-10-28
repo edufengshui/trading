@@ -38,22 +38,30 @@
     return r;
   }
 
+  // rami contenuti in un palazzo: i suoi, quello della porta e della stella (palazzo d'origine), i 六仪 degli steli (cielo e terra)
+  function contiene(c, p) {
+    var d = c.palaces[p], L = [], r = ramiPalazzo(c, p), k;
+    r.proprio.split('').forEach(function (b) { L.push([b, 'nel palazzo']); });
+    r.stella.split('').forEach(function (b) { L.push([b, 'nella stella ' + d.star]); });
+    r.porta.split('').forEach(function (b) { L.push([b, 'nella porta ' + (d.doorName || d.door)]); });
+    [d.tiH, d.ti2H, d.diH].forEach(function (s) { if (s && YIR[s]) L.push([YIR[s], 'in ' + s]); });
+    return L;
+  }
+  // Edu 28/10/2026: lo stelo che sta con lo ZF (Commander) corrisponde a un'ora, e il suo ramo
+  // sta nello stesso palazzo, o nel palazzo contrario (clash), o nel palazzo che genera lo ZF
   function oraCommander(c, gz) {
     var pc = palCommander(c); if (!pc) return null;
     var st = stemVisibile(gz), hb = gz[1], ps = palDi(c, st);
     var out = { ramo: hb, pilastro: gz, stelo: st, palCmd: pc, ecc: false, forma: null, motivo: '' };
     if (ps !== pc) return out;
     out.ecc = true;
-    var r = ramiPalazzo(c, pc), tutti = r.proprio + r.porta + r.stella, d = c.palaces[pc];
-    var dove = function (b) { return r.proprio.indexOf(b) >= 0 ? 'nel palazzo' : r.stella.indexOf(b) >= 0 ? 'nella stella ' + d.star : 'nella porta ' + (d.doorName || d.door); };
-    for (var i = 0; i < tutti.length; i++) if (clash(hb, tutti[i])) {
-      out.forma = 'opposta'; out.motivo = st + ' col Commander, ' + hb + ' clasha ' + tutti[i] + ' ' + dove(tutti[i]); return out; }
-    if (tutti.indexOf(hb) >= 0) { out.forma = 'identica'; out.motivo = st + ' col Commander, ' + hb + ' ' + dove(hb); return out; }
-    // ponte: uno stelo che contiene il ramo dell'ora (六仪) in un palazzo che genera quello del Commander
+    var i, L = contiene(c, pc);
+    for (i = 0; i < L.length; i++) if (L[i][0] === hb) { out.forma = 'identica'; out.motivo = st + ' col Commander, ' + hb + ' ' + L[i][1]; return out; }
+    for (i = 0; i < L.length; i++) if (clash(hb, L[i][0])) { out.forma = 'opposta'; out.motivo = st + ' col Commander, ' + hb + ' clasha ' + L[i][0] + ' ' + L[i][1]; return out; }
     for (var p = 1; p <= 9; p++) {
       if (p === 5 || p === pc || GEN[PEL[p]] !== PEL[pc]) continue;
-      var t = c.palaces[p].tiH;
-      if (YIR[t] === hb) { out.forma = 'ponte'; out.motivo = st + ' col Commander, ' + t + ' contiene ' + hb + ' e genera il Commander dal palazzo ' + p; return out; }
+      var M = contiene(c, p);
+      for (i = 0; i < M.length; i++) if (M[i][0] === hb) { out.forma = 'genera'; out.motivo = st + ' col Commander, ' + hb + ' ' + M[i][1] + ' del palazzo ' + p + ', che genera lo ZF'; return out; }
     }
     out.forma = 'solo stelo'; out.motivo = st + ' col Commander';
     return out;
