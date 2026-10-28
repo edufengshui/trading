@@ -447,8 +447,18 @@
       var dA = c.palaces[r.palGiorno].doorName || c.palaces[r.palGiorno].door, dB = c.palaces[r.palOra].doorName || c.palaces[r.palOra].door;
       var bd = dA === 'Birth' && dB === 'Death' ? true : (dB === 'Birth' && dA === 'Death' ? false : null);
       var fermo = /fermo/.test(r.motivo || '');
+      // Edu 28/10/2026 (GBPUSD 05/02): "il mese con il suo ramo sta direttamente dalla parte del TY" -> Birth non prevale se il ramo del
+      // mese sta nel palazzo della parte con Death. QMDJ_BIRTH_DEATH_MESE (default on).
+      var mbr = c.mese[1], mesoA = PBR[r.palGiorno].indexOf(mbr) >= 0, mesoB = PBR[r.palOra].indexOf(mbr) >= 0;
+      if (W.QMDJ_BIRTH_DEATH_MESE !== false && bd !== null && ((bd && mesoB) || (!bd && mesoA))) bd = null;
       if (bd !== null && (bdm === 'sempre' || (bdm === 'fanyin' && fy) || (bdm === 'fermo' && (fy || fermo)))) {
         fy = false; r.segue = bd; r.motivo += ' · Birth piu\' forte di Death: ' + (bd ? 'segue' : 'non segue'); }
+    }
+    // prova (28/10): nel fan yin o con ZF/TY fermi vince il palazzo che contiene il ramo del mese. QMDJ_MESE_LATO: 'fanyin' | 'fermo' | 'off'
+    var mlt = W.QMDJ_MESE_LATO || 'off';
+    if (mlt !== 'off' && r.palGiorno && r.palOra && (fy || (mlt === 'fermo' && /fermo/.test(r.motivo || '')))) {
+      var mb2 = c.mese[1], inA = PBR[r.palGiorno].indexOf(mb2) >= 0, inB = PBR[r.palOra].indexOf(mb2) >= 0;
+      if (inA !== inB) { fy = false; r.segue = inA; r.motivo += ' · il ramo del mese sta con ' + (inA ? 'lo ZF: segue' : 'il TY: non segue'); }
     }
     if (fy && W.QMDJ_FANYIN !== false) { r.segue = false; r.fanYin = true; r.motivo += ' · fan yin: non segue'; }
     // Ora inibita (Edu 25/10/2026, USDCAD 12/10): il Commander nel palazzo opposto all'HS lo clasha E l'HS sta nel palazzo opposto al
@@ -485,7 +495,8 @@
     dshs: { QMDJ_STADI_PESO: { 8: -1, 9: -2, 10: -3 } },            // 27/10: palazzo forte bilancia lo stelo (+93 | +190)
     zfty: { QMDJ_PONTE_CLASH: true, QMDJ_CMD_AIUTO: true,            // 27/10: ponte con clash non passa il qi, Commander tiene il controllo (+568 | +675)
             QMDJ_CLASH_PIENO: 'tutti', QMDJ_PONTE_BIRTH: 'tutti', QMDJ_PONTE_BIRTH_PIENO: true,
-            QMDJ_TRIGONO: 'tutti', QMDJ_FANYIN_PONTE: 'wu' }   // 28/10: il ponte Wu vince il fan yin   // 27/10 12:50: trigono (六仪 + porte + stelle) in tomba nel mese = vuoto   // 27/10 11:54: clash interno = mai vuoto; Birth frena il ponte
+            QMDJ_TRIGONO: 'tutti', QMDJ_FANYIN_PONTE: 'wu',   // 28/10: il ponte Wu vince il fan yin
+            QMDJ_BIRTH_DEATH: 'fanyin', QMDJ_MESE_LATO: 'fermo' }   // 28/10: Birth batte Death salvo mese contrario; il ramo del mese decide fan yin e fermi   // 27/10 12:50: trigono (六仪 + porte + stelle) in tomba nel mese = vuoto   // 27/10 11:54: clash interno = mai vuoto; Birth frena il ponte
   };
   function conPer(sis, fn) {
     var per = (W.QMDJ_PER || PER_DEFAULT)[sis] || {}, messi = [], k;
