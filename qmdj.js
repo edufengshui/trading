@@ -556,7 +556,8 @@
   // QMDJ_PER = { dshs: { QMDJ_X: valore, ... }, zfty: { ... } }: valori applicati solo durante la lettura di quel metodo.
   // Un valore impostato a mano (globale) vince su quello del metodo. QMDJ_PER = {} per spegnere tutte le regole per metodo.
   var PER_DEFAULT = {
-    dshs: { QMDJ_STADI_PESO: { 8: -1, 9: -2, 10: -3 } },            // 27/10: palazzo forte bilancia lo stelo (+93 | +190)
+    dshs: { QMDJ_STADI_PESO: { 8: -1, 9: -2, 10: -3 },
+            QMDJ_TIMELY_PIENO: 8, QMDJ_TRIGONO_VIVO: 'nascita' },   // 28/10 10:54: 旺相不空 + trigono vivo anche in DsHs            // 27/10: palazzo forte bilancia lo stelo (+93 | +190)
     zfty: { QMDJ_PONTE_CLASH: true, QMDJ_CMD_AIUTO: true,            // 27/10: ponte con clash non passa il qi, Commander tiene il controllo (+568 | +675)
             QMDJ_CLASH_PIENO: 'tutti', QMDJ_PONTE_BIRTH: 'tutti', QMDJ_PONTE_BIRTH_PIENO: true,
             QMDJ_TRIGONO: 'tutti', QMDJ_FANYIN_PONTE: 'wu',   // 28/10: il ponte Wu vince il fan yin
