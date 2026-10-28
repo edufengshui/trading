@@ -440,6 +440,16 @@
     // QMDJ_FANYIN_PONTE: 'wu' (solo il ponte Wu) | 'tutti' (qualsiasi ponte) | 'off' (default)
     var fyp = W.QMDJ_FANYIN_PONTE || 'off', mpt = /ponte ([^:]*):/.exec(r.motivo || '');
     if (fy && mpt && (fyp === 'tutti' || (fyp === 'wu' && /Wu/.test(mpt[1])))) { fy = false; r.motivo += ' · fan yin superato dal ponte ' + mpt[1]; }
+    // Edu 28/10/2026 (AUDUSD 01/10): "e' fan yin ma lo ZF sta con Birth, che di norma e' piu' forte di Death".
+    // QMDJ_BIRTH_DEATH: 'fanyin' (solo nel fan yin) | 'fermo' (anche quando ZF e TY sono fermi: stesso elemento) | 'sempre' | 'off' (default)
+    var bdm = W.QMDJ_BIRTH_DEATH || 'off';
+    if (bdm !== 'off' && r.palGiorno && r.palOra) {
+      var dA = c.palaces[r.palGiorno].doorName || c.palaces[r.palGiorno].door, dB = c.palaces[r.palOra].doorName || c.palaces[r.palOra].door;
+      var bd = dA === 'Birth' && dB === 'Death' ? true : (dB === 'Birth' && dA === 'Death' ? false : null);
+      var fermo = /fermo/.test(r.motivo || '');
+      if (bd !== null && (bdm === 'sempre' || (bdm === 'fanyin' && fy) || (bdm === 'fermo' && (fy || fermo)))) {
+        fy = false; r.segue = bd; r.motivo += ' · Birth piu\' forte di Death: ' + (bd ? 'segue' : 'non segue'); }
+    }
     if (fy && W.QMDJ_FANYIN !== false) { r.segue = false; r.fanYin = true; r.motivo += ' · fan yin: non segue'; }
     // Ora inibita (Edu 25/10/2026, USDCAD 12/10): il Commander nel palazzo opposto all'HS lo clasha E l'HS sta nel palazzo opposto al
     // ramo dell'ora -> l'ora non funziona: segue (anche sopra il fan yin). Simmetrico per il giorno -> non segue. QMDJ_INIBITA = 'on' | 'off' | 'una'.
