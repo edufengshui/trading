@@ -575,6 +575,23 @@
         else { r.segue = !r.segue; r.motivo += ' · l\'Output del controllato non e\' timely: il controllo non tiene, ' + (r.segue ? 'segue' : 'non segue'); }
       }
     }
+    // Edu 29/10/2026 (NZDUSD 28/10/2026): 青龍逃走, 乙 nel cielo sopra 辛 sul di pan: il drago fugge, il trend scappa.
+    // QMDJ_QINGLONG: 'off' | 'dshs' | 'zfty' | 'tutti'. ATTORE: 'ds' (palazzo dello stelo del giorno 乙) | 'giorno' (palazzo del trend del metodo).
+    // MODO: 'contro' (segue/fermo -> non segue) | 'segue' (solo un segue diventa non segue) | 'fermo' (un segue diventa fermo). SIMM: anche per l'ora.
+    var qlm = W.QMDJ_QINGLONG || 'off';
+    if (qlm === 'tutti' || qlm === c._sis) {
+      var qa = W.QMDJ_QINGLONG_ATTORE || 'ds', qmo = W.QMDJ_QINGLONG_MODO || 'segue', qpg = null, qpo = null;
+      if (qa === 'ds') { for (var q8 = 1; q8 <= 9; q8++) if (q8 !== 5 && c.palaces[q8].tiH === c.giorno[0]) qpg = q8; }
+      else qpg = r.palGiorno;
+      qpo = r.palOra;
+      var qlG = qpg && c.palaces[qpg].tiH === '乙' && c.palaces[qpg].diH === '辛';
+      var qlO = W.QMDJ_QINGLONG_SIMM && qpo && c.palaces[qpo].tiH === '乙' && c.palaces[qpo].diH === '辛';
+      if (qlG && !qlO) {
+        if (qmo === 'contro' && r.segue !== false) { r.segue = false; r.motivo += ' · 青龍逃走 (乙 sopra 辛) sul trend: il drago fugge, non segue'; }
+        else if (qmo === 'segue' && r.segue === true) { r.segue = false; r.motivo += ' · 青龍逃走 (乙 sopra 辛) sul trend: il drago fugge, non segue'; }
+        else if (qmo === 'fermo' && r.segue === true) { r.segue = null; r.motivo += ' · 青龍逃走 (乙 sopra 辛) sul trend: fermo'; }
+      } else if (qlO && !qlG && r.segue !== true && qmo !== 'fermo') { r.segue = true; r.motivo += ' · 青龍逃走 (乙 sopra 辛) sulla controparte: segue'; }
+    }
     return r;
   }
 
@@ -594,14 +611,16 @@
   // Un valore impostato a mano (globale) vince su quello del metodo. QMDJ_PER = {} per spegnere tutte le regole per metodo.
   var PER_DEFAULT = {
     dshs: { QMDJ_STADI_PESO: { 8: -1, 9: -2, 10: -3 },
-            QMDJ_TIMELY_PIENO: 8, QMDJ_TRIGONO_VIVO: 'nascita' },   // 28/10 10:54: 旺相不空 + trigono vivo anche in DsHs            // 27/10: palazzo forte bilancia lo stelo (+93 | +190)
+            QMDJ_TIMELY_PIENO: 8, QMDJ_TRIGONO_VIVO: 'nascita',
+            QMDJ_QINGLONG: 'tutti', QMDJ_QINGLONG_MODO: 'contro' },   // 29/10: 青龍逃走 sullo stelo del giorno -> non segue (NZDUSD 28/10)   // 28/10 10:54: 旺相不空 + trigono vivo anche in DsHs            // 27/10: palazzo forte bilancia lo stelo (+93 | +190)
     zfty: { QMDJ_PONTE_CLASH: true, QMDJ_CMD_AIUTO: true,            // 27/10: ponte con clash non passa il qi, Commander tiene il controllo (+568 | +675)
             QMDJ_CLASH_PIENO: 'tutti', QMDJ_PONTE_BIRTH: 'tutti', QMDJ_PONTE_BIRTH_PIENO: true,
             QMDJ_TRIGONO: 'tutti', QMDJ_FANYIN_PONTE: 'wu',   // 28/10: il ponte Wu vince il fan yin
             QMDJ_BIRTH_DEATH: 'fanyin', QMDJ_MESE_LATO: 'fermo',
             QMDJ_GENG_BING: 'perde', QMDJ_GENG_ECC: 'tre',
             QMDJ_TIMELY_PIENO: 8, QMDJ_TRIGONO_VIVO: 'nascita',
-            QMDJ_TY_BIRTH: 'zfty', QMDJ_TY_BIRTH_PORTA: 'zsanno2', QMDJ_OUTPUT: 'zfty' }   // 29/10: senza l'Output timely del TY controllato il controllo dello ZF non si chiude: fermo (USDJPY 24/09)   // 29/10: il TY genera Birth/ZS che controlla lo ZF untimely (AUDUSD 10/09)   // 28/10: 旺相不空 + trigono vivo (mese nel trigono, attori non vuoti) vince   // 28/10: lo ZF su 庚 vince se generato da steli mese/anno, nel palazzo del Tai Sui e col TY debole   // 28/10: 庚/丙 conflittuale, dopo la regola del 庚 sotto lo ZF/Commander   // 28/10: Birth batte Death salvo mese contrario; il ramo del mese decide fan yin e fermi   // 27/10 12:50: trigono (六仪 + porte + stelle) in tomba nel mese = vuoto   // 27/10 11:54: clash interno = mai vuoto; Birth frena il ponte
+            QMDJ_TY_BIRTH: 'zfty', QMDJ_TY_BIRTH_PORTA: 'zsanno2', QMDJ_OUTPUT: 'zfty',
+            QMDJ_QINGLONG: 'tutti', QMDJ_QINGLONG_MODO: 'contro' }   // 29/10: 青龍逃走 sullo stelo del giorno -> non segue (NZDUSD 28/10)   // 29/10: senza l'Output timely del TY controllato il controllo dello ZF non si chiude: fermo (USDJPY 24/09)   // 29/10: il TY genera Birth/ZS che controlla lo ZF untimely (AUDUSD 10/09)   // 28/10: 旺相不空 + trigono vivo (mese nel trigono, attori non vuoti) vince   // 28/10: lo ZF su 庚 vince se generato da steli mese/anno, nel palazzo del Tai Sui e col TY debole   // 28/10: 庚/丙 conflittuale, dopo la regola del 庚 sotto lo ZF/Commander   // 28/10: Birth batte Death salvo mese contrario; il ramo del mese decide fan yin e fermi   // 27/10 12:50: trigono (六仪 + porte + stelle) in tomba nel mese = vuoto   // 27/10 11:54: clash interno = mai vuoto; Birth frena il ponte
   };
   function conPer(sis, fn) {
     var per = (W.QMDJ_PER || PER_DEFAULT)[sis] || {}, messi = [], k;
