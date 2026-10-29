@@ -73,11 +73,31 @@
   function tipoCarta(c) { var fan = true, fu = true;
     for (var p = 1; p <= 9; p++) { if (p === 5) continue; var h = STARHOME[c.palaces[p].star]; if (h !== OPP[p]) fan = false; if (h !== p) fu = false; }
     return fan ? 'fan yin' : fu ? 'fu yin' : 'normale'; }
-  function ore(c) { var ds = c.giorno[0], L = [], t = tipoCarta(c);
+  // vuoti del 旬 dell'ora della carta; tempo del palazzo nel mese (囚/死 = untimely)
+  function vuotiDi(gz) { var i = 0; for (var k = 0; k < 60; k++) if (ST[k % 10] === gz[0] && BR[k % 12] === gz[1]) i = k; var s = Math.floor(i / 10) * 10; return [BR[(s + 10) % 12], BR[(s + 11) % 12]]; }
+  var BEL = { '子': 'acqua', '亥': 'acqua', '寅': 'legno', '卯': 'legno', '巳': 'fuoco', '午': 'fuoco', '申': 'metallo', '酉': 'metallo', '辰': 'terra', '戌': 'terra', '丑': 'terra', '未': 'terra' };
+  var CTL = { legno: 'terra', terra: 'acqua', acqua: 'fuoco', fuoco: 'metallo', metallo: 'legno' };
+  function untimely(c, p) { var me = BEL[c.mese[1]], pe = PEL[p]; return CTL[me] === pe || CTL[pe] === me; }
+  function vuotoP(c, p) { var v = vuotiDi(c.pilastro); return PB[p].split('').some(function (b) { return v.indexOf(b) >= 0; }); }
+  // ore(carta, segue): segue = verdetto della carta (true / false / null) dai metodi QMDJ.
+  // Edu 29/10/2026 (USDJPY 10/09, AUDUSD 10/09): "l'ora del Commander crea il movimento; la direzione la da' la carta:
+  // se la carta non segue, quando arriva la sua ora si attiva il NON SEGUIRE" (era GBPUSD 14/10, prima vista come eccezione).
+  function ore(c, segue) { var ds = c.giorno[0], L = [], t = tipoCarta(c);
     // Edu 28/10/2026 (USDCAD 13/10): il mese che sta nel palazzo opposto al Commander lo rende molto untimely -> l'ora non accende niente
     var pc = palCommander(c), spento = !!(pc && PB[OPP[pc]] && PB[OPP[pc]].indexOf(c.mese[1]) >= 0);
-    for (var i = 0; i < 12; i++) { var o = oraCommander(c, hourGZ(ds, BR[i]));
-      if (o) { o.carta = t; o.spento = spento && t === 'normale'; o.verso = !o.ecc ? null : o.spento ? 'niente (mese opposto al Commander)' : (t === 'normale' ? 'trend' : 'contro il trend'); }
+    // Edu 29/10/2026 (USDJPY 10/09, 甲辰壬): "lo ZF e' vuoto e untimely: quando arriva la sua ora inizia la discesa contro il trend".
+    // L'ora propria del Commander e' il 甲 che si nasconde sotto il suo stelo (il 旬首 dell'ora della carta). Misura 2020-26 con ZF vuoto
+    // e mese opposto: 59 giorni, movimento 1,31x il normale, ora piu' forte del giorno 17% (contro 9%), da li' alle 21 61% contro il trend.
+    var zfVuoto = !!(pc && vuotoP(c, pc)), zfUnt = !!(pc && untimely(c, pc)), zs = pc ? c.palaces[pc].tiH : null;
+    for (var i = 0; i < 12; i++) { var gz = hourGZ(ds, BR[i]), o = oraCommander(c, gz);
+      if (o) { o.carta = t; o.propria = gz[0] === '甲' && stemVisibile(gz) === zs;
+        o.zfVuoto = zfVuoto; o.zfUntimely = zfUnt;
+        o.spento = spento && t === 'normale' && !zfVuoto;
+        o.forte = !!(o.ecc && o.propria && zfVuoto && spento);
+        var dirCarta = segue === true ? 'trend' : segue === false ? 'contro il trend' : 'trend';
+        o.verso = !o.ecc ? null : o.forte ? 'contro il trend' : o.spento ? 'niente (mese opposto al Commander)'
+          : (t !== 'normale' ? 'contro il trend' : (o.propria && zfVuoto && zfUnt) ? 'contro il trend' : dirCarta);
+        if (o.forte) o.motivo += ' · ZF vuoto e mese opposto: movimento forte, non segue'; }
       L.push(o); }
     return L; }
   // barre GMT della giornata di trading (00..20) che cadono in ogni ramo: 子 23-01 -> solo 00
