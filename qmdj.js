@@ -559,6 +559,22 @@
         if (vsZ && !vsT) { r.segue = false; r.motivo += ' · la controparte genera lo ZS (con Birth, o View e lo stelo dell\'anno) che controlla lo ZF untimely: non segue'; break; }
         if (vsT && !vsZ) { r.segue = true; r.motivo += ' · lo ZF genera lo ZS (con Birth, o View e lo stelo dell\'anno) che controlla la controparte untimely: segue'; break; } }
     }
+    // Edu 29/10/2026 (USDJPY 24/09/2026): l'OUTPUT del controllato (l'elemento che il controllato genera, che controlla sempre chi lo
+    // controllava), quando e' timely nel mese (旺/相) e non vuoto, fa ricircolare il qi verso chi controlla: il controllo tiene
+    // ("al contrario e' il ponte"). Misura (ZF controlla TY): 62,5% e 61,5% contro 51,9% e 53,6% con l'Output untimely.
+    // QMDJ_OUTPUT: 'zfty' | 'tutti' | 'off'; QMDJ_OUTPUT_MODO: 'zf' (solo lo ZF che controlla -> segue) | 'simm' (anche TY -> non segue).
+    var opm = W.QMDJ_OUTPUT || 'off';
+    if ((opm === 'tutti' || (opm === 'zfty' && c._sis === 'zfty')) && r.palGiorno && r.palOra && r.palGiorno !== r.palOra && PEL[r.palGiorno] && PEL[r.palOra]) {
+      var eG = PEL[r.palGiorno], eO = PEL[r.palOra], chi = CTL[eG] === eO ? 'zf' : CTL[eO] === eG ? 'ty' : null, omo = W.QMDJ_OUTPUT_MODO || 'fermo';
+      var vale = chi === 'zf' ? (r.segue === true) : chi === 'ty' && W.QMDJ_OUTPUT_SIMM ? (r.segue === false) : false;
+      if (vale) {
+        var eOut = GEN[chi === 'zf' ? eO : eG], vuO = vuotiCarta(c), okO = false;
+        if (tempo(eOut, BEL[c.mese[1]]) >= 3) for (var q7 = 1; q7 <= 9; q7++) if (q7 !== 5 && PEL[q7] === eOut && !vuoto(c, q7, vuO)) okO = true;
+        if (okO) r.motivo += ' · l\'Output del controllato e\' timely e ritorna a chi controlla: il controllo tiene';
+        else if (omo === 'fermo') { r.segue = null; r.motivo += ' · l\'Output del controllato non e\' timely: il controllo non si chiude, fermo'; }
+        else { r.segue = !r.segue; r.motivo += ' · l\'Output del controllato non e\' timely: il controllo non tiene, ' + (r.segue ? 'segue' : 'non segue'); }
+      }
+    }
     return r;
   }
 
@@ -585,7 +601,7 @@
             QMDJ_BIRTH_DEATH: 'fanyin', QMDJ_MESE_LATO: 'fermo',
             QMDJ_GENG_BING: 'perde', QMDJ_GENG_ECC: 'tre',
             QMDJ_TIMELY_PIENO: 8, QMDJ_TRIGONO_VIVO: 'nascita',
-            QMDJ_TY_BIRTH: 'zfty', QMDJ_TY_BIRTH_PORTA: 'zsanno2' }   // 29/10: il TY genera Birth/ZS che controlla lo ZF untimely (AUDUSD 10/09)   // 28/10: 旺相不空 + trigono vivo (mese nel trigono, attori non vuoti) vince   // 28/10: lo ZF su 庚 vince se generato da steli mese/anno, nel palazzo del Tai Sui e col TY debole   // 28/10: 庚/丙 conflittuale, dopo la regola del 庚 sotto lo ZF/Commander   // 28/10: Birth batte Death salvo mese contrario; il ramo del mese decide fan yin e fermi   // 27/10 12:50: trigono (六仪 + porte + stelle) in tomba nel mese = vuoto   // 27/10 11:54: clash interno = mai vuoto; Birth frena il ponte
+            QMDJ_TY_BIRTH: 'zfty', QMDJ_TY_BIRTH_PORTA: 'zsanno2', QMDJ_OUTPUT: 'zfty' }   // 29/10: senza l'Output timely del TY controllato il controllo dello ZF non si chiude: fermo (USDJPY 24/09)   // 29/10: il TY genera Birth/ZS che controlla lo ZF untimely (AUDUSD 10/09)   // 28/10: 旺相不空 + trigono vivo (mese nel trigono, attori non vuoti) vince   // 28/10: lo ZF su 庚 vince se generato da steli mese/anno, nel palazzo del Tai Sui e col TY debole   // 28/10: 庚/丙 conflittuale, dopo la regola del 庚 sotto lo ZF/Commander   // 28/10: Birth batte Death salvo mese contrario; il ramo del mese decide fan yin e fermi   // 27/10 12:50: trigono (六仪 + porte + stelle) in tomba nel mese = vuoto   // 27/10 11:54: clash interno = mai vuoto; Birth frena il ponte
   };
   function conPer(sis, fn) {
     var per = (W.QMDJ_PER || PER_DEFAULT)[sis] || {}, messi = [], k;

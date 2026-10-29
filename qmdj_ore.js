@@ -89,6 +89,13 @@
     // L'ora propria del Commander e' il 甲 che si nasconde sotto il suo stelo (il 旬首 dell'ora della carta). Misura 2020-26 con ZF vuoto
     // e mese opposto: 59 giorni, movimento 1,31x il normale, ora piu' forte del giorno 17% (contro 9%), da li' alle 21 61% contro il trend.
     var zfVuoto = !!(pc && vuotoP(c, pc)), zfUnt = !!(pc && untimely(c, pc)), zs = pc ? c.palaces[pc].tiH : null;
+    // Edu 29/10/2026 (USDJPY 24/09, 戊子 da Kan su Li): l'Output del controllato (TY controllato dallo ZF) timely nel mese:
+    // le ore col ramo in un palazzo dell'Output muovono di piu' (1,20x e 1,03x contro 1,09x e 0,89x del giorno; con anche lo stelo
+    // nel cielo dell'Output, 2024-26: ora piu' forte 16% contro 9%, barra doppia 26% contro 8%). La direzione resta quella della carta.
+    var pty = null; if (pc) for (var q = 1; q <= 9; q++) if (q !== 5 && STARHOME[c.palaces[q].star] === pc) pty = q;
+    var outP = [];
+    if (pc && pty && pty !== pc && CTL[PEL[pc]] === PEL[pty]) { var eo = GEN[PEL[pty]], me = BEL[c.mese[1]];
+      if (eo === me || GEN[me] === eo) for (var q2 = 1; q2 <= 9; q2++) if (q2 !== 5 && PEL[q2] === eo && !vuotoP(c, q2)) outP.push(q2); }
     for (var i = 0; i < 12; i++) { var gz = hourGZ(ds, BR[i]), o = oraCommander(c, gz);
       if (o) { o.carta = t; o.propria = gz[0] === '甲' && stemVisibile(gz) === zs;
         o.zfVuoto = zfVuoto; o.zfUntimely = zfUnt;
@@ -98,6 +105,10 @@
         o.verso = !o.ecc ? null : o.forte ? 'contro il trend' : o.spento ? 'niente (mese opposto al Commander)'
           : (t !== 'normale' ? 'contro il trend' : (o.propria && zfVuoto && zfUnt) ? 'contro il trend' : dirCarta);
         if (o.forte) o.motivo += ' · ZF vuoto e mese opposto: movimento forte, non segue'; }
+      if (o && outP.length) { var pr = 0; for (var q3 = 0; q3 < outP.length; q3++) if (PB[outP[q3]].indexOf(BR[i]) >= 0) pr = outP[q3];
+        if (pr) { o.output = true; o.outputStelo = outP.some(function (p) { return c.palaces[p].tiH === stemVisibile(gz); });
+          o.outputMotivo = BR[i] + ' nel palazzo ' + pr + ' (Output timely del TY controllato)' + (o.outputStelo ? ', anche lo stelo' : '');
+          o.outputVerso = segue === false ? 'contro il trend' : 'trend'; } }
       L.push(o); }
     return L; }
   // barre GMT della giornata di trading (00..20) che cadono in ogni ramo: 子 23-01 -> solo 00
