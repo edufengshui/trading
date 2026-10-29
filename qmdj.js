@@ -538,6 +538,24 @@
       if (ib && !ia) { r.segue = true; r.motivo += ' · ora inibita (Commander opposto + ora opposta al suo ramo): segue'; }
       else if (ia && !ib) { r.segue = false; r.motivo += ' · giorno inibito (Commander opposto + giorno opposto al suo ramo): non segue'; }
     }
+    // Edu 29/10/2026 (AUDUSD 10/09/2026): "non segue perche' il TY genera Birth con lo ZS che controlla un Li untimely"
+    // (prova: l'ora 丙午 clasha Li da Kan e il suo stesso ramo). Il palazzo di Birth/ZS generato da una parte e che controlla l'altra,
+    // untimely nel mese (囚/死), decide. Simmetrico per lo ZF. QMDJ_TY_BIRTH: 'zfty' | 'tutti' | 'off'; QMDJ_TY_BIRTH_PORTA:
+    // 'birthzs' (Birth che e' lo ZS, default) | 'birth' | 'zs' | 'uno' (Birth o ZS).
+    var tbm = W.QMDJ_TY_BIRTH || 'off';
+    if ((tbm === 'tutti' || (tbm === 'zfty' && c._sis === 'zfty')) && r.palGiorno && r.palOra && r.palGiorno !== r.palOra) {
+      var tbp = W.QMDJ_TY_BIRTH_PORTA || 'birthzs', mbb = c.mese[1];
+      var agente = function (p) { var d = c.palaces[p], bi = (d.doorName || d.door) === 'Birth', zz = !!d.zhiShi;
+        return tbp === 'birth' ? bi : tbp === 'zs' ? zz : tbp === 'uno' ? (bi || zz) : (bi && zz); };
+      var untm = function (p) { return tempo(PEL[p], BEL[mbb]) <= 1; };
+      var gen = function (a, x) { return a === x || GEN[PEL[a]] === PEL[x]; };
+      var tbf = W.QMDJ_TY_BIRTH_FORTE || 0;   // forza minima (mese) del palazzo di Birth/ZS
+      for (var q6 = 1; q6 <= 9; q6++) { if (q6 === 5 || !agente(q6) || tempo(PEL[q6], BEL[mbb]) < tbf) continue;
+        var vsZ = gen(r.palOra, q6) && CTL[PEL[q6]] === PEL[r.palGiorno] && untm(r.palGiorno);
+        var vsT = gen(r.palGiorno, q6) && CTL[PEL[q6]] === PEL[r.palOra] && untm(r.palOra);
+        if (vsZ && !vsT) { r.segue = false; r.motivo += ' · la controparte genera Birth/ZS che controlla lo ZF untimely: non segue'; break; }
+        if (vsT && !vsZ) { r.segue = true; r.motivo += ' · lo ZF genera Birth/ZS che controlla la controparte untimely: segue'; break; } }
+    }
     return r;
   }
 
@@ -563,7 +581,8 @@
             QMDJ_TRIGONO: 'tutti', QMDJ_FANYIN_PONTE: 'wu',   // 28/10: il ponte Wu vince il fan yin
             QMDJ_BIRTH_DEATH: 'fanyin', QMDJ_MESE_LATO: 'fermo',
             QMDJ_GENG_BING: 'perde', QMDJ_GENG_ECC: 'tre',
-            QMDJ_TIMELY_PIENO: 8, QMDJ_TRIGONO_VIVO: 'nascita' }   // 28/10: 旺相不空 + trigono vivo (mese nel trigono, attori non vuoti) vince   // 28/10: lo ZF su 庚 vince se generato da steli mese/anno, nel palazzo del Tai Sui e col TY debole   // 28/10: 庚/丙 conflittuale, dopo la regola del 庚 sotto lo ZF/Commander   // 28/10: Birth batte Death salvo mese contrario; il ramo del mese decide fan yin e fermi   // 27/10 12:50: trigono (六仪 + porte + stelle) in tomba nel mese = vuoto   // 27/10 11:54: clash interno = mai vuoto; Birth frena il ponte
+            QMDJ_TIMELY_PIENO: 8, QMDJ_TRIGONO_VIVO: 'nascita',
+            QMDJ_TY_BIRTH: 'zfty' }   // 29/10: il TY genera Birth/ZS che controlla lo ZF untimely (AUDUSD 10/09)   // 28/10: 旺相不空 + trigono vivo (mese nel trigono, attori non vuoti) vince   // 28/10: lo ZF su 庚 vince se generato da steli mese/anno, nel palazzo del Tai Sui e col TY debole   // 28/10: 庚/丙 conflittuale, dopo la regola del 庚 sotto lo ZF/Commander   // 28/10: Birth batte Death salvo mese contrario; il ramo del mese decide fan yin e fermi   // 27/10 12:50: trigono (六仪 + porte + stelle) in tomba nel mese = vuoto   // 27/10 11:54: clash interno = mai vuoto; Birth frena il ponte
   };
   function conPer(sis, fn) {
     var per = (W.QMDJ_PER || PER_DEFAULT)[sis] || {}, messi = [], k;
