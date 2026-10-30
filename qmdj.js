@@ -272,6 +272,11 @@
     var mp = W.QMDJ_MESE_PONTE || 'off';
     if (mp === 'tutti' || (mp === 'zfty' && c._sis === 'zfty'))
       for (var q6 = 1; q6 <= 9; q6++) if (q6 !== 5 && c.palaces[q6].tiH === c.mese[0] && ponte(q6)) { ponti.push('stelo del mese'); break; }
+    // Edu 30/10/2026 (EURJPY 29/09): anche lo stelo del giorno nel cielo fa da ponte (丙 su Kun fra il TY in Li e lo ZF in Dui).
+    // "Il ponte del DS vale sempre". QMDJ_DS_PONTE: 'tutti' | 'zfty' | 'off' (default; nel DsHs il DS e' un attore, quindi agisce nello ZFTY)
+    var dsp = W.QMDJ_DS_PONTE || 'off';
+    if (dsp === 'tutti' || (dsp === 'zfty' && c._sis === 'zfty'))
+      for (var q7 = 1; q7 <= 9; q7++) if (q7 !== 5 && c.palaces[q7].tiH === c.giorno[0] && ponte(q7)) { ponti.push('stelo del giorno'); break; }
     // Edu 26/10/2026 (USDJPY 11/07/2024): anche la porta Birth fa da ponte. QMDJ_BIRTH_PONTE: 'zfty' | 'tutti' | 'off' (default)
     var bp = W.QMDJ_BIRTH_PONTE || 'zfty';   // acceso nello ZFTY (Edu 26/10 18:42)
     if (bp === 'tutti' || (bp === 'zfty' && c._sis === 'zfty'))
@@ -620,7 +625,7 @@
             QMDJ_GENG_BING: 'perde', QMDJ_GENG_ECC: 'tre',
             QMDJ_TIMELY_PIENO: 8, QMDJ_TRIGONO_VIVO: 'nascita',
             QMDJ_TY_BIRTH: 'zfty', QMDJ_TY_BIRTH_PORTA: 'zsanno2', QMDJ_OUTPUT: 'zfty',
-            QMDJ_QINGLONG: 'tutti', QMDJ_QINGLONG_MODO: 'contro' }   // 29/10: 青龍逃走 sullo stelo del giorno -> non segue (NZDUSD 28/10)   // 29/10: senza l'Output timely del TY controllato il controllo dello ZF non si chiude: fermo (USDJPY 24/09)   // 29/10: il TY genera Birth/ZS che controlla lo ZF untimely (AUDUSD 10/09)   // 28/10: 旺相不空 + trigono vivo (mese nel trigono, attori non vuoti) vince   // 28/10: lo ZF su 庚 vince se generato da steli mese/anno, nel palazzo del Tai Sui e col TY debole   // 28/10: 庚/丙 conflittuale, dopo la regola del 庚 sotto lo ZF/Commander   // 28/10: Birth batte Death salvo mese contrario; il ramo del mese decide fan yin e fermi   // 27/10 12:50: trigono (六仪 + porte + stelle) in tomba nel mese = vuoto   // 27/10 11:54: clash interno = mai vuoto; Birth frena il ponte
+            QMDJ_QINGLONG: 'tutti', QMDJ_QINGLONG_MODO: 'contro', QMDJ_DS_PONTE: 'tutti' }   // 30/10: il ponte dello stelo del giorno (EURJPY 29/09)   // 29/10: 青龍逃走 sullo stelo del giorno -> non segue (NZDUSD 28/10)   // 29/10: senza l'Output timely del TY controllato il controllo dello ZF non si chiude: fermo (USDJPY 24/09)   // 29/10: il TY genera Birth/ZS che controlla lo ZF untimely (AUDUSD 10/09)   // 28/10: 旺相不空 + trigono vivo (mese nel trigono, attori non vuoti) vince   // 28/10: lo ZF su 庚 vince se generato da steli mese/anno, nel palazzo del Tai Sui e col TY debole   // 28/10: 庚/丙 conflittuale, dopo la regola del 庚 sotto lo ZF/Commander   // 28/10: Birth batte Death salvo mese contrario; il ramo del mese decide fan yin e fermi   // 27/10 12:50: trigono (六仪 + porte + stelle) in tomba nel mese = vuoto   // 27/10 11:54: clash interno = mai vuoto; Birth frena il ponte
   };
   function conPer(sis, fn) {
     var per = (W.QMDJ_PER || PER_DEFAULT)[sis] || {}, messi = [], k;
@@ -661,7 +666,7 @@
     }
     var p = null;
     if (/^ponte /.test(passo)) { var n = passo.slice(6).split(':')[0].split(' + ')[0];
-      p = n === 'Commander' ? cmd : n === 'Zhi Shi' ? zs : n === 'Wu' ? trova(function (d) { return d.tiH === '戊'; }) : n === 'stelo del mese' ? trova(function (d) { return d.tiH === c.mese[0]; }) : porta(n); }
+      p = n === 'Commander' ? cmd : n === 'Zhi Shi' ? zs : n === 'Wu' ? trova(function (d) { return d.tiH === '戊'; }) : n === 'stelo del mese' ? trova(function (d) { return d.tiH === c.mese[0]; }) : n === 'stelo del giorno' ? trova(function (d) { return d.tiH === c.giorno[0]; }) : porta(n); }
     else if (/青龍逃走/.test(passo)) p = trova(function (d) { return d.tiH === '乙' && d.diH === '辛'; });
     else if (/Commander opposto|Tai Sui eccita/.test(passo)) p = cmd;
     else if (/genera lo ZS/.test(passo)) p = zs;
