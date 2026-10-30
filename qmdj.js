@@ -642,11 +642,47 @@
     }
     return out;
   }
+  // PALAZZO CHE DECIDE (Edu 30/10/2026): il MDO entra nell'ora che accende il palazzo che decide la carta. Il palazzo e' quello del
+  // passaggio della cascata che ha dato il verdetto finale (l'ultimo argomento col verso del verdetto; se nessuno, la relazione di base).
+  // decide(c, g) -> { pal, passo }. Base: controllo -> chi vince; generazione -> chi genera.
+  function decide(c, g) {
+    if (!g || g.segue === null || g.segue === undefined || !g.palGiorno || !g.palOra) return { pal: null, passo: null };
+    var A = g.palGiorno, B = g.palOra, parti = (g.motivo || '').split(' · '), nb = (g.baseMotivo || '').split(' · ').length, passo = null;
+    var verso = function (t) { return /non segue$|vince l'ora$|ribaltato$/.test(t) ? false : /segue$|vince il giorno$|tiene$/.test(t) ? true : null; };
+    for (var i = parti.length - 1; i >= nb; i--) { var v = verso(parti[i]); if (/ribaltato$/.test(parti[i]) || v === g.segue) { passo = parti[i]; break; } }
+    var trova = function (f) { for (var k = 1; k <= 9; k++) if (k !== 5 && f(c.palaces[k])) return k; return null; };
+    var porta = function (n) { return trova(function (d) { return (d.doorName || d.door) === n; }); };
+    var zs = trova(function (d) { return d.zhiShi; }), cmd = trova(function (d) { return d.deity === 'Commander'; });
+    var ramo = function (b) { for (var k in PBR) if (PBR[k].indexOf(b) >= 0) return +k; return null; };
+    if (!passo) {   // relazione di base
+      var x = PEL[A], y = PEL[B], bm = g.baseMotivo || '';
+      if (/genera/.test(bm)) return { pal: GEN[x] === y ? A : B, passo: bm };
+      return { pal: g.base === null ? null : (g.base ? A : B), passo: bm };
+    }
+    var p = null;
+    if (/^ponte /.test(passo)) { var n = passo.slice(6).split(':')[0].split(' + ')[0];
+      p = n === 'Commander' ? cmd : n === 'Zhi Shi' ? zs : n === 'Wu' ? trova(function (d) { return d.tiH === '戊'; }) : n === 'stelo del mese' ? trova(function (d) { return d.tiH === c.mese[0]; }) : porta(n); }
+    else if (/青龍逃走/.test(passo)) p = trova(function (d) { return d.tiH === '乙' && d.diH === '辛'; });
+    else if (/Commander opposto|Tai Sui eccita/.test(passo)) p = cmd;
+    else if (/genera lo ZS/.test(passo)) p = zs;
+    else if (/Tai Sui timely/.test(passo)) p = ramo(c.anno[1]);
+    else if (/^View |flusso|genera View/.test(passo)) p = porta('View');
+    else if (/Birth piu' forte/.test(passo)) p = porta('Birth');
+    else if (/ramo del mese/.test(passo)) p = ramo(c.mese[1]);
+    else if (/fan yin superato dal ponte/.test(passo)) p = /Wu/.test(passo) ? trova(function (d) { return d.tiH === '戊'; }) : null;
+    else if (/Output del controllato/.test(passo)) { var eo = GEN[g.segue ? PEL[B] : PEL[A]]; p = null;
+      for (var q = 1; q <= 9; q++) if (q !== 5 && PEL[q] === eo) { p = q; break; } }
+    else if (/controparte|(^|[ '])ora( |:)/.test(passo)) p = B;
+    else if (/giorno|trend/.test(passo)) p = A;
+    else p = g.segue ? A : B;   // fan yin e altri: chi vince
+    return { pal: p, passo: passo };
+  }
   function lettura(c, trend, sis) {
     if (c) c._sis = sis || 'dshs';
     var g = conPer(c ? c._sis : 'dshs', function () { return giornoOra(c); }); if (!g) return null;
-    var dir = g.segue === null ? null : (g.segue ? trend : (trend === 'LONG' ? 'SHORT' : 'LONG')), wb = wuBirth(c);
-    return { dir: dir, segue: g.segue, motivo: g.motivo, wuBirth: wb, conferma: (dir && wb) ? wb === dir : null, giornoOra: g, argomenti: argomenti(g) };
+    var dir = g.segue === null ? null : (g.segue ? trend : (trend === 'LONG' ? 'SHORT' : 'LONG')), wb = wuBirth(c), dc = decide(c, g);
+    return { dir: dir, segue: g.segue, motivo: g.motivo, wuBirth: wb, conferma: (dir && wb) ? wb === dir : null, giornoOra: g, argomenti: argomenti(g),
+             palDecide: dc.pal, passoDecide: dc.passo };
   }
 
   var API = { lettura: lettura, wuBirth: wuBirth, giornoOra: giornoOra, oraria: oraria, giornaliera: giornaliera, testo: testo, hourGZ: hourGZ, juOraria: juOraria, juGiornaliera: juGiornaliera };
