@@ -296,9 +296,9 @@
   // -> il palazzo e' bloccato e non puo' vincere. DS bloccato -> non segue; HS bloccato -> segue; tutti e due -> fermo.
   var HE = { '甲':'己','己':'甲','乙':'庚','庚':'乙','丙':'辛','辛':'丙','丁':'壬','壬':'丁','戊':'癸','癸':'戊' };
   // Edu 06/11/2026 (USDCAD 05/11/2026): lo stelo del palazzo centrale che sta nel cielo del palazzo (ti2H, li' 戊 accanto a 辛 in Dui)
-  // clasha lo stelo del cielo e impedisce la combinazione con la terra (丙辛) -> il palazzo non e' bloccato. Acceso solo nel DsHs (QMDJ_PER): nello ZFTY peggiora lo storico.
+  // clasha lo stelo del cielo e impedisce la combinazione con la terra (丙辛) -> il palazzo non e' bloccato. Dottrina (Edu 06/11): sempre accesa, DsHs e ZFTY. QMDJ_COMB_CENTRO=false spegne solo per le prove.
   function bloccato(c, p) { if (!p) return false; var x = c.palaces[p]; if (HE[x.tiH] !== x.diH) return false;
-    return !(W.QMDJ_COMB_CENTRO === true && x.ti2H); }
+    return !(W.QMDJ_COMB_CENTRO !== false && x.ti2H); }
   function giornoOra(c) {
     var r = giornoOraBase(c); if (!r) return r;
     r.base = r.segue; r.baseMotivo = r.motivo;   // per la lettura ragionata: la relazione di base e' il primo argomento
@@ -620,7 +620,7 @@
   var PER_DEFAULT = {
     dshs: { QMDJ_STADI_PESO: { 8: -1, 9: -2, 10: -3 },
             QMDJ_TIMELY_PIENO: 8, QMDJ_TRIGONO_VIVO: 'nascita',
-            QMDJ_QINGLONG: 'tutti', QMDJ_QINGLONG_MODO: 'contro', QMDJ_COMB_CENTRO: true },   // 06/11: lo stelo del centro nel cielo impedisce la combinazione (USDCAD 05/11)   // 29/10: 青龍逃走 sullo stelo del giorno -> non segue (NZDUSD 28/10)   // 28/10 10:54: 旺相不空 + trigono vivo anche in DsHs            // 27/10: palazzo forte bilancia lo stelo (+93 | +190)
+            QMDJ_QINGLONG: 'tutti', QMDJ_QINGLONG_MODO: 'contro' },   // 29/10: 青龍逃走 sullo stelo del giorno -> non segue (NZDUSD 28/10)   // 28/10 10:54: 旺相不空 + trigono vivo anche in DsHs            // 27/10: palazzo forte bilancia lo stelo (+93 | +190)
     zfty: { QMDJ_PONTE_CLASH: true, QMDJ_CMD_AIUTO: true,            // 27/10: ponte con clash non passa il qi, Commander tiene il controllo (+568 | +675)
             QMDJ_CLASH_PIENO: 'tutti', QMDJ_PONTE_BIRTH: 'tutti', QMDJ_PONTE_BIRTH_PIENO: true,
             QMDJ_TRIGONO: 'tutti', QMDJ_FANYIN_PONTE: 'wu',   // 28/10: il ponte Wu vince il fan yin
