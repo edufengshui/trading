@@ -612,8 +612,11 @@
         return okR(c.mese[1]) || okR(c.giorno[1]); };
       if (zgq && zgc && zgq !== zgc && GEN[PEL[zgq]] === PEL[zgc] && r.segue !== true && (W.QMDJ_ZS_SANO === false || zsSano(zgq))
           // Edu 13/11/2026 (EURJPY 04/03/2025): "Non importa che lo ZS alimenta lo ZF se questo continua a generare il TY"
-          && !(W.QMDJ_ZS_ZFGENTY !== false && r.palOra && GEN[PEL[zgc]] === PEL[r.palOra])) { r.segue = true; r.motivo += ' · lo ZS in salute genera lo ZF (situazione ideale): segue'; }
+          && !(W.QMDJ_ZS_ZFGENTY !== false && r.palOra && GEN[PEL[zgc]] === PEL[r.palOra])
+          // Prova 13/11 (Edu, EURJPY 25/09/2026): "il TY ha un clash interno ... anche se TY genera ZF non puo' seguire". QMDJ_TY_CLASH 'gen' (default: ovunque nello ZFTY) | 'zs' (solo la regola dello ZS) | 'off'
+          && !(((W.QMDJ_TY_CLASH || 'gen') === 'zs' || (W.QMDJ_TY_CLASH || 'gen') === 'gen') && r.palOra && clashInterno(c, r.palOra))) { r.segue = true; r.motivo += ' · lo ZS in salute genera lo ZF (situazione ideale): segue'; }
     }
+    if ((W.QMDJ_TY_CLASH || 'gen') === 'gen' && c._sis === 'zfty' && r.segue === true && r.palOra && r.palGiorno && GEN[PEL[r.palOra]] === PEL[r.palGiorno] && clashInterno(c, r.palOra)) { r.segue = false; r.motivo += ' · il TY genera lo ZF ma ha un clash interno: non segue'; }
     // Edu 29/10/2026 (NZDUSD 28/10/2026): 青龍逃走, 乙 nel cielo sopra 辛 sul di pan: il drago fugge, il trend scappa.
     // QMDJ_QINGLONG: 'off' | 'dshs' | 'zfty' | 'tutti'. ATTORE: 'ds' (palazzo dello stelo del giorno 乙) | 'giorno' (palazzo del trend del metodo).
     // MODO: 'contro' (segue/fermo -> non segue) | 'segue' (solo un segue diventa non segue) | 'fermo' (un segue diventa fermo). SIMM: anche per l'ora.
