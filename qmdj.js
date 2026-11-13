@@ -605,7 +605,11 @@
         if (W.QMDJ_ZS_TOMBA !== false) for (var t9 = 0; t9 < cielo.length; t9++) if (TOMBz[cielo[t9]] && PBz[q].indexOf(TOMBz[cielo[t9]]) >= 0) return false;
         if (tempo(PEL[q], BEL[c.mese[1]]) >= 3) return true;
         var rami = PBz[q]; tutti.forEach(function (st) { if (YIz[st]) rami += YIz[st]; });
-        return rami.indexOf(c.mese[1]) >= 0 || rami.indexOf(c.giorno[1]) >= 0; };
+        // Prova 13/11 (EURJPY 25/09/2026): QMDJ_ZS_RAMO 'tutti' (default) | 'novuoto' (il ramo ospitato non vale se vuoto) | 'nocontrolla' (non vale se controlla il palazzo)
+        var zr = W.QMDJ_ZS_RAMO || 'tutti', vzr = vuotiCarta(c), okR = function (b) { if (rami.indexOf(b) < 0) return false;
+          if ((zr === 'novuoto' || zr === 'entrambi') && vzr.indexOf(b) >= 0) return false;
+          if ((zr === 'nocontrolla' || zr === 'entrambi') && CTL[BEL[b]] === PEL[q]) return false; return true; };
+        return okR(c.mese[1]) || okR(c.giorno[1]); };
       if (zgq && zgc && zgq !== zgc && GEN[PEL[zgq]] === PEL[zgc] && r.segue !== true && (W.QMDJ_ZS_SANO === false || zsSano(zgq))
           // Edu 13/11/2026 (EURJPY 04/03/2025): "Non importa che lo ZS alimenta lo ZF se questo continua a generare il TY"
           && !(W.QMDJ_ZS_ZFGENTY !== false && r.palOra && GEN[PEL[zgc]] === PEL[r.palOra])) { r.segue = true; r.motivo += ' · lo ZS in salute genera lo ZF (situazione ideale): segue'; }
