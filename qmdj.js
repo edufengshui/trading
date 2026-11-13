@@ -583,6 +583,33 @@
         else { r.segue = !r.segue; r.motivo += ' · l\'Output del controllato non e\' timely: il controllo non tiene, ' + (r.segue ? 'segue' : 'non segue'); }
       }
     }
+    // Edu 13/11/2026 (EURUSD 05/06/2026): "Lo ZF e lo ZS hanno sempre un rapporto preferenziale. Se poi lo ZS che e' il secondo in grado
+    // genera lo ZF che ha il grado piu' alto, abbiamo la situazione ideale" -> lo ZS che genera lo ZF: segue, e il clash di View non ribalta.
+    // Dottrina. QMDJ_ZS_GENERA_ZF: 'zfty' (default) | 'tutti' | 'off'
+    var zgz = W.QMDJ_ZS_GENERA_ZF || 'zfty';
+    if (zgz === 'tutti' || zgz === c._sis) {
+      var zgq = null, zgc = null;
+      for (var q9 = 1; q9 <= 9; q9++) if (q9 !== 5) { if (c.palaces[q9].zhiShi) zgq = q9; if (c.palaces[q9].deity === 'Commander') zgc = q9; }
+      // Edu 13/11/2026: "lo ZS per aiutare bene lo ZF deve stare in buona salute, non avere clash interni, essere in un palazzo timely
+      // o che ospiti il ramo del mese o del giorno". Buona salute = non vuoto. Ramo ospitato: i rami del palazzo e quelli dei 六仪 dei suoi steli.
+      var zsSano = function (q) { var d = c.palaces[q], CLz = { 甲:'庚', 庚:'甲', 乙:'辛', 辛:'乙', 丙:'壬', 壬:'丙', 丁:'癸', 癸:'丁' },
+          YIz = { 戊:'子', 己:'戌', 庚:'申', 辛:'午', 壬:'辰', 癸:'寅' }, BRz = '子丑寅卯辰巳午未申酉戌亥',
+          PBz = { 1:'子', 8:'丑寅', 3:'卯', 4:'辰巳', 9:'午', 2:'未申', 7:'酉', 6:'戌亥' };
+        if (vuoto(c, q, vuotiCarta(c))) return false;
+        var cielo = [d.tiH, d.ti2H].filter(Boolean), terra = [d.diH, d.di2H].filter(Boolean), tutti = cielo.concat(terra);
+        var cl = function (a, b) { return CLz[a] === b || (YIz[a] && YIz[b] && Math.abs(BRz.indexOf(YIz[a]) - BRz.indexOf(YIz[b])) === 6); };
+        for (var i = 0; i < cielo.length; i++) { for (var j = 0; j < terra.length; j++) if (cl(cielo[i], terra[j])) return false;
+          for (var k = i + 1; k < cielo.length; k++) if (cl(cielo[i], cielo[k])) return false; }
+        // Edu 13/11/2026 (EURJPY 23/06/2022): "丁 su Gen stava in tomba" -> uno stelo del cielo dello ZS in tomba (墓) nel palazzo: non in salute
+        var TOMBz = { 甲:'未', 乙:'戌', 丙:'戌', 丁:'丑', 戊:'戌', 己:'丑', 庚:'丑', 辛:'辰', 壬:'辰', 癸:'未' };
+        if (W.QMDJ_ZS_TOMBA !== false) for (var t9 = 0; t9 < cielo.length; t9++) if (TOMBz[cielo[t9]] && PBz[q].indexOf(TOMBz[cielo[t9]]) >= 0) return false;
+        if (tempo(PEL[q], BEL[c.mese[1]]) >= 3) return true;
+        var rami = PBz[q]; tutti.forEach(function (st) { if (YIz[st]) rami += YIz[st]; });
+        return rami.indexOf(c.mese[1]) >= 0 || rami.indexOf(c.giorno[1]) >= 0; };
+      if (zgq && zgc && zgq !== zgc && GEN[PEL[zgq]] === PEL[zgc] && r.segue !== true && (W.QMDJ_ZS_SANO === false || zsSano(zgq))
+          // Edu 13/11/2026 (EURJPY 04/03/2025): "Non importa che lo ZS alimenta lo ZF se questo continua a generare il TY"
+          && !(W.QMDJ_ZS_ZFGENTY !== false && r.palOra && GEN[PEL[zgc]] === PEL[r.palOra])) { r.segue = true; r.motivo += ' · lo ZS in salute genera lo ZF (situazione ideale): segue'; }
+    }
     // Edu 29/10/2026 (NZDUSD 28/10/2026): 青龍逃走, 乙 nel cielo sopra 辛 sul di pan: il drago fugge, il trend scappa.
     // QMDJ_QINGLONG: 'off' | 'dshs' | 'zfty' | 'tutti'. ATTORE: 'ds' (palazzo dello stelo del giorno 乙) | 'giorno' (palazzo del trend del metodo).
     // MODO: 'contro' (segue/fermo -> non segue) | 'segue' (solo un segue diventa non segue) | 'fermo' (un segue diventa fermo). SIMM: anche per l'ora.
