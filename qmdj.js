@@ -613,6 +613,8 @@
       if (zgq && zgc && zgq !== zgc && GEN[PEL[zgq]] === PEL[zgc] && r.segue !== true && (W.QMDJ_ZS_SANO === false || zsSano(zgq))
           // Edu 13/11/2026 (EURJPY 04/03/2025): "Non importa che lo ZS alimenta lo ZF se questo continua a generare il TY"
           && !(W.QMDJ_ZS_ZFGENTY !== false && r.palOra && GEN[PEL[zgc]] === PEL[r.palOra])
+          // Prova 13/11 (USDJPY 03/01/2024): lo ZF vuoto non riceve l'aiuto dello ZS. QMDJ_ZS_ZFVUOTO=true accende
+          && !(W.QMDJ_ZS_ZFVUOTO === true && vuoto(c, zgc, vuotiCarta(c)))
           // Prova 13/11 (Edu, EURJPY 25/09/2026): "il TY ha un clash interno ... anche se TY genera ZF non puo' seguire". QMDJ_TY_CLASH 'gen' (default: ovunque nello ZFTY) | 'zs' (solo la regola dello ZS) | 'off'
           && !(((W.QMDJ_TY_CLASH || 'gen') === 'zs' || (W.QMDJ_TY_CLASH || 'gen') === 'gen') && r.palOra && clashInterno(c, r.palOra))) { r.segue = true; r.motivo += ' · lo ZS in salute genera lo ZF (situazione ideale): segue'; }
     }
