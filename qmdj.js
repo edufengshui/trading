@@ -617,6 +617,11 @@
           && !(((W.QMDJ_TY_CLASH || 'gen') === 'zs' || (W.QMDJ_TY_CLASH || 'gen') === 'gen') && r.palOra && clashInterno(c, r.palOra))) { r.segue = true; r.motivo += ' · lo ZS in salute genera lo ZF (situazione ideale): segue'; }
     }
     if ((W.QMDJ_TY_CLASH || 'gen') === 'gen' && c._sis === 'zfty' && r.segue === true && r.palOra && r.palGiorno && GEN[PEL[r.palOra]] === PEL[r.palGiorno] && clashInterno(c, r.palOra)) { r.segue = false; r.motivo += ' · il TY genera lo ZF ma ha un clash interno: non segue'; }
+    // Prova 13/11 (Edu, EURJPY 25/09/2026): "lo ZF sta sopra Xin (il drago verde si rompe le gambe)": 辛 nella terra del palazzo dello ZF.
+    // QMDJ_ZF_XIN: 'off' (default) | 'segue' (un segue diventa non segue) | 'fermo' (un segue diventa fermo)
+    var zfx = W.QMDJ_ZF_XIN || 'off';
+    if (zfx !== 'off' && c._sis === 'zfty' && r.segue === true) { var zxq = null; for (var qx = 1; qx <= 9; qx++) if (qx !== 5 && c.palaces[qx].deity === 'Commander') zxq = qx;
+      if (zxq && (c.palaces[zxq].diH === '辛' || c.palaces[zxq].di2H === '辛')) { r.segue = zfx === 'fermo' ? null : false; r.motivo += ' · lo ZF sopra 辛 (il drago si rompe le gambe): ' + (zfx === 'fermo' ? 'fermo' : 'non segue'); } }
     // Edu 29/10/2026 (NZDUSD 28/10/2026): 青龍逃走, 乙 nel cielo sopra 辛 sul di pan: il drago fugge, il trend scappa.
     // QMDJ_QINGLONG: 'off' | 'dshs' | 'zfty' | 'tutti'. ATTORE: 'ds' (palazzo dello stelo del giorno 乙) | 'giorno' (palazzo del trend del metodo).
     // MODO: 'contro' (segue/fermo -> non segue) | 'segue' (solo un segue diventa non segue) | 'fermo' (un segue diventa fermo). SIMM: anche per l'ora.
