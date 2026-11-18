@@ -734,6 +734,14 @@
   function lettura(c, trend, sis) {
     if (c) c._sis = sis || 'dshs';
     var g = conPer(c ? c._sis : 'dshs', function () { return giornoOra(c); }); if (!g) return null;
+    // Edu 18/11/2026 (NZDUSD 28/10): "Quando ZF e TY sono paralleli e' difficile leggere la carta, in questo caso usiamo DS e HS."
+    // Nello ZFTY, se ZF e TY hanno lo stesso elemento si legge col DsHs. QMDJ_ZFTY_PARALLELI: 'elemento' (default) | 'palazzo' | 'off'
+    var zpm = W.QMDJ_ZFTY_PARALLELI || 'elemento';
+    if (c._sis === 'zfty' && zpm !== 'off' && g.palGiorno && g.palOra && (zpm === 'elemento' ? PEL[g.palGiorno] === PEL[g.palOra] : g.palGiorno === g.palOra)) {
+      var zp = lettura(c, trend, 'dshs'); c._sis = 'zfty';
+      if (zp) { zp.motivo = 'ZF e TY paralleli: si legge con DS e HS · ' + zp.motivo; zp.giornoOra.motivo = zp.motivo; zp.paralleli = true; }
+      return zp;
+    }
     var dir = g.segue === null ? null : (g.segue ? trend : (trend === 'LONG' ? 'SHORT' : 'LONG')), wb = wuBirth(c), dc = decide(c, g);
     return { dir: dir, segue: g.segue, motivo: g.motivo, wuBirth: wb, conferma: (dir && wb) ? wb === dir : null, giornoOra: g, argomenti: argomenti(g),
              palDecide: dc.pal, passoDecide: dc.passo };
