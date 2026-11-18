@@ -390,9 +390,14 @@
       // 'rel' = non ribalta se il colpito e' forte almeno quanto il palazzo di View, 0 = nessun limite.
       var vfs = W.QMDJ_VIEW_FORTE === undefined ? 5 : W.QMDJ_VIEW_FORTE, mbv = c.mese[1];
       var fzv = function (p) { return vuoto(c, p, vuotiCarta(c)) ? 0 : tempo(PEL[p], BEL[mbv]) + tempo(PEL[p], SEAS[mbv]); };
+      // Edu 18/11/2026 (USDCAD 11/11): "Lo ZF controlla il TY, ovvio che segue" -> View che clasha lo ZF non ribalta il controllo. QMDJ_VIEW_ZFCTL: 'zfty' | 'dshs' | 'tutti' | 'off'
+      var vzc = W.QMDJ_VIEW_ZFCTL || 'off';
+      // Edu 18/11/2026 (USDCAD 11/11): "Anche se View clasha lo ZF non aiuta di certo il TY, che viene anzi controllato da View" -> View che clasha un lato
+      // ribalta solo se non controlla l'altro lato. QMDJ_VIEW_CTL: 'tutti' (default, dottrina) | 'zfty' | 'dshs' | 'off'; QMDJ_VIEW_CTL_SPECCHIO=true anche nel verso opposto.
+      var vct = W.QMDJ_VIEW_CTL || 'tutti', vct2 = vct !== 'off' && (vct === 'tutti' || c._sis === vct) && W.QMDJ_VIEW_CTL_SPECCHIO === true;
       var regge = function (p) { return vfs === 'rel' ? fzv(p) >= fzv(vpz) : (vfs > 0 && fzv(p) >= vfs); };
-      if (vpz && OPv[vpz] === r.palOra && OPv[vpz] !== r.palGiorno && !(W.QMDJ_VIEW_FORTE_SOLO_TREND === false && regge(r.palOra))) { r.segue = true; r.motivo += ' · View clasha la controparte: segue'; }
-      else if (vpz && OPv[vpz] === r.palGiorno && OPv[vpz] !== r.palOra && !regge(r.palGiorno)) { r.segue = false; r.motivo += ' · View clasha il trend: non segue'; }
+      if (vpz && OPv[vpz] === r.palOra && OPv[vpz] !== r.palGiorno && !(W.QMDJ_VIEW_FORTE_SOLO_TREND === false && regge(r.palOra)) && !(vct2 && CTL[PEL[vpz]] === PEL[r.palGiorno])) { r.segue = true; r.motivo += ' · View clasha la controparte: segue'; }
+      else if (vpz && OPv[vpz] === r.palGiorno && OPv[vpz] !== r.palOra && !regge(r.palGiorno) && !(vct !== 'off' && (vct === 'tutti' || c._sis === vct) && CTL[PEL[vpz]] === PEL[r.palOra]) && !(vzc !== 'off' && (vzc === 'tutti' || c._sis === vzc) && CTL[PEL[r.palGiorno]] === PEL[r.palOra])) { r.segue = false; r.motivo += ' · View clasha il trend: non segue'; }
     }
     // Flusso via Zhi Shi (Edu 26/10/2026, EURUSD 19/10): "il TY genera lo ZS molto vibrante che controlla lo ZF" -> vince il TY: non segue.
     // Specchio: lo ZF genera lo ZS che controlla il TY -> segue. QMDJ_ZS_FLUSSO = soglia di forza dello ZS (es. 5) | 'off' (default);
