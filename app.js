@@ -21,6 +21,30 @@ function $(id) { return document.getElementById(id); }
 // l'app con ?regole=<parola> (nel codice c'e' solo l'impronta SHA-256 della parola); ?regole=0 lo spegne.
 var REGOLE = false;
 try { REGOLE = typeof localStorage !== 'undefined' && localStorage.getItem('REGOLE') === '1'; } catch (e) {}
+// VISTA DELLE REGOLE (Edu, 19/11/2026: "anche per me sono confuse... uno switch per farle scomparire e
+// metterle in ordine con numeri progressivi una sopra all'altra"). Le regole di ogni trade escono come
+// elenco numerato, una per riga; il pulsante "Regole: nascondi / mostra" le toglie e le rimette
+// (localStorage REGOLE_VISTA, '0' = nascoste).
+var REGOLE_VISTA = true;
+try { REGOLE_VISTA = !(typeof localStorage !== 'undefined' && localStorage.getItem('REGOLE_VISTA') === '0'); } catch (e) {}
+function spezzaVoci(t) {                       // taglia su " · " e " ‖ " solo fuori dalle parentesi
+  var out = [], cur = '', prof = 0, i = 0;
+  while (i < t.length) {
+    var ch = t.charAt(i);
+    if (ch === '(') prof++; else if (ch === ')' && prof > 0) prof--;
+    if (prof === 0 && (t.substr(i, 3) === ' · ' || t.substr(i, 3) === ' ‖ ')) { if (cur.trim()) out.push(cur.trim()); cur = ''; i += 3; continue; }
+    cur += ch; i++;
+  }
+  if (cur.trim()) out.push(cur.trim());
+  return out;
+}
+function listaRegole(t) {
+  if (!t) return '';
+  var voci = spezzaVoci(String(t).replace(/<[^>]+>/g, '').replace(/^LEGGO IO: /, ''));
+  if (!voci.length) return '';
+  return '<ol class="regole" style="flex-basis:100%;width:100%;margin:6px 0 4px;padding-left:28px;font-size:12px;line-height:1.55;opacity:.8' +
+    (REGOLE_VISTA ? '' : ';display:none') + '">' + voci.map(function (v) { return '<li style="margin:2px 0">' + v + '</li>'; }).join('') + '</ol>';
+}
 var REGOLE_IMPRONTA = '7451e09da57973f536229065cd428e874edb998e68eafc238581ae3487cae736';
 function sbloccaRegole() {
   try {
@@ -794,7 +818,7 @@ function htmlRegistro() {
         'placeholder="pip" style="width:82px;padding:3px 6px;border-radius:5px;border:1px solid rgba(255,255,255,.2);' +
         'background:transparent;color:inherit">' +
         '<span style="font-size:12px">' + stato + '</span>' +
-        '<span style="flex:1;min-width:160px;font-size:11px;opacity:.6">' + (REGOLE ? (t.decisore || '') : '') + '</span>' +
+        (REGOLE && t.decisore ? listaRegole(t.decisore) : '') +
       '</div>';
     }).join('');
     return '<div style="padding:8px 14px;border-top:1px solid rgba(255,255,255,.10)">' +
@@ -1309,19 +1333,19 @@ function renderReportTreSistemi() {
       '<span style="font-size:12px;opacity:.9">' + (e.segue ? 'segue il trend' : 'non segue il trend') + '</span>' +
       (e.fiducia ? '<span style="font-size:11px;font-weight:800;padding:1px 6px;border-radius:6px;margin-left:6px;color:#0e1022;background:' + (e.fiducia === 'alta' ? '#3fb950' : e.fiducia === 'bassa' ? '#e3b341' : '#8b949e') + '" title="fiducia dal sistema-trend">fiducia ' + e.fiducia + '</span>' : '') +
       (e.misura ? '<span style="font-size:11px;font-weight:800;padding:1px 6px;border-radius:6px;margin-left:6px;color:#0e1022;background:' + (e.misura === 'piena' ? '#58a6ff' : '#d2a8ff') + '" title="misura della posizione: piena sulle conclusioni forti, meta\' su medie e deboli">' + (e.misura === 'piena' ? 'posizione piena' : 'mezza posizione') + ' · ' + (e.liForza || '') + '</span>' : '') +
-      '<span style="' + css.note + '">' + (REGOLE ? e.voci + (e.dlrVia ? ' · via DLR: ' + e.dlrVia : '') : '') +
-      (e.avviso ? ' · <b style="color:#e3b341">' + e.avviso + '</b>' : '') + '</span></div>';
+      '<span style="' + css.note + '">' + (e.avviso ? '<b style="color:#e3b341">' + e.avviso + '</b>' : '') + '</span>' +
+      (REGOLE ? listaRegole(e.voci + (e.dlrVia ? ' · via DLR: ' + e.dlrVia : '')) : '') + '</div>';
   }).join('') || '<div style="padding:8px 0;opacity:.7">Nessun cross da tradare oggi: nessun gradino della scala.</div>';
   var righeCant = inCantina.map(function (e) {
     return '<div class="repline" data-cross="' + e.cross + '" style="' + css.row + ';cursor:pointer;opacity:.75">' +
       livBadge('cantina') + '<span style="' + css.name + '">' + e.cross + '</span>' + badge(e.signal) +
       '<span style="font-size:12px;opacity:.9">' + (e.segue ? 'segue il trend' : 'non segue il trend') + ' · <b>' + ((e.motivo || '').indexOf('Leggo io') >= 0 ? 'Leggo io ' + (e.liForza || '') + ', si osserva' : 'in cantina') + ', non si trada</b></span>' +
-      '<span style="' + css.note + '">' + (REGOLE ? e.voci + (e.dlrVia ? ' · via DLR: ' + e.dlrVia : '') : '') + '</span></div>';
+      '<span style="' + css.note + '">' + '</span>' + (REGOLE ? listaRegole(e.voci + (e.dlrVia ? ' · via DLR: ' + e.dlrVia : '')) : '') + '</div>';
   }).join('');
   var righeNo = esclusi.map(function (e) {
     return '<div style="' + css.row + '">' +
       '<span style="' + css.name + ';opacity:.75">' + e.cross + '</span>' + badge('NO TRADE') +
-      '<span style="' + css.note + '">' + (!REGOLE ? '' : e.motivo + (e.liRacconto ? ' · <b>Leggo io: ' + e.liRacconto + '</b>' : '') + (e.lettDir ? ' · lettura della carta ' + e.lettDir : '') + (e.stVerdetto ? ' · Sistema-trend ' + e.stVerdetto + ' (' + (e.stPunti > 0 ? '+' : '') + e.stPunti + ')' : '') + (e.osserva && e.osserva.length ? ' · <b style="color:#e3b341">Da osservare: ' + e.osserva.join('; ') + '</b>' : '') + (e.mtVerdetto && e.mtVerdetto !== 'tace' ? ' · Metodo del trend ' + e.mtVerdetto + (e.mtDir ? ' (' + e.mtDir + ')' : '') : '') ) + '</span></div>';
+      '<span style="' + css.note + '"></span>' + (!REGOLE ? '' : listaRegole(e.motivo + (e.liRacconto ? ' · <b>Leggo io: ' + e.liRacconto + '</b>' : '') + (e.lettDir ? ' · lettura della carta ' + e.lettDir : '') + (e.stVerdetto ? ' · Sistema-trend ' + e.stVerdetto + ' (' + (e.stPunti > 0 ? '+' : '') + e.stPunti + ')' : '') + (e.osserva && e.osserva.length ? ' · <b style="color:#e3b341">Da osservare: ' + e.osserva.join('; ') + '</b>' : '') + (e.mtVerdetto && e.mtVerdetto !== 'tace' ? ' · Metodo del trend ' + e.mtVerdetto + (e.mtDir ? ' (' + e.mtDir + ')' : '') : '') )) + '</div>';
   }).join('') || '<div style="padding:8px 0;opacity:.7">Nessun cross fermo.</div>';
   var cont = function (L) { return tradabili.filter(function (e) { return e.livello === L; }).length; };
   var nA = cont('A'), nB = cont('B'), nC = cont('C'), nD = cont('D');
@@ -1347,7 +1371,8 @@ function renderReportTreSistemi() {
         '<b style="font-size:16px">Da tradare oggi · ' + forexData.date + ' 00:00 GMT</b>' +
         '<span style="font-size:12px;opacity:.8">' + tradabili.length + ' da tradare (' + nL + ' long, ' + nS + ' short) · ' +
         (nA + nB + nC + nD ? 'A ' + nA + ' · B ' + nB + ' · C ' + nC + ' · D ' + nD : 'punta ' + cont('1') + ' · gradini 2-10 ' + (tradabili.length - cont('1'))) + ' · in cantina ' + inCantina.length + ' · ' + esclusi.length + ' fermi</span>' +
-      '</div>' + (REGOLE ? nota : notaBreve) +
+      (REGOLE ? '<button id="vediregole" class="ghost" style="font-size:12px">' + (REGOLE_VISTA ? 'Regole: nascondi' : 'Regole: mostra') + '</button>' : '') +
+      '</div>' + (REGOLE ? '<div class="regole"' + (REGOLE_VISTA ? '' : ' style="display:none"') + '>' + nota + '</div><div class="regoleno"' + (REGOLE_VISTA ? ' style="display:none"' : '') + '>' + notaBreve + '</div>' : notaBreve) +
       '<div style="' + css.sect + '">' +
         '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">DA TRADARE · in ordine di gradino</div>' + righeOk +
       '</div>' +
@@ -1367,6 +1392,14 @@ function renderReportTreSistemi() {
     });
   });
   wireRegistro(box);
+  var vr = $('vediregole');
+  if (vr) vr.addEventListener('click', function () {
+    REGOLE_VISTA = !REGOLE_VISTA;
+    try { localStorage.setItem('REGOLE_VISTA', REGOLE_VISTA ? '1' : '0'); } catch (e) {}
+    box.querySelectorAll('.regole').forEach(function (el) { el.style.display = REGOLE_VISTA ? '' : 'none'; });
+    box.querySelectorAll('.regoleno').forEach(function (el) { el.style.display = REGOLE_VISTA ? 'none' : ''; });
+    vr.textContent = REGOLE_VISTA ? 'Regole: nascondi' : 'Regole: mostra';
+  });
 }
 
 async function reportTreSistemi() {

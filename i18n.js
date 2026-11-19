@@ -13,6 +13,7 @@
     [/caricamento del feed delle 00:00 GMT…/g, 'loading the 00:00 GMT feed…'],
     [/Ricarica il feed delle 00:00 GMT e ricalcola la scala A\/B\/C\/D/g, 'Reload the 00:00 GMT feed and recalculate the signals'],
     [/Scala A\/B\/C\/D/g, 'Lio signals'],
+    [/Regole: nascondi/g, 'Rules: hide'], [/Regole: mostra/g, 'Rules: show'],
     [/\bAggiorna\b/g, 'Refresh'],
     [/cross nel feed/g, 'pairs in the feed'],
     [/Il feed forex non e' ancora caricato\. Premi /g, 'The forex feed is not loaded yet. Press '],
@@ -240,7 +241,7 @@
       if (n.hasAttribute && n.hasAttribute('title')) { var a = n.getAttribute('title'), b = tr(a); if (b !== a) n.setAttribute('title', b); }
       // la nota lunga del report (storia dei sistemi in pausa): in inglese una nota breve e pulita
       if (n.nodeName === 'DIV' && n.firstChild && n.firstChild.nodeName === 'B' && /^(LEGGO IO|LIO)$/.test(n.firstChild.textContent) &&
-          n.parentNode && n.parentNode.parentNode && n.parentNode.parentNode.id === 'report') { if (n.innerHTML !== NOTA_EN) n.innerHTML = NOTA_EN; return; }
+          n.closest && n.closest('#report')) { if (n.innerHTML !== NOTA_EN) n.innerHTML = NOTA_EN; return; }
       for (var c = n.firstChild; c; c = c.nextSibling) nodo(c);
     }
   }
