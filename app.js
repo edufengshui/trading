@@ -15,6 +15,28 @@ var METHOD_EN = {
 };
 
 function $(id) { return document.getElementById(id); }
+// REGOLE A SCHERMO (Edu, 19/11/2026: "Nascondi le regole, servono solo a me e a te"). Senza lo sblocco
+// l'app mostra solo cross, direzione, forza e posizione: niente racconto di Leggo io, niente voci,
+// niente motivi dei fermi. Lo sblocco sta in localStorage REGOLE=1 e si accende aprendo una volta
+// l'app con ?regole=<parola> (nel codice c'e' solo l'impronta SHA-256 della parola); ?regole=0 lo spegne.
+var REGOLE = false;
+try { REGOLE = typeof localStorage !== 'undefined' && localStorage.getItem('REGOLE') === '1'; } catch (e) {}
+var REGOLE_IMPRONTA = '7451e09da57973f536229065cd428e874edb998e68eafc238581ae3487cae736';
+function sbloccaRegole() {
+  try {
+    var m = /[?&]regole=([^&#]*)/.exec(location.search || '');
+    if (!m) return Promise.resolve();
+    var parola = decodeURIComponent(m[1]);
+    var pulisci = function () { try { history.replaceState(null, '', location.pathname); } catch (e) {} };
+    if (parola === '0') { localStorage.removeItem('REGOLE'); REGOLE = false; pulisci(); return Promise.resolve(); }
+    if (!(window.crypto && crypto.subtle && window.TextEncoder)) return Promise.resolve();
+    return crypto.subtle.digest('SHA-256', new TextEncoder().encode(parola)).then(function (buf) {
+      var hex = Array.prototype.map.call(new Uint8Array(buf), function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+      if (hex === REGOLE_IMPRONTA) { localStorage.setItem('REGOLE', '1'); REGOLE = true; }
+      pulisci();
+    }).catch(function () {});
+  } catch (e) { return Promise.resolve(); }
+}
 function pad(n) { return String(n).padStart(2, '0'); }
 function showErr(msg) { var e = $('err'); e.style.display = 'block'; e.innerHTML = msg; }
 function clearErr() { $('err').style.display = 'none'; }
@@ -772,7 +794,7 @@ function htmlRegistro() {
         'placeholder="pip" style="width:82px;padding:3px 6px;border-radius:5px;border:1px solid rgba(255,255,255,.2);' +
         'background:transparent;color:inherit">' +
         '<span style="font-size:12px">' + stato + '</span>' +
-        '<span style="flex:1;min-width:160px;font-size:11px;opacity:.6">' + (t.decisore || '') + '</span>' +
+        '<span style="flex:1;min-width:160px;font-size:11px;opacity:.6">' + (REGOLE ? (t.decisore || '') : '') + '</span>' +
       '</div>';
     }).join('');
     return '<div style="padding:8px 14px;border-top:1px solid rgba(255,255,255,.10)">' +
@@ -812,6 +834,7 @@ function wireRegistro(box) {
     });
   });
   // S52 (29/09/2026, Edu): tutto il registro, vinti compresi, da incollare in chat per la statistica
+  if (!REGOLE) ['#copiapersi', '#copiatutto'].forEach(function (q) { var bq = box.querySelector(q); if (bq && bq.parentNode) bq.parentNode.removeChild(bq); });
   var btnT = box.querySelector('#copiatutto');
   if (btnT) btnT.addEventListener('click', function () {
     var testo = 'Registro completo dei trade:\n' + JSON.stringify(leggiRegistro());
@@ -1286,19 +1309,19 @@ function renderReportTreSistemi() {
       '<span style="font-size:12px;opacity:.9">' + (e.segue ? 'segue il trend' : 'non segue il trend') + '</span>' +
       (e.fiducia ? '<span style="font-size:11px;font-weight:800;padding:1px 6px;border-radius:6px;margin-left:6px;color:#0e1022;background:' + (e.fiducia === 'alta' ? '#3fb950' : e.fiducia === 'bassa' ? '#e3b341' : '#8b949e') + '" title="fiducia dal sistema-trend">fiducia ' + e.fiducia + '</span>' : '') +
       (e.misura ? '<span style="font-size:11px;font-weight:800;padding:1px 6px;border-radius:6px;margin-left:6px;color:#0e1022;background:' + (e.misura === 'piena' ? '#58a6ff' : '#d2a8ff') + '" title="misura della posizione: piena sulle conclusioni forti, meta\' su medie e deboli">' + (e.misura === 'piena' ? 'posizione piena' : 'mezza posizione') + ' · ' + (e.liForza || '') + '</span>' : '') +
-      '<span style="' + css.note + '">' + e.voci + (e.dlrVia ? ' · via DLR: ' + e.dlrVia : '') +
+      '<span style="' + css.note + '">' + (REGOLE ? e.voci + (e.dlrVia ? ' · via DLR: ' + e.dlrVia : '') : '') +
       (e.avviso ? ' · <b style="color:#e3b341">' + e.avviso + '</b>' : '') + '</span></div>';
   }).join('') || '<div style="padding:8px 0;opacity:.7">Nessun cross da tradare oggi: nessun gradino della scala.</div>';
   var righeCant = inCantina.map(function (e) {
     return '<div class="repline" data-cross="' + e.cross + '" style="' + css.row + ';cursor:pointer;opacity:.75">' +
       livBadge('cantina') + '<span style="' + css.name + '">' + e.cross + '</span>' + badge(e.signal) +
       '<span style="font-size:12px;opacity:.9">' + (e.segue ? 'segue il trend' : 'non segue il trend') + ' · <b>' + ((e.motivo || '').indexOf('Leggo io') >= 0 ? 'Leggo io ' + (e.liForza || '') + ', si osserva' : 'in cantina') + ', non si trada</b></span>' +
-      '<span style="' + css.note + '">' + e.voci + (e.dlrVia ? ' · via DLR: ' + e.dlrVia : '') + '</span></div>';
+      '<span style="' + css.note + '">' + (REGOLE ? e.voci + (e.dlrVia ? ' · via DLR: ' + e.dlrVia : '') : '') + '</span></div>';
   }).join('');
   var righeNo = esclusi.map(function (e) {
     return '<div style="' + css.row + '">' +
       '<span style="' + css.name + ';opacity:.75">' + e.cross + '</span>' + badge('NO TRADE') +
-      '<span style="' + css.note + '">' + e.motivo + (e.liRacconto ? ' · <b>Leggo io: ' + e.liRacconto + '</b>' : '') + (e.lettDir ? ' · lettura della carta ' + e.lettDir : '') + (e.stVerdetto ? ' · Sistema-trend ' + e.stVerdetto + ' (' + (e.stPunti > 0 ? '+' : '') + e.stPunti + ')' : '') + (e.osserva && e.osserva.length ? ' · <b style="color:#e3b341">Da osservare: ' + e.osserva.join('; ') + '</b>' : '') + (e.mtVerdetto && e.mtVerdetto !== 'tace' ? ' · Metodo del trend ' + e.mtVerdetto + (e.mtDir ? ' (' + e.mtDir + ')' : '') : '') + '</span></div>';
+      '<span style="' + css.note + '">' + (!REGOLE ? '' : e.motivo + (e.liRacconto ? ' · <b>Leggo io: ' + e.liRacconto + '</b>' : '') + (e.lettDir ? ' · lettura della carta ' + e.lettDir : '') + (e.stVerdetto ? ' · Sistema-trend ' + e.stVerdetto + ' (' + (e.stPunti > 0 ? '+' : '') + e.stPunti + ')' : '') + (e.osserva && e.osserva.length ? ' · <b style="color:#e3b341">Da osservare: ' + e.osserva.join('; ') + '</b>' : '') + (e.mtVerdetto && e.mtVerdetto !== 'tace' ? ' · Metodo del trend ' + e.mtVerdetto + (e.mtDir ? ' (' + e.mtDir + ')' : '') : '') ) + '</span></div>';
   }).join('') || '<div style="padding:8px 0;opacity:.7">Nessun cross fermo.</div>';
   var cont = function (L) { return tradabili.filter(function (e) { return e.livello === L; }).length; };
   var nA = cont('A'), nB = cont('B'), nC = cont('C'), nD = cont('D');
@@ -1315,6 +1338,8 @@ function renderReportTreSistemi() {
     (spente ? ' <b style="color:#e3b341">Nota: a schermo hai ' + spente + ' via' + (spente > 1 ? ' spente' : ' spenta') +
       ' — il report le ignora e le usa comunque accese.</b>' : '') + '</div>';
 
+  var notaBreve = '<div style="padding:6px 14px;font-size:12px;background:rgba(227,179,65,.08);border-bottom:1px solid rgba(255,255,255,.08)">' +
+    '<b>LEGGO IO</b>: legge un metodo alla volta (Liu Yao, Plum Blossom, Da Liu Ren), pesa i pro e i contro e conclude: LONG, SHORT o fermo, con una forza (forte, media, debole). Posizione piena sulle conclusioni forti, mezza su medie e deboli.</div>';
   box.style.display = 'block';
   box.innerHTML =
     '<div style="' + css.card + '">' +
@@ -1322,7 +1347,7 @@ function renderReportTreSistemi() {
         '<b style="font-size:16px">Da tradare oggi · ' + forexData.date + ' 00:00 GMT</b>' +
         '<span style="font-size:12px;opacity:.8">' + tradabili.length + ' da tradare (' + nL + ' long, ' + nS + ' short) · ' +
         (nA + nB + nC + nD ? 'A ' + nA + ' · B ' + nB + ' · C ' + nC + ' · D ' + nD : 'punta ' + cont('1') + ' · gradini 2-10 ' + (tradabili.length - cont('1'))) + ' · in cantina ' + inCantina.length + ' · ' + esclusi.length + ' fermi</span>' +
-      '</div>' + nota +
+      '</div>' + (REGOLE ? nota : notaBreve) +
       '<div style="' + css.sect + '">' +
         '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">DA TRADARE · in ordine di gradino</div>' + righeOk +
       '</div>' +
@@ -1867,7 +1892,7 @@ window.addEventListener('DOMContentLoaded', function () {
   // Plum Blossom is the default: open straight on the forex feed (00:00 GMT seeds), PB panel first.
   // "Build chart" / "Now" / "00:00 GMT" still switch to manual mode with the DLR chart.
   // All'apertura: feed delle 00:00 GMT e subito la scala A/B/C/D.
-  reportTreSistemi();
+  sbloccaRegole().then(reportTreSistemi);
 });
 
 /* ---------- service worker (relative scope /trading/) ---------- */
