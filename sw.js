@@ -13,6 +13,7 @@ var CORE = [
   './index.html',
   './styles.css',
   './app.js',
+  './i18n.js',
   './lunar.js',
   './solar-time.js',
   './jieqi-gmt.js',
