@@ -786,6 +786,19 @@
   }
   function lettura(c, trend, sis) {
     var r = letturaBase(c, trend, sis); if (!r || !c) return r;
+    // ZF AIUTATO DAL TAI SUI E DAL DS (Edu 20/11/2026, USDCHF 18/11/2026: "Il commander e' generato dal Tai Sui e dal DS. Segue perche'
+    // le forze che lo aiutano sono superiori"). Nello ZFTY: il palazzo dello ZF generato dal palazzo del Tai Sui (ramo dell'anno) e dal
+    // palazzo del DS -> segue. Misura (lun-ven 2020-02-20 / 2026-10-16): in quei giorni il mercato segue 55,6% (266 carte) e 45,0% (169):
+    // non tiene nei due periodi; acceso perche' dottrina. QMDJ_ZF_AIUTI: 'zfty' (default) | 'off'.
+    if ((W.QMDJ_ZF_AIUTI || 'zfty') === 'zfty' && sis === 'zfty') {
+      var zfA = null, tsA = null, dsA = palOf(c, stemOf(c.giorno)), kA;
+      for (kA = 1; kA <= 9; kA++) if (kA !== 5) { if (c.palaces[kA].zhiFu) zfA = kA; if (PBR[kA].indexOf(c.anno[1]) >= 0) tsA = kA; }
+      if (zfA && tsA && dsA && dsA !== zfA && GEN[PEL[tsA]] === PEL[zfA] && GEN[PEL[dsA]] === PEL[zfA]) {
+        r.zfAiuti = true;
+        if (r.segue !== true) { r.segue = true; r.dir = trend; r.zfAiutiRibalta = true;
+          r.motivo = (r.motivo || '') + ' · ZF generato dal Tai Sui e dal DS: segue'; if (r.giornoOra) r.giornoOra.motivo = r.motivo;
+          r.conferma = r.wuBirth ? r.wuBirth === r.dir : null; } }
+    }
     var zm = W.QMDJ_ZF_VUOTO_GIORNO || 'tutti';
     if (zm !== 'off' && (zm === 'tutti' || zm === (sis || 'dshs'))) {
       var zv = zfVuotoGiorno(c);
