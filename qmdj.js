@@ -259,10 +259,14 @@
     if (pbOk) for (var qb = 1; qb <= 9; qb++) if (qb !== 5 && (c.palaces[qb].doorName || c.palaces[qb].door) === 'Birth') pBirth = qb;
     if (pBirth && W.QMDJ_PONTE_BIRTH_PIENO && vuoto(c, pBirth, vu)) pBirth = null;
     var frenato = function (k) { return pBirth && pBirth !== k && CTL[PEL[pBirth]] === PEL[k]; };
-    var ponte = function (k) { if (frenato(k)) return false; return k && k !== a && k !== b && !vuoto(c, k, vu) && !(W.QMDJ_PONTE_CLASH === true && clashP(k)) && GEN[PEL[ctl]] === PEL[k] && GEN[PEL[k]] === PEL[sub]; };
+    // Edu 20/11/2026 (USDCHF 18/11/2026): "Dui ha una combinazione fra Geng e Yi che tiene legato il ponte" -> il palazzo dello Zhi Shi
+    // con stelo del cielo e della terra in combinazione (bloccato) non fa da ponte. QMDJ_PONTE_COMB: 'zs' (default) | 'tutti' (ogni ponte) | 'off'
+    var pcm = W.QMDJ_PONTE_COMB || 'zs';
+    var ponte = function (k) { if (frenato(k)) return false; if (pcm === 'tutti' && k && bloccato(c, k)) return false; return k && k !== a && k !== b && !vuoto(c, k, vu) && !(W.QMDJ_PONTE_CLASH === true && clashP(k)) && GEN[PEL[ctl]] === PEL[k] && GEN[PEL[k]] === PEL[sub]; };
     var trova = function (f) { for (var k = 1; k <= 9; k++) if (k !== 5 && f(c.palaces[k])) return k; return null; };
     if (ponte(trovaC())) ponti.push('Commander');
-    if (ponte(trova(function (d) { return d.zhiShi; }))) ponti.push('Zhi Shi');   // Edu 24/10/2026, EURJPY 22/10
+    var zsK = trova(function (d) { return d.zhiShi; });
+    if (ponte(zsK) && !(pcm === 'zs' && bloccato(c, zsK))) ponti.push('Zhi Shi');   // Edu 24/10/2026, EURJPY 22/10
     for (var q = 1; q <= 9; q++) if (q !== 5 && c.palaces[q].tiH === '戊' && ponte(q)) { ponti.push('Wu'); break; }
     // Nello ZFTY anche la porta View fa da ponte (Edu 25/10/2026, EURJPY 07/10). QMDJ_VIEW_PONTE: 'zfty' (default) | 'tutti' | 'off'
     var vp = W.QMDJ_VIEW_PONTE || 'zfty';
