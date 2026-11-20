@@ -1331,7 +1331,8 @@ function renderReportTreSistemi() {
     return '<div class="repline" data-cross="' + e.cross + '" style="' + css.row + ';cursor:pointer">' +
       livBadge(e.livello) + '<span style="' + css.name + '">' + e.cross + '</span>' + badge(e.signal) +
       '<span style="font-size:12px;opacity:.9">' + (e.segue ? 'segue il trend' : 'non segue il trend') + '</span>' +
-      (e.fiducia ? '<span style="font-size:11px;font-weight:800;padding:1px 6px;border-radius:6px;margin-left:6px;color:#0e1022;background:' + (e.fiducia === 'alta' ? '#3fb950' : e.fiducia === 'bassa' ? '#e3b341' : '#8b949e') + '" title="fiducia dal sistema-trend">fiducia ' + e.fiducia + '</span>' : '') +
+      // etichetta della fiducia TOLTA dallo schermo (Edu 20/11/2026, "Togli allora"): sui 4.801 trade di Lio dello storico
+      // alta 65,6% · media 65,3% · bassa 65,9%, non separa niente. e.fiducia resta calcolata e nel registro.
       (e.misura ? '<span style="font-size:11px;font-weight:800;padding:1px 6px;border-radius:6px;margin-left:6px;color:#0e1022;background:' + (e.misura === 'piena' ? '#58a6ff' : '#d2a8ff') + '" title="misura della posizione: piena sulle conclusioni forti, meta\' su medie e deboli">' + (e.misura === 'piena' ? 'posizione piena' : 'mezza posizione') + ' · ' + (e.liForza || '') + '</span>' : '') +
       '<span style="' + css.note + '">' + (e.avviso ? '<b style="color:#e3b341">' + e.avviso + '</b>' : '') + '</span>' +
       (REGOLE ? listaRegole(e.voci + (e.dlrVia ? ' · via DLR: ' + e.dlrVia : '')) : '') + '</div>';
