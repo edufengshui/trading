@@ -207,6 +207,7 @@
     if (c._sis === 'zfty') {
       var HOME = { 1:'Grass', 2:'Rice', 3:'Aggressor', 4:'Assistant', 6:'Heart', 7:'Pillar', 8:'Official', 9:'Hero' };
       a = null; b = null; for (var z = 1; z <= 9; z++) if (z !== 5 && c.palaces[z].zhiFu) a = z;
+      if (W.QMDJ_ZFTY_ATTORE === 'wu') a = palOf(c, '戊');   // PROVA (Edu 20/11/2026): al posto del Commander lo stelo Wu, contro il suo Tian Yi. Spento.
       if (a) for (z = 1; z <= 9; z++) if (z !== 5 && c.palaces[z].star === HOME[a]) b = z;
     }
     if (c._sis === 'zfview') {   // prova: ZF contro il palazzo della porta View
