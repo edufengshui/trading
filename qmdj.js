@@ -731,14 +731,14 @@
     else p = g.segue ? A : B;   // fan yin e altri: chi vince
     return { pal: p, passo: passo };
   }
-  function lettura(c, trend, sis) {
+  function letturaBase(c, trend, sis) {
     if (c) c._sis = sis || 'dshs';
     var g = conPer(c ? c._sis : 'dshs', function () { return giornoOra(c); }); if (!g) return null;
     // Edu 18/11/2026 (NZDUSD 28/10): "Quando ZF e TY sono paralleli e' difficile leggere la carta, in questo caso usiamo DS e HS."
     // Nello ZFTY, se ZF e TY hanno lo stesso elemento si legge col DsHs. QMDJ_ZFTY_PARALLELI: 'elemento' (default) | 'palazzo' | 'off'
     var zpm = W.QMDJ_ZFTY_PARALLELI || 'elemento';
     if (c._sis === 'zfty' && zpm !== 'off' && g.palGiorno && g.palOra && (zpm === 'elemento' ? PEL[g.palGiorno] === PEL[g.palOra] : g.palGiorno === g.palOra)) {
-      var zp = lettura(c, trend, 'dshs'); c._sis = 'zfty';
+      var zp = letturaBase(c, trend, 'dshs'); c._sis = 'zfty';
       if (zp) { zp.motivo = 'ZF e TY paralleli: si legge con DS e HS · ' + zp.motivo; zp.giornoOra.motivo = zp.motivo; zp.paralleli = true; }
       return zp;
     }
@@ -747,7 +747,38 @@
              palDecide: dc.pal, passoDecide: dc.passo };
   }
 
-  var API = { lettura: lettura, wuBirth: wuBirth, giornoOra: giornoOra, oraria: oraria, giornaliera: giornaliera, testo: testo, hourGZ: hourGZ, juOraria: juOraria, juGiornaliera: juGiornaliera };
+  // VIEW SPINGE IN SU (Edu 20/11/2026: "Voglio integrare i risultati positivi anche se pochi nel nostro sistema" -> dentro DsHs e ZFTY).
+  // Dalle prove sulle regole "Stock Market and Trading" (carta del seme, 2020-02-20 / 2026-10-16): in tre condizioni della porta View
+  // il cross tende a SALIRE e un verdetto SHORT dei due sistemi sbaglia piu' di quanto azzecca (45-46% in tutti e due i periodi):
+  //   1. View in Dui;  2. View nel palazzo del Tai Sui (ramo dell'anno);  3. View in un palazzo vuoto e fuori stagione
+  //      (vuoti dell'ora; il ramo del mese o del giorno riempie; fuori stagione = l'elemento del palazzo non e' ne' quello del mese
+  //      ne' generato dal mese).
+  // In quei giorni il verdetto SHORT diventa LONG. E' un risultato di misura, non dottrina (la 3 va contro le diapositive).
+  // QMDJ_VIEW_SU: 'tutti' (default) | 'dshs' | 'zfty' | 'off'.
+  function viewSu(c) {
+    var vw = null, k; for (k = 1; k <= 9; k++) if (k !== 5 && (c.palaces[k].doorName || c.palaces[k].door) === 'View') vw = k;
+    if (!vw) return null;
+    if (vw === 7) return 'View in Dui';
+    if (PBR[vw].indexOf(c.anno[1]) >= 0) return 'View nel palazzo del Tai Sui';
+    var vu = vuotiDi(c.pilastro), br = PBR[vw], nv = 0; for (k = 0; k < br.length; k++) if (vu.indexOf(br[k]) >= 0) nv++;
+    if (nv && br.indexOf(c.mese[1]) < 0 && br.indexOf(c.giorno[1]) < 0 && tempo(PEL[vw], BEL[c.mese[1]]) <= 2) return 'View vuota e fuori stagione';
+    return null;
+  }
+  function lettura(c, trend, sis) {
+    var r = letturaBase(c, trend, sis); if (!r || !c) return r;
+    var m = W.QMDJ_VIEW_SU || 'tutti'; if (m === 'off' || (m !== 'tutti' && m !== (sis || 'dshs'))) return r;
+    var v = viewSu(c); if (!v) return r;
+    r.viewSu = v;
+    if (r.dir === 'SHORT') {
+      r.dir = 'LONG'; r.segue = (trend === 'LONG'); r.viewSuRibalta = true;
+      r.motivo = (r.motivo || '') + ' · ' + v + ': il cross tende a salire, lo SHORT diventa LONG';
+      if (r.giornoOra) r.giornoOra.motivo = r.motivo;
+      r.conferma = r.wuBirth ? r.wuBirth === r.dir : null;
+    }
+    return r;
+  }
+
+  var API = { lettura: lettura, letturaBase: letturaBase, viewSu: viewSu, wuBirth: wuBirth, giornoOra: giornoOra, oraria: oraria, giornaliera: giornaliera, testo: testo, hourGZ: hourGZ, juOraria: juOraria, juGiornaliera: juGiornaliera };
   W.XKDGQimen = API;
   if (typeof module !== 'undefined') module.exports = API;
 })();
