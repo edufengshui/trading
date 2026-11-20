@@ -764,8 +764,32 @@
     if (nv && br.indexOf(c.mese[1]) < 0 && br.indexOf(c.giorno[1]) < 0 && tempo(PEL[vw], BEL[c.mese[1]]) <= 2) return 'View vuota e fuori stagione';
     return null;
   }
+  // ZF VUOTO COI VUOTI DEL GIORNO (Edu 20/11/2026, EURGBP 19/11/2026: "ZF vuoto, come fa a seguire?"; "Accendi per il giorno solo ZF").
+  // Lo ZF che controlla il TY (stella di casa del palazzo dello ZF) ma sta in un palazzo tutto vuoto coi vuoti del GIORNO, non riempito
+  // dal ramo del mese, non controlla: non segue. Solo per lo ZF: tutto il resto resta sui vuoti dell'ora.
+  // Misura (tutti i lun-ven 2020-02-20 / 2026-10-16): in quei giorni il mercato segue il trend 45,6% (158 carte) e 45,3% (128 carte).
+  // QMDJ_ZF_VUOTO_GIORNO: 'tutti' (default) | 'zfty' | 'dshs' | 'off'.
+  function zfVuotoGiorno(c) {
+    var HOME = { 1:'Grass', 2:'Rice', 3:'Aggressor', 4:'Assistant', 6:'Heart', 7:'Pillar', 8:'Official', 9:'Hero' }, a = null, b = null, k;
+    for (k = 1; k <= 9; k++) if (k !== 5 && c.palaces[k].zhiFu) a = k;
+    if (!a) return null;
+    for (k = 1; k <= 9; k++) if (k !== 5 && c.palaces[k].star === HOME[a]) b = k;
+    if (!b || CTL[PEL[a]] !== PEL[b]) return null;
+    var vu = vuotiDi(c.giorno), br = PBR[a];
+    for (k = 0; k < br.length; k++) if (vu.indexOf(br[k]) < 0) return null;
+    if (br.indexOf(c.mese[1]) >= 0) return null;
+    return 'ZF vuoto (vuoti del giorno): non controlla il TY, non segue';
+  }
   function lettura(c, trend, sis) {
     var r = letturaBase(c, trend, sis); if (!r || !c) return r;
+    var zm = W.QMDJ_ZF_VUOTO_GIORNO || 'tutti';
+    if (zm !== 'off' && (zm === 'tutti' || zm === (sis || 'dshs'))) {
+      var zv = zfVuotoGiorno(c);
+      if (zv) { r.zfVuotoGiorno = zv;
+        if (r.segue !== false) { r.segue = false; r.dir = trend === 'LONG' ? 'SHORT' : 'LONG'; r.zfVuotoRibalta = true;
+          r.motivo = (r.motivo || '') + ' · ' + zv; if (r.giornoOra) r.giornoOra.motivo = r.motivo;
+          r.conferma = r.wuBirth ? r.wuBirth === r.dir : null; } }
+    }
     var m = W.QMDJ_VIEW_SU || 'tutti'; if (m === 'off' || (m !== 'tutti' && m !== (sis || 'dshs'))) return r;
     var v = viewSu(c); if (!v) return r;
     r.viewSu = v;
@@ -778,7 +802,7 @@
     return r;
   }
 
-  var API = { lettura: lettura, letturaBase: letturaBase, viewSu: viewSu, wuBirth: wuBirth, giornoOra: giornoOra, oraria: oraria, giornaliera: giornaliera, testo: testo, hourGZ: hourGZ, juOraria: juOraria, juGiornaliera: juGiornaliera };
+  var API = { lettura: lettura, letturaBase: letturaBase, viewSu: viewSu, zfVuotoGiorno: zfVuotoGiorno, wuBirth: wuBirth, giornoOra: giornoOra, oraria: oraria, giornaliera: giornaliera, testo: testo, hourGZ: hourGZ, juOraria: juOraria, juGiornaliera: juGiornaliera };
   W.XKDGQimen = API;
   if (typeof module !== 'undefined') module.exports = API;
 })();
