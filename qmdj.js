@@ -793,7 +793,12 @@
     if ((W.QMDJ_ZF_AIUTI || 'zfty') === 'zfty' && sis === 'zfty') {
       var zfA = null, tsA = null, dsA = palOf(c, stemOf(c.giorno)), kA;
       for (kA = 1; kA <= 9; kA++) if (kA !== 5) { if (c.palaces[kA].zhiFu) zfA = kA; if (PBR[kA].indexOf(c.anno[1]) >= 0) tsA = kA; }
-      if (zfA && tsA && dsA && dsA !== zfA && GEN[PEL[tsA]] === PEL[zfA] && GEN[PEL[dsA]] === PEL[zfA]) {
+      // Edu 20/11/2026 (GBPUSD 16/07/2026): "ZF genera il TY quindi e' giusto" che non segua -> se lo ZF genera il TY gli aiuti non contano
+      // (dottrina del 13/11: "Lo ZF genera il TY, non segue per questo"). QMDJ_ZF_AIUTI_GENERA=true lo riaccende per le prove.
+      var HOMEa = { 1:'Grass', 2:'Rice', 3:'Aggressor', 4:'Assistant', 6:'Heart', 7:'Pillar', 8:'Official', 9:'Hero' }, tyA = null;
+      if (zfA) for (kA = 1; kA <= 9; kA++) if (kA !== 5 && c.palaces[kA].star === HOMEa[zfA]) tyA = kA;
+      var genTY = W.QMDJ_ZF_AIUTI_GENERA !== true && tyA && GEN[PEL[zfA]] === PEL[tyA];
+      if (!genTY && zfA && tsA && dsA && dsA !== zfA && GEN[PEL[tsA]] === PEL[zfA] && GEN[PEL[dsA]] === PEL[zfA]) {
         r.zfAiuti = true;
         if (r.segue !== true) { r.segue = true; r.dir = trend; r.zfAiutiRibalta = true;
           r.motivo = (r.motivo || '') + ' · ZF generato dal Tai Sui e dal DS: segue'; if (r.giornoOra) r.giornoOra.motivo = r.motivo;
