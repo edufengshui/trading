@@ -209,6 +209,7 @@
       a = null; b = null; for (var z = 1; z <= 9; z++) if (z !== 5 && c.palaces[z].zhiFu) a = z;
       if (W.QMDJ_ZFTY_ATTORE === 'wu') a = palOf(c, '戊');   // PROVA (Edu 20/11/2026): al posto del Commander lo stelo Wu, contro il suo Tian Yi. Spento.
       if (a) for (z = 1; z <= 9; z++) if (z !== 5 && c.palaces[z].star === HOME[a]) b = z;
+      if (W.QMDJ_ZFTY_CONTRO === 'wu') b = palOf(c, '戊');   // PROVA (Edu 22/11/2026): ZF contro Wu (lo stelo Wu nel cielo al posto del Tian Yi). Spento.
     }
     if (c._sis === 'zfview') {   // prova: ZF contro il palazzo della porta View
       a = null; b = null; for (var z2 = 1; z2 <= 9; z2++) if (z2 !== 5) { if (c.palaces[z2].zhiFu) a = z2; if ((c.palaces[z2].doorName || c.palaces[z2].door) === 'View') b = z2; }
@@ -785,7 +786,7 @@
     if (br.indexOf(c.mese[1]) >= 0) return null;
     return 'ZF vuoto (vuoti del giorno): non controlla il TY, non segue';
   }
-  function lettura(c, trend, sis) {
+  function lettura0(c, trend, sis) {
     var r = letturaBase(c, trend, sis); if (!r || !c) return r;
     // ZF AIUTATO DAL TAI SUI E DAL DS (Edu 20/11/2026, USDCHF 18/11/2026: "Il commander e' generato dal Tai Sui e dal DS. Segue perche'
     // le forze che lo aiutano sono superiori"). Nello ZFTY: il palazzo dello ZF generato dal palazzo del Tai Sui (ramo dell'anno) e dal
@@ -825,7 +826,26 @@
     return r;
   }
 
-  var API = { lettura: lettura, letturaBase: letturaBase, viewSu: viewSu, zfVuotoGiorno: zfVuotoGiorno, wuBirth: wuBirth, giornoOra: giornoOra, oraria: oraria, giornaliera: giornaliera, testo: testo, hourGZ: hourGZ, juOraria: juOraria, juGiornaliera: juGiornaliera };
+  // SEGUE FORTE (misura del 22/11/2026, chiesto da Edu: "dove cade Wu, nei palazzi interni o esterni"). Solo ZFTY.
+  // Wu nel cielo in un palazzo interno (Kan Gen Zhen Xun nel dun yang; Li Kun Dui Qian nel dun yin) e ZF in un palazzo esterno:
+  // quando lo ZFTY dice gia' "segue", il mercato segue 55,1% (690 carte, 2020-23) e 54,9% (621 carte, 2024-26) contro il 52% dello ZFTY.
+  // NON cambia il verdetto: aggiunge solo i campi wuInterno e segueForte. E' misura, non dottrina. QMDJ_WU_INTERNO: 'zfty' (default) | 'off'.
+  function wuInternoZfEsterno(c) {
+    if (!c || !c.palaces) return false;
+    var INT = c.dun === 'yang' ? [1, 8, 3, 4] : [9, 2, 7, 6], w = null, z = null, p;
+    for (p = 1; p <= 9; p++) if (p !== 5) { var d = c.palaces[p]; if (d.tiH === '戊' || d.ti2H === '戊') w = p; if (d.zhiFu) z = p; }
+    return !!(w && z && INT.indexOf(w) >= 0 && INT.indexOf(z) < 0);
+  }
+  function lettura(c, trend, sis) {
+    var r = lettura0.apply(null, arguments);
+    if (r && sis === 'zfty' && (W.QMDJ_WU_INTERNO || 'zfty') === 'zfty' && wuInternoZfEsterno(c)) {
+      r.wuInterno = true;
+      if (r.segue === true) { r.segueForte = true; r.motivo = (r.motivo || '') + ' · Wu interno e ZF esterno: segue forte'; if (r.giornoOra) r.giornoOra.motivo = r.motivo; }
+    }
+    return r;
+  }
+
+  var API = { lettura: lettura, wuInternoZfEsterno: wuInternoZfEsterno, letturaBase: letturaBase, viewSu: viewSu, zfVuotoGiorno: zfVuotoGiorno, wuBirth: wuBirth, giornoOra: giornoOra, oraria: oraria, giornaliera: giornaliera, testo: testo, hourGZ: hourGZ, juOraria: juOraria, juGiornaliera: juGiornaliera };
   W.XKDGQimen = API;
   if (typeof module !== 'undefined') module.exports = API;
 })();
