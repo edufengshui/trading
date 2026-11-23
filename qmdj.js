@@ -761,11 +761,16 @@
   //      ne' generato dal mese).
   // In quei giorni il verdetto SHORT diventa LONG. E' un risultato di misura, non dottrina (la 3 va contro le diapositive).
   // QMDJ_VIEW_SU: 'tutti' (default) | 'dshs' | 'zfty' | 'off'.
+  // Edu 22/11/2026: "Per Tai Sui nel qimen si intende lo stelo dell'anno" (gia' detto il 25/10). Palazzo del Tai Sui = dove sta nel cielo
+  // lo stelo dell'anno. QMDJ_TAISUI_DOVE: 'stelo' | 'ramo' (com'era fino al 22/11: il palazzo del ramo dell'anno).
+  function taiSuiPal(c) { var k;
+    if ((W.QMDJ_TAISUI_DOVE || 'ramo') === 'ramo') { for (k = 1; k <= 9; k++) if (k !== 5 && PBR[k].indexOf(c.anno[1]) >= 0) return k; return null; }
+    return palOf(c, stemOf(c.anno)); }
   function viewSu(c) {
     var vw = null, k; for (k = 1; k <= 9; k++) if (k !== 5 && (c.palaces[k].doorName || c.palaces[k].door) === 'View') vw = k;
     if (!vw) return null;
     if (vw === 7) return 'View in Dui';
-    if (PBR[vw].indexOf(c.anno[1]) >= 0) return 'View nel palazzo del Tai Sui';
+    if (vw === taiSuiPal(c)) return 'View nel palazzo del Tai Sui';
     var vu = vuotiDi(c.pilastro), br = PBR[vw], nv = 0; for (k = 0; k < br.length; k++) if (vu.indexOf(br[k]) >= 0) nv++;
     if (nv && br.indexOf(c.mese[1]) < 0 && br.indexOf(c.giorno[1]) < 0 && tempo(PEL[vw], BEL[c.mese[1]]) <= 2) return 'View vuota e fuori stagione';
     return null;
@@ -794,7 +799,8 @@
     // non tiene nei due periodi; acceso perche' dottrina. QMDJ_ZF_AIUTI: 'zfty' (default) | 'off'.
     if ((W.QMDJ_ZF_AIUTI || 'zfty') === 'zfty' && sis === 'zfty') {
       var zfA = null, tsA = null, dsA = palOf(c, stemOf(c.giorno)), kA;
-      for (kA = 1; kA <= 9; kA++) if (kA !== 5) { if (c.palaces[kA].zhiFu) zfA = kA; if (PBR[kA].indexOf(c.anno[1]) >= 0) tsA = kA; }
+      for (kA = 1; kA <= 9; kA++) if (kA !== 5) { if (c.palaces[kA].zhiFu) zfA = kA; }
+      tsA = taiSuiPal(c);
       // Edu 20/11/2026 (GBPUSD 16/07/2026): "ZF genera il TY quindi e' giusto" che non segua -> se lo ZF genera il TY gli aiuti non contano
       // (dottrina del 13/11: "Lo ZF genera il TY, non segue per questo"). QMDJ_ZF_AIUTI_GENERA=true lo riaccende per le prove.
       var HOMEa = { 1:'Grass', 2:'Rice', 3:'Aggressor', 4:'Assistant', 6:'Heart', 7:'Pillar', 8:'Official', 9:'Hero' }, tyA = null;
