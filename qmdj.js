@@ -863,7 +863,15 @@
     return r;
   }
 
-  var API = { lettura: lettura, wuInternoZfEsterno: wuInternoZfEsterno, letturaBase: letturaBase, viewSu: viewSu, zfVuotoGiorno: zfVuotoGiorno, wuBirth: wuBirth, giornoOra: giornoOra, oraria: oraria, giornaliera: giornaliera, testo: testo, hourGZ: hourGZ, juOraria: juOraria, juGiornaliera: juGiornaliera };
+  // SISTEMA UNITO (Edu 24/11/2026: "Io farei intervenire DsHs solo quando il ZFTY da' un responso incerto").
+  // Parla lo ZFTY; se tace, parla il DsHs. Campo "da": 'zfty' | 'dshs' | null. Non tocca i due sistemi.
+  function unito(c, trend) {
+    var z = lettura(c, trend, 'zfty'); if (z && z.dir) { z.da = 'zfty'; return z; }
+    var d = lettura(c, trend, 'dshs'); if (d) { d.da = d.dir ? 'dshs' : null; if (d.dir) d.motivo = 'ZFTY tace: si legge con DS e HS · ' + (d.motivo || ''); }
+    return d || z;
+  }
+
+  var API = { lettura: lettura, unito: unito, wuInternoZfEsterno: wuInternoZfEsterno, letturaBase: letturaBase, viewSu: viewSu, zfVuotoGiorno: zfVuotoGiorno, wuBirth: wuBirth, giornoOra: giornoOra, oraria: oraria, giornaliera: giornaliera, testo: testo, hourGZ: hourGZ, juOraria: juOraria, juGiornaliera: juGiornaliera };
   W.XKDGQimen = API;
   if (typeof module !== 'undefined') module.exports = API;
 })();
