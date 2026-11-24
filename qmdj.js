@@ -125,6 +125,21 @@
   var TOMBA = { L:'未', F:'戌', M:'丑', W:'辰' };   // la Terra non ha tomba (Edu 25/10)
   var CLV = { '甲':'庚','庚':'甲','乙':'辛','辛':'乙','丙':'壬','壬':'丙','丁':'癸','癸':'丁' }, YIV = { '戊':'子','己':'戌','庚':'申','辛':'午','壬':'辰','癸':'寅' },
       CHV = { '子':'午','午':'子','丑':'未','未':'丑','寅':'申','申':'寅','卯':'酉','酉':'卯','辰':'戌','戌':'辰','巳':'亥','亥':'巳' };
+  // Edu 24/11/2026 (AUDUSD 23/11/2026): "A volte a decidere chi vince non e' un solo fattore, ma una combinazione di piu' fattori in cui
+  // ognuno contribuisce per una piccola parte ma sommate fanno la differenza". Il TY controllato dallo ZF (z = palazzo che controlla,
+  // t = controllato) e' indebolito da: 1) clash interno nel suo palazzo; 2) il DS timely nel mese clasha (dal palazzo opposto) il
+  // palazzo debole che farebbe da ponte (elemento generato da z, che genera t); 3) lo stelo del mese nel palazzo opposto a t
+  // ("perche' Ji sta nel palazzo di fronte a Kun"). Con QMDJ_TY_SOMMA_MIN fattori (default 3) lo ZF vince anche con l'Output
+  // del TY non timely. QMDJ_TY_SOMMA: 'zfty' (default) | 'off'; QMDJ_TY_SOMMA_PONTE: 'view' (default: il ponte e' la porta View) | 'tutti'.
+  function tyDebole(c, z, t) {
+    var OPx = { 1:9, 9:1, 2:8, 8:2, 3:7, 7:3, 4:6, 6:4 }, mb = c.mese[1], f = [];
+    if (clashInterno(c, t)) f.push('clash interno');
+    var ds = palOf(c, stemOf(c.giorno)), q = ds && OPx[ds];
+    if (q && q !== z && q !== t && PEL[q] === GEN[PEL[z]] && GEN[PEL[q]] === PEL[t] && tempo(PEL[ds], BEL[mb]) >= 3 && tempo(PEL[q], BEL[mb]) < 3 &&
+        ((W.QMDJ_TY_SOMMA_PONTE || 'view') === 'tutti' || (c.palaces[q].doorName || c.palaces[q].door) === 'View')) f.push('il DS timely clasha il ponte debole');
+    var mp = palOf(c, stemOf(c.mese));
+    if (mp && OPx[mp] === t) f.push('stelo del mese opposto');
+    return f; }
   function clashInterno(c, p) { var t = c.palaces[p].tiH, e = c.palaces[p].diH; if (W.QMDJ_GENG_BING_CLASH && ((t === '庚' && e === '丙') || (t === '丙' && e === '庚'))) return true; return CLV[t] === e || !!(YIV[t] && YIV[e] && CHV[YIV[t]] === YIV[e]); }
   // Trigono in tomba (Edu 27/10/2026, AUDUSD 14/10: "Ji, Gui e Wu dentro View sono un trigono di fuoco in tomba nel mese Xu"): i rami portati
   // dagli steli del palazzo (六仪: 戊子 己戌 庚申 辛午 壬辰 癸寅; porte e stelle i rami del loro palazzo d'origine) formano un 三合 completo il cui
@@ -582,7 +597,7 @@
     // controllava), quando e' timely nel mese (旺/相) e non vuoto, fa ricircolare il qi verso chi controlla: il controllo tiene
     // ("al contrario e' il ponte"). Misura (ZF controlla TY): 62,5% e 61,5% contro 51,9% e 53,6% con l'Output untimely.
     // QMDJ_OUTPUT: 'zfty' | 'tutti' | 'off'; QMDJ_OUTPUT_MODO: 'zf' (solo lo ZF che controlla -> segue) | 'simm' (anche TY -> non segue).
-    var opm = W.QMDJ_OUTPUT || 'off';
+    var opm = W.QMDJ_OUTPUT || 'off', fty;
     if ((opm === 'tutti' || (opm === 'zfty' && c._sis === 'zfty')) && r.palGiorno && r.palOra && r.palGiorno !== r.palOra && PEL[r.palGiorno] && PEL[r.palOra]) {
       var eG = PEL[r.palGiorno], eO = PEL[r.palOra], chi = CTL[eG] === eO ? 'zf' : CTL[eO] === eG ? 'ty' : null, omo = W.QMDJ_OUTPUT_MODO || 'fermo';
       var vale = chi === 'zf' ? (r.segue === true) : chi === 'ty' && W.QMDJ_OUTPUT_SIMM ? (r.segue === false) : false;
@@ -590,6 +605,8 @@
         var eOut = GEN[chi === 'zf' ? eO : eG], vuO = vuotiCarta(c), okO = false;
         if (tempo(eOut, BEL[c.mese[1]]) >= 3) for (var q7 = 1; q7 <= 9; q7++) if (q7 !== 5 && PEL[q7] === eOut && !vuoto(c, q7, vuO)) okO = true;
         if (okO) r.motivo += ' · l\'Output del controllato e\' timely e ritorna a chi controlla: il controllo tiene';
+        else if (omo === 'fermo' && chi === 'zf' && (fty = tyDebole(c, r.palGiorno, r.palOra)).length >= (W.QMDJ_TY_SOMMA_MIN || 3) && (W.QMDJ_TY_SOMMA || 'zfty') !== 'off' && c._sis === 'zfty') {
+          r.tySomma = fty; r.motivo += ' · l\'Output del controllato non e\' timely, ma il TY e\' indebolito (' + fty.join(' + ') + '): vince lo ZF, segue'; }
         else if (omo === 'fermo') { r.segue = null; r.motivo += ' · l\'Output del controllato non e\' timely: il controllo non si chiude, fermo'; }
         else { r.segue = !r.segue; r.motivo += ' · l\'Output del controllato non e\' timely: il controllo non tiene, ' + (r.segue ? 'segue' : 'non segue'); }
       }
