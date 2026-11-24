@@ -744,6 +744,18 @@
     // Nello ZFTY, se ZF e TY hanno lo stesso elemento si legge col DsHs. QMDJ_ZFTY_PARALLELI: 'elemento' (default) | 'palazzo' | 'off'
     var zpm = W.QMDJ_ZFTY_PARALLELI || 'elemento';
     if (c._sis === 'zfty' && zpm !== 'off' && g.palGiorno && g.palOra && (zpm === 'elemento' ? PEL[g.palGiorno] === PEL[g.palOra] : g.palGiorno === g.palOra)) {
+      // Edu 24/11/2026 (USDCAD 23/11/2026): "Quando ZF e TY sono paralleli vince il palazzo piu' timely. In inverno Gen e' piu' timely di Kun".
+      // "La regola della stagione vale solo su Gen e Kun perche' sono due terre in posizione opposta e quindi solo in estate/inverno".
+      // ZF e TY uno in Gen e l'altro in Kun: d'inverno (mese 亥子丑) vince Gen, d'estate (mese 巳午未) vince Kun. Vince lo ZF -> segue;
+      // vince il TY -> non segue. In primavera e autunno, e per le altre coppie, si legge col DsHs come prima (Edu 18/11).
+      // QMDJ_PAR_TIMELY: 'zfty' (default) | 'off'.
+      if ((W.QMDJ_PAR_TIMELY || 'zfty') === 'zfty' && ((g.palGiorno === 8 && g.palOra === 2) || (g.palGiorno === 2 && g.palOra === 8))) {
+        var stg = SEAS[c.mese[1]], vinceP = stg === 'W' ? 8 : stg === 'F' ? 2 : null;
+        if (vinceP) { var sgT = g.palGiorno === vinceP, dirT = sgT ? trend : (trend === 'LONG' ? 'SHORT' : 'LONG'), wbT = wuBirth(c);
+          g.segue = sgT; g.motivo = 'ZF e TY paralleli in Gen e Kun: ' + (vinceP === 8 ? 'd\'inverno vince Gen' : 'd\'estate vince Kun') + (sgT ? ' (ZF: segue)' : ' (TY: non segue)');
+          return { dir: dirT, segue: sgT, motivo: g.motivo, wuBirth: wbT, conferma: wbT ? wbT === dirT : null, giornoOra: g, argomenti: [],
+                   palDecide: vinceP, passoDecide: 'paralleli Gen/Kun: stagione', paralleli: true, parTimely: true }; }
+      }
       var zp = letturaBase(c, trend, 'dshs'); c._sis = 'zfty';
       if (zp) { zp.motivo = 'ZF e TY paralleli: si legge con DS e HS · ' + zp.motivo; zp.giornoOra.motivo = zp.motivo; zp.paralleli = true; }
       return zp;
