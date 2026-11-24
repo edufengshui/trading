@@ -139,7 +139,21 @@
         ((W.QMDJ_TY_SOMMA_PONTE || 'view') === 'tutti' || (c.palaces[q].doorName || c.palaces[q].door) === 'View')) f.push('il DS timely clasha il ponte debole');
     var mp = palOf(c, stemOf(c.mese));
     if (mp && OPx[mp] === t) f.push('stelo del mese opposto');
+    // Edu 24/11/2026 (stessa carta): "C'e' anche da considerare il prossimo Commander. Lo si fa quando siamo nell'ora Gui. Nell'ora
+    // successiva lo ZF successivo in Kan genera questo attuale e clasha View". QMDJ_TY_SOMMA_PROSSIMO: true (default) | false.
+    var nz = W.QMDJ_TY_SOMMA_PROSSIMO !== false ? prossimoCmd(c) : null;
+    if (nz && nz !== z && GEN[PEL[nz]] === PEL[z]) f.push('il prossimo Commander genera lo ZF');
     return f; }
+  // Prossimo Commander (ora 癸, ultima della decade): il palazzo dove sta nel cielo lo stelo della decade seguente (癸巳: 甲午辛 -> il palazzo del 辛).
+  function prossimoCmd(c) { if (!c || !c.pilastro || c.pilastro[0] !== '癸') return null;
+    return palOf(c, '戊己庚辛壬癸'[(Math.floor(idx60(c.pilastro) / 10) + 1) % 6]); }
+  // View clashata: il palazzo opposto a View ospita il DS timely nel mese o, nell'ora 癸, il prossimo Commander (Edu 24/11/2026).
+  function viewClashata(c) { var OPx = { 1:9, 9:1, 2:8, 8:2, 3:7, 7:3, 4:6, 6:4 }, vw = null, k;
+    for (k = 1; k <= 9; k++) if (k !== 5 && (c.palaces[k].doorName || c.palaces[k].door) === 'View') vw = k;
+    if (!vw) return null; var op = OPx[vw], ds = palOf(c, stemOf(c.giorno)), nz = prossimoCmd(c), x = [];
+    if (ds === op && tempo(PEL[ds], BEL[c.mese[1]]) >= 3) x.push('dal DS timely');
+    if (nz === op) x.push('dal prossimo Commander');
+    return x.length ? x : null; }
   function clashInterno(c, p) { var t = c.palaces[p].tiH, e = c.palaces[p].diH; if (W.QMDJ_GENG_BING_CLASH && ((t === '庚' && e === '丙') || (t === '丙' && e === '庚'))) return true; return CLV[t] === e || !!(YIV[t] && YIV[e] && CHV[YIV[t]] === YIV[e]); }
   // Trigono in tomba (Edu 27/10/2026, AUDUSD 14/10: "Ji, Gui e Wu dentro View sono un trigono di fuoco in tomba nel mese Xu"): i rami portati
   // dagli steli del palazzo (六仪: 戊子 己戌 庚申 辛午 壬辰 癸寅; porte e stelle i rami del loro palazzo d'origine) formano un 三合 completo il cui
@@ -851,6 +865,9 @@
     }
     var m = W.QMDJ_VIEW_SU || 'tutti'; if (m === 'off' || (m !== 'tutti' && m !== (sis || 'dshs'))) return r;
     var v = viewSu(c); if (!v) return r;
+    // Edu 24/11/2026 (AUDUSD 23/11/2026): View clashata e' debole, non spinge il cross. QMDJ_VIEW_SU_CLASH: true (default) | false.
+    var vcl = W.QMDJ_VIEW_SU_CLASH !== false ? viewClashata(c) : null;
+    if (vcl) { r.viewSu = v + ' (ma View e\' clashata ' + vcl.join(' e ') + ': non agisce)'; return r; }
     r.viewSu = v;
     if (r.dir === 'SHORT') {
       r.dir = 'LONG'; r.segue = (trend === 'LONG'); r.viewSuRibalta = true;
