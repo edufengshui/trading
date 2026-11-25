@@ -1079,6 +1079,10 @@
         cieli.forEach(function (t) { terre.forEach(function (e) { if ((t === '己' && e === '庚') || (t === '庚' && e === '己')) pena = t === '己' ? 'Ji sopra Geng' : 'Geng sopra Ji'; }); });
         if (pena) metti('penalita TY', 'penalita\' nel palazzo del TY (' + NOMEP[ty] + '): ' + pena + ' -> il TY e\' indebolito, segue', trend); }
       if (clashInterno(c, ty)) metti('clash interno TY', 'clash interno nel palazzo del TY (' + NOMEP[ty] + '): il TY e\' indebolito -> segue', trend);
+      // Edu 25/11/2026 (carta 15, EURGBP 17/11/2026: ZF in Gen genera il TY in Qian, eppure ha seguito): "Temo che la porta Death
+      // non porti benefici". La porta Death nel palazzo del TY -> il TY non trae beneficio, e' indebolito (segue). E' un PESO nella
+      // bilancia, non un interruttore. Solo sul TY, come dettato. QMDJ_BIL_DEATH=false la spegne.
+      if (W.QMDJ_BIL_DEATH !== false && c.palaces[ty].doorCode === 'Si') metti('Death TY', 'porta Death nel palazzo del TY (' + NOMEP[ty] + '): non porta benefici, il TY e\' indebolito -> segue', trend);
       if (CTL[PEL[zf]] === PEL[ty]) { var f = tyDebole(c, zf, ty);
         for (k = 0; k < f.length; k++) if (f[k] !== 'clash interno') metti('TY: ' + f[k], 'lo ZF controlla il TY e ' + f[k] + ' -> segue', trend); }
     }
