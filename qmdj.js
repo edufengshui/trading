@@ -981,6 +981,13 @@
       // Edu 25/11/2026: "Lo ZF sarebbe Jia quindi l'unico clash serio avviene se sta sopra Geng" -> per lo ZF conta solo Geng
       // nel di pan del suo palazzo; gli altri clash interni del palazzo non pesano sullo ZF.
       if (c.palaces[zf].diH === '庚' || c.palaces[zf].di2H === '庚') metti('ZF sopra Geng', 'lo ZF (Jia) in ' + NOMEP[zf] + ' sta sopra Geng: clash serio, lo ZF e\' indebolito -> non segue', opp);
+      // Edu 25/11/2026 (carta 10, USDCHF 23/11/2026: ZF in Dui e TY in Qian paralleli, tutto tace): "Il TY ha una penalita' nel suo
+      // palazzo". Lettura di Claude, DA VALIDARE: e' l'autopenalita' Hai-Hai (mese Ji Hai e ora Ji Hai, e Hai sta in Qian). Regola
+      // cablata: un ramo che si punisce da solo (Chen, Wu, You, Hai) compare in almeno due dei quattro pilastri e sta nel palazzo
+      // del TY -> il TY e' indebolito (segue). Solo sul TY, come dettato. QMDJ_BIL_PENA=false la spegne.
+      if (W.QMDJ_BIL_PENA !== false) { var AUTO = '辰午酉亥', pil4 = [c.pilastro, c.giorno, c.mese, c.anno], bp = PBR[ty], ip, np, pena = null;
+        for (ip = 0; ip < bp.length; ip++) if (AUTO.indexOf(bp[ip]) >= 0) { np = 0; pil4.forEach(function (g) { if (g && g[1] === bp[ip]) np++; }); if (np >= 2) pena = bp[ip]; }
+        if (pena) metti('penalita TY', 'penalita\' nel palazzo del TY (' + NOMEP[ty] + '): il ramo ' + pena + ' si punisce da solo -> il TY e\' indebolito, segue', trend); }
       if (clashInterno(c, ty)) metti('clash interno TY', 'clash interno nel palazzo del TY (' + NOMEP[ty] + '): il TY e\' indebolito -> segue', trend);
       if (CTL[PEL[zf]] === PEL[ty]) { var f = tyDebole(c, zf, ty);
         for (k = 0; k < f.length; k++) if (f[k] !== 'clash interno') metti('TY: ' + f[k], 'lo ZF controlla il TY e ' + f[k] + ' -> segue', trend); }
