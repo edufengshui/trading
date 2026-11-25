@@ -914,7 +914,7 @@
   // NON cambia nessun verdetto: elenca le indicazioni della carta, ognuna col suo verso, e le somma. Tutti i pesi valgono 1
   // (QMDJ_BIL_PESI = { chiave: peso } per le prove). Le indicazioni:
   //   - gli argomenti dello ZFTY (se lo ZFTY tace, quelli del DsHs), cosi' come li scrive la lettura;
-  //   - lo stato dei palazzi, valutato SEMPRE: clash interno nel palazzo dello ZF (contro lo ZF) o del TY (contro il TY);
+  //   - lo stato dei palazzi, valutato SEMPRE: ZF (Jia) sopra Geng (contro lo ZF); clash interno nel palazzo del TY (contro il TY);
   //     se lo ZF controlla il TY, gli altri fattori dettati il 24/11 (DS timely che clasha il ponte debole, stelo del mese di
   //     fronte al TY, prossimo Commander che genera lo ZF);
   //   - ZF tutto vuoto coi vuoti del giorno; ZF toccato dai vuoti del giorno; fan yin totale (stelle e porte) (carta 11, 25/11);
@@ -948,7 +948,9 @@
     for (k = 0; k < args.length; k++) metti('arg: ' + args[k].k.replace(/^base: /, 'base '), fonte + ': ' + args[k].k.replace(/^base: /, '') + ' -> ' + (args[k].v ? 'segue' : 'non segue'), seg(args[k].v));
     // 2. lo stato dei palazzi di ZF e TY
     if (zf && ty && zf !== ty) {
-      if (clashInterno(c, zf)) metti('clash interno ZF', 'clash interno nel palazzo dello ZF (' + NOMEP[zf] + '): lo ZF e\' indebolito -> non segue', opp);
+      // Edu 25/11/2026: "Lo ZF sarebbe Jia quindi l'unico clash serio avviene se sta sopra Geng" -> per lo ZF conta solo Geng
+      // nel di pan del suo palazzo; gli altri clash interni del palazzo non pesano sullo ZF.
+      if (c.palaces[zf].diH === '庚' || c.palaces[zf].di2H === '庚') metti('ZF sopra Geng', 'lo ZF (Jia) in ' + NOMEP[zf] + ' sta sopra Geng: clash serio, lo ZF e\' indebolito -> non segue', opp);
       if (clashInterno(c, ty)) metti('clash interno TY', 'clash interno nel palazzo del TY (' + NOMEP[ty] + '): il TY e\' indebolito -> segue', trend);
       if (CTL[PEL[zf]] === PEL[ty]) { var f = tyDebole(c, zf, ty);
         for (k = 0; k < f.length; k++) if (f[k] !== 'clash interno') metti('TY: ' + f[k], 'lo ZF controlla il TY e ' + f[k] + ' -> segue', trend); }
