@@ -239,6 +239,35 @@
       da = nuovi; }
     return { pm: pm, zf: zf, ty: ty, arrivaZF: !!via[zf], arrivaTY: !!via[ty], viaZF: via[zf] || null, viaTY: via[ty] || null };
   }
+  // YONG SHEN (Edu 25/11/2026): "Non e' che chi e' nutrito vince. Chi e' nutrito e' in grado di fare qualcosa allo ZF o al TY solo se
+  // e' uno Yong Shen (YS), ovvero se ha qualcosa a che fare con l'argomento che stiamo trattando. Per esempio, lo stelo del mese,
+  // del giorno, dell'anno, la porta View, la porta Birth, oppure Wu sopra Bing e il suo contrario sono YS."
+  // yongShen(c, q) -> elenco di cosa rende YS il palazzo q (vuoto = non e' YS).
+  function yongShen(c, q) { var d = c.palaces[q], dn = d.doorName || d.door, cielo = [d.tiH, d.ti2H], terra = [d.diH, d.di2H], r = [];
+    var ha = function (l, x) { return x && l.indexOf(x) >= 0; };
+    if (c.mese && ha(cielo, c.mese[0])) r.push('stelo del mese'); if (c.giorno && ha(cielo, c.giorno[0])) r.push('stelo del giorno'); if (c.anno && ha(cielo, c.anno[0])) r.push('stelo dell\'anno');
+    if (dn === 'View') r.push('View'); if (dn === 'Birth') r.push('Birth');
+    if (ha(cielo, '戊') && ha(terra, '丙')) r.push('Wu sopra Bing'); if (ha(cielo, '丙') && ha(terra, '戊')) r.push('Bing sopra Wu');
+    return r; }
+  // nutritoYS(c, p): come nutrito(), ma il qi passa anche dai palazzi YS e dal TY (QMDJ_YS_VIA: 'zfzs' = solo ZF e Zhi Shi | 'tutti' default).
+  function nutritoYS(c, p) { var pm = palMese(c); if (!pm) return false; if (pm === p) return true;
+    var att = {}, k, modo = W.QMDJ_YS_VIA || 'tutti', HOMEy = { 1:'Grass', 2:'Rice', 3:'Aggressor', 4:'Assistant', 6:'Heart', 7:'Pillar', 8:'Official', 9:'Hero' }, zfY = null;
+    for (k = 1; k <= 9; k++) if (k !== 5 && c.palaces[k].zhiFu) zfY = k;
+    for (k = 1; k <= 9; k++) if (k !== 5) { var d = c.palaces[k]; if (d.zhiFu || d.zhiShi || (modo === 'tutti' && ((zfY && d.star === HOMEy[zfY]) || yongShen(c, k).length))) att[k] = 1; }
+    var da = [pm], visti = {}, giro, i, q, nuovi; visti[pm] = 1;
+    for (giro = 0; giro < 4 && da.length; giro++) { nuovi = [];
+      for (i = 0; i < da.length; i++) { if (GEN[PEL[da[i]]] === PEL[p]) return true;
+        for (q = 1; q <= 9; q++) if (q !== 5 && !visti[q] && att[q] && q !== p && GEN[PEL[da[i]]] === PEL[q]) { visti[q] = 1; nuovi.push(q); } }
+      da = nuovi; }
+    return false; }
+  // azioniYS(c) -> per ogni palazzo YS fuori da ZF e TY: { q, chi, nutrito, suZF, suTY } con 'genera' | 'controlla' | null.
+  function azioniYS(c) { var HOMEy = { 1:'Grass', 2:'Rice', 3:'Aggressor', 4:'Assistant', 6:'Heart', 7:'Pillar', 8:'Official', 9:'Hero' }, zf = null, ty = null, k, out = [];
+    for (k = 1; k <= 9; k++) if (k !== 5 && c.palaces[k].zhiFu) zf = k;
+    if (zf) for (k = 1; k <= 9; k++) if (k !== 5 && c.palaces[k].star === HOMEy[zf]) ty = k;
+    if (!zf || !ty) return out;
+    var az = function (q, t) { return GEN[PEL[q]] === PEL[t] ? 'genera' : CTL[PEL[q]] === PEL[t] ? 'controlla' : null; };
+    for (k = 1; k <= 9; k++) if (k !== 5 && k !== zf && k !== ty) { var ys = yongShen(c, k); if (ys.length) out.push({ q: k, chi: ys, nutrito: nutritoYS(c, k), suZF: az(k, zf), suTY: zf !== ty ? az(k, ty) : null }); }
+    return out; }
   function comboFavorevole(c, p) { var d = c.palaces[p], dn = d.doorName || d.door;
     return (d.tiH === '丙' || d.ti2H === '丙') && (d.diH === '戊' || d.di2H === '戊') && (dn === 'Open' || dn === 'Rest' || dn === 'Birth'); }
   function vuoto(c, p, vu) { if (TOMBA[PEL[p]] === c.mese[1] && !((W.QMDJ_TOMBA_FLUSSO !== false && nutrito(c, p)) || (W.QMDJ_TOMBA_COMBO !== false && comboFavorevole(c, p)))) return true;
@@ -355,6 +384,16 @@
     var mp = W.QMDJ_MESE_PONTE || 'zfty';
     if (mp === 'tutti' || (mp === 'zfty' && c._sis === 'zfty'))
       for (var q6 = 1; q6 <= 9; q6++) if (q6 !== 5 && (c.palaces[q6].tiH === c.mese[0] || c.palaces[q6].ti2H === c.mese[0]) && ponte(q6)) { ponti.push('stelo del mese'); break; }
+    // YONG SHEN COME PONTE (Edu 25/11/2026): sono YS lo stelo del mese, del giorno, dell'anno, View, Birth, Wu sopra Bing e Bing sopra
+    // Wu; uno YS operativo "e' in grado di fare qualcosa allo ZF o al TY". Qui: fa da ponte. Aggiunti agli YS gia' presenti lo stelo
+    // dell'anno e le due combinazioni Wu-Bing (Birth: vedi QMDJ_BIRTH_PONTE). QMDJ_YS_PONTE: 'zfty' (default) | 'tutti' | 'off'.
+    var ysp = W.QMDJ_YS_PONTE || 'zfty';
+    if (ysp === 'tutti' || (ysp === 'zfty' && c._sis === 'zfty')) { var ysN = null;
+      for (var q8 = 1; q8 <= 9 && !ysN; q8++) if (q8 !== 5 && ponte(q8)) { var d8 = c.palaces[q8], ci8 = [d8.tiH, d8.ti2H], te8 = [d8.diH, d8.di2H];
+        if (c.anno && ci8.indexOf(c.anno[0]) >= 0) ysN = 'stelo dell\'anno';
+        else if (ci8.indexOf('戊') >= 0 && te8.indexOf('丙') >= 0) ysN = 'Wu sopra Bing';
+        else if (ci8.indexOf('丙') >= 0 && te8.indexOf('戊') >= 0) ysN = 'Bing sopra Wu'; }
+      if (ysN) ponti.push(ysN); }
     // Edu 30/10/2026 (EURJPY 29/09): anche lo stelo del giorno nel cielo fa da ponte (丙 su Kun fra il TY in Li e lo ZF in Dui).
     // "Il ponte del DS vale sempre". QMDJ_DS_PONTE: 'tutti' | 'zfty' | 'off' (default; nel DsHs il DS e' un attore, quindi agisce nello ZFTY)
     var dsp = W.QMDJ_DS_PONTE || 'off';
@@ -1133,7 +1172,7 @@
   // cartaDi(ju, dun, pilastro): la carta rotante di un ju e di un'ora, senza data (per la tavola delle 1080).
   function cartaDi(ju, dun, gz) { var c = engine().getRotatingHourChart(2026, 1, 1, gz[0], gz[1], null, { ju: ju, dun: dun }); if (c) { c.pilastro = gz; c.ju = c.ju || ju; c.dun = c.dun || dun; } return c; }
 
-  var API = { lettura: lettura, flussoQi: flussoQi, bilanciaCarta: bilanciaCarta, cartaDi: cartaDi, unito: unito, unitoCascata: unitoCascata, bilancia: bilancia, fanYinTotale: fanYinTotale, wuInternoZfEsterno: wuInternoZfEsterno, letturaBase: letturaBase, viewSu: viewSu, zfVuotoGiorno: zfVuotoGiorno, wuBirth: wuBirth, giornoOra: giornoOra, oraria: oraria, giornaliera: giornaliera, testo: testo, hourGZ: hourGZ, juOraria: juOraria, juGiornaliera: juGiornaliera };
+  var API = { lettura: lettura, flussoQi: flussoQi, yongShen: yongShen, azioniYS: azioniYS, bilanciaCarta: bilanciaCarta, cartaDi: cartaDi, unito: unito, unitoCascata: unitoCascata, bilancia: bilancia, fanYinTotale: fanYinTotale, wuInternoZfEsterno: wuInternoZfEsterno, letturaBase: letturaBase, viewSu: viewSu, zfVuotoGiorno: zfVuotoGiorno, wuBirth: wuBirth, giornoOra: giornoOra, oraria: oraria, giornaliera: giornaliera, testo: testo, hourGZ: hourGZ, juOraria: juOraria, juGiornaliera: juGiornaliera };
   W.XKDGQimen = API;
   if (typeof module !== 'undefined') module.exports = API;
 })();
