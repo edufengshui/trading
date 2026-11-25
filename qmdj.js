@@ -201,7 +201,30 @@
       if (n >= mn && LISTA[i][1] === c.mese[1]) return true; }
     return false;
   }
-  function vuoto(c, p, vu) { if (TOMBA[PEL[p]] === c.mese[1]) return true;
+  // FLUSSO DEL QI (Edu 25/11/2026, USDCHF 12/10/2023): "si deve comprendere la dinamica interna alla carta e quindi il flusso del Qi.
+  // I palazzi comunicano fra di loro. Qui Qian, dove sta il ramo Xu del mese, genera Kan dove sta il ZS, che genera Zhen dove sta il
+  // ZF, che genera Li dove sta un'ottima combinazione (Bing sopra Wu) con lo stelo del mese. Quindi e' vero che Li sta in tomba ma
+  // riceve nutrimento quindi e' operativo. In piu', combinazioni di steli particolarmente favorevoli tipo Bing + Wu con porta
+  // favorevole sono naturalmente significative."
+  // nutrito(c, p): il qi parte dal palazzo del ramo del mese e arriva a p per generazione, passando solo da palazzi che portano lo
+  // Zhi Shi o lo ZF (al massimo tre passaggi). QMDJ_TOMBA_FLUSSO=false la spegne.
+  // comboFavorevole(c, p): Bing nel cielo sopra Wu nella terra, con porta Open, Rest o Birth. QMDJ_TOMBA_COMBO=false la spegne.
+  // Un palazzo in tomba nel mese che e' nutrito, o che ha la combinazione favorevole, NON vale come vuoto: e' operativo.
+  function palMese(c) { for (var k = 1; k <= 9; k++) if (k !== 5 && PBR[k].indexOf(c.mese[1]) >= 0) return k; return null; }
+  function nutrito(c, p) {
+    var pm = palMese(c); if (!pm || pm === p) return false;
+    var att = {}, k; for (k = 1; k <= 9; k++) if (k !== 5 && (c.palaces[k].zhiFu || c.palaces[k].zhiShi)) att[k] = 1;
+    var da = [pm], visti = {}, giro, i, q, nuovi; visti[pm] = 1;
+    for (giro = 0; giro < 3; giro++) { nuovi = [];
+      for (i = 0; i < da.length; i++) { if (GEN[PEL[da[i]]] === PEL[p]) return true;
+        for (q = 1; q <= 9; q++) if (q !== 5 && !visti[q] && att[q] && q !== p && GEN[PEL[da[i]]] === PEL[q]) { visti[q] = 1; nuovi.push(q); } }
+      if (!nuovi.length) return false; da = nuovi; }
+    for (i = 0; i < da.length; i++) if (GEN[PEL[da[i]]] === PEL[p]) return true;
+    return false;
+  }
+  function comboFavorevole(c, p) { var d = c.palaces[p], dn = d.doorName || d.door;
+    return (d.tiH === '丙' || d.ti2H === '丙') && (d.diH === '戊' || d.di2H === '戊') && (dn === 'Open' || dn === 'Rest' || dn === 'Birth'); }
+  function vuoto(c, p, vu) { if (TOMBA[PEL[p]] === c.mese[1] && !((W.QMDJ_TOMBA_FLUSSO !== false && nutrito(c, p)) || (W.QMDJ_TOMBA_COMBO !== false && comboFavorevole(c, p)))) return true;
     var tgm = W.QMDJ_TRIGONO || 'off'; if ((tgm === 'tutti' || tgm === c._sis) && trigonoInTomba(c, p)) return true;
     if (PBR[p].indexOf(c.mese[1]) >= 0 || (W.QMDJ_GIORNO_RIEMPIE !== false && PBR[p].indexOf(c.giorno[1]) >= 0)) return false;   // QMDJ_GIORNO_RIEMPIE=false: solo il mese riempie (prova 28/10)   // Edu 24/10: il ramo del mese o del giorno riempie il vuoto
     // Edu 25/10 e 27/10/2026: "un palazzo con un clash interno non e' mai vuoto". QMDJ_CLASH_PIENO: 'tutti' | 'zfty' | 'dshs' | 'off' (default)
@@ -976,7 +999,13 @@
       mot.split(' · ').forEach(function (t) { if (/il controllo tiene$/.test(t)) l.push({ k: t, v: true }); }); return l; };
     if (zb && zb.parTimely) prendi('ZFTY', [{ k: zb.motivo, v: zb.segue }]);
     else if (zb && !zb.paralleli && (due || zb.dir)) prendi('ZFTY', conTiene(zb));
-    if (due || !zb || zb.paralleli || !zb.dir) { var db = letturaBase(c, trend, 'dshs'); c._sis = 'zfty';
+    // S79 (USDCHF 12/10/2023): se DS sta nel palazzo dello ZF e HS in quello del TY, il DsHs guarda gli stessi due palazzi dello ZFTY:
+    // e' la stessa relazione, si conta una volta sola (quella dello ZFTY, che conosce i suoi ponti).
+    var HOMEb = { 1:'Grass', 2:'Rice', 3:'Aggressor', 4:'Assistant', 6:'Heart', 7:'Pillar', 8:'Official', 9:'Hero' }, zfB = null, tyB = null, kb;
+    for (kb = 1; kb <= 9; kb++) if (kb !== 5 && c.palaces[kb].zhiFu) zfB = kb;
+    if (zfB) for (kb = 1; kb <= 9; kb++) if (kb !== 5 && c.palaces[kb].star === HOMEb[zfB]) tyB = kb;
+    var stessi = due && zfB && tyB && zfB !== tyB && zb && zb.dir && !zb.paralleli && palOf(c, stemOf(c.giorno)) === zfB && palOf(c, stemOf(c.pilastro)) === tyB;
+    if (!stessi && (due || !zb || zb.paralleli || !zb.dir)) { var db = letturaBase(c, trend, 'dshs'); c._sis = 'zfty';
       if (db && !(zb && zb.parTimely && !due)) prendi(zb && zb.paralleli ? 'DsHs (ZF e TY paralleli)' : 'DsHs', conTiene(db)); }
     for (k = 0; k < args.length; k++) metti('arg: ' + args[k].k.replace(/^base: /, 'base '), args[k].f + ': ' + args[k].k.replace(/^base: /, '') + ' -> ' + (args[k].v ? 'segue' : 'non segue'), seg(args[k].v));
     // 2. lo stato dei palazzi di ZF e TY
