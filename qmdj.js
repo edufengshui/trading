@@ -908,10 +908,30 @@
 
   // SISTEMA UNITO (Edu 24/11/2026: "Io farei intervenire DsHs solo quando il ZFTY da' un responso incerto").
   // Parla lo ZFTY; se tace, parla il DsHs. Campo "da": 'zfty' | 'dshs' | null. Non tocca i due sistemi.
-  function unito(c, trend) {
+  function unitoCascata(c, trend) {
     var z = lettura(c, trend, 'zfty'); if (z && z.dir) { z.da = 'zfty'; return z; }
     var d = lettura(c, trend, 'dshs'); if (d) { d.da = d.dir ? 'dshs' : null; if (d.dir) d.motivo = 'ZFTY tace: si legge con DS e HS · ' + (d.motivo || ''); }
     return d || z;
+  }
+  // S79 (Edu 25/11/2026: "Perche' la bilancia non e' ancora stata calata?"; "sai che devi raccogliere i pro e i contro prima di
+  // scegliere"). Il verdetto del qimen lo da' la BILANCIA: tutte le indicazioni dei due sistemi e dello stato dei palazzi, ognuna col
+  // suo peso; vince il lato che pesa di piu'; alla pari il qimen resta fermo (dir null). La vecchia cascata resta nel campo "cascata".
+  // Misura (qmdj_lavoro/bilancia_decide.js, 2020-23 · 2024-26): carte giuste cascata 53,9% · 52,3%, bilancia 52,7% · 51,9%:
+  // costa circa un punto; accesa perche' e' il metodo dettato da Edu. QMDJ_BILANCIA_DECIDE=false: torna a decidere la cascata.
+  function unito(c, trend) {
+    var u = unitoCascata(c, trend);
+    if (W.QMDJ_BILANCIA_DECIDE === false || !c) return u;
+    var b = bilancia(c, trend); if (!b) return u;
+    var r = {}, k; for (k in (u || {})) r[k] = u[k];
+    var pro = b.voci.filter(function (v) { return v.dir === trend && v.peso; }), con = b.voci.filter(function (v) { return v.dir && v.dir !== trend && v.peso; });
+    var el = function (l) { return l.length ? l.map(function (v) { return v.t.replace(/ -> (non )?segue$/, '') + (v.peso !== 1 ? ' (peso ' + v.peso + ')' : ''); }).join('; ') : 'niente'; };
+    r.cascata = u ? (u.dir || null) : null; r.cascataDa = u ? (u.da || null) : null; r.cascataMotivo = u ? u.motivo : null;
+    r.dir = b.dir; r.segue = b.segue; r.da = 'bilancia'; r.bilancia = b; r.pro = pro; r.contro = con;
+    var ps = trend === 'LONG' ? b.long : b.short, pc = trend === 'LONG' ? b.short : b.long;
+    r.motivo = 'Bilancia: per "segue" ' + ps + ', per "non segue" ' + pc + ' -> ' + (b.dir ? (b.segue ? 'segue' : 'non segue') : 'alla pari, fermo') + ' · PER SEGUE: ' + el(pro) + ' · PER NON SEGUE: ' + el(con);
+    r.segueForte = !!(u && u.segueForte && b.segue === true);
+    r.conferma = (r.dir && r.wuBirth) ? r.wuBirth === r.dir : null;
+    return r;
   }
 
   // BILANCIA (Edu 24-25/11/2026: "spesso non c'e' un'indicazione definitiva ma tante piccole che vanno messe insieme e ognuna fa
@@ -942,16 +962,20 @@
     var zb = letturaBase(c, trend, 'zfty'), zf = null, ty = null, HOME = { 1:'Grass', 2:'Rice', 3:'Aggressor', 4:'Assistant', 6:'Heart', 7:'Pillar', 8:'Official', 9:'Hero' };
     for (k = 1; k <= 9; k++) if (k !== 5 && c.palaces[k].zhiFu) zf = k;
     if (zf) for (k = 1; k <= 9; k++) if (k !== 5 && c.palaces[k].star === HOME[zf]) ty = k;
-    // 1. gli argomenti della lettura
-    var args = [], fonte = 'ZFTY';
-    if (zb && zb.parTimely) args = [{ k: zb.motivo, v: zb.segue }];
-    else if (zb && zb.paralleli) { fonte = 'DsHs (ZF e TY paralleli)'; args = zb.argomenti || []; }
-    else if (zb && zb.dir) args = zb.argomenti || [];
-    else { var db = letturaBase(c, trend, 'dshs'); fonte = 'DsHs (lo ZFTY tace)'; args = (db && db.argomenti) || []; c._sis = 'zfty'; }
-    // anche i passaggi che finiscono con "il controllo tiene" (segue), che argomenti() non conta
-    var gm = zb && zb.giornoOra, mot = (zb && !zb.parTimely && (zb.dir || zb.paralleli)) ? ((gm && gm.motivo) || zb.motivo || '') : '';
-    mot.split(' · ').forEach(function (t) { if (/il controllo tiene$/.test(t)) args.push({ k: t, v: true }); });
-    for (k = 0; k < args.length; k++) metti('arg: ' + args[k].k.replace(/^base: /, 'base '), fonte + ': ' + args[k].k.replace(/^base: /, '') + ' -> ' + (args[k].v ? 'segue' : 'non segue'), seg(args[k].v));
+    // 1. gli argomenti della lettura. S79 (Edu 25/11/2026: "Perche' la bilancia non e' ancora stata calata?"): si pesano SEMPRE
+    // gli argomenti di tutti e due i sistemi (ZFTY e DsHs), non solo quelli del sistema che parla. Lo stesso argomento conta una volta.
+    // Il fan yin non entra da qui: ha la sua voce piu' sotto (totale / solo stelle e steli). QMDJ_BIL_DUE=false: come prima (un solo sistema).
+    var args = [], visti = {}, due = W.QMDJ_BIL_DUE !== false;
+    var prendi = function (fonte, lista) { for (var i = 0; i < lista.length; i++) { var a = lista[i];
+      if (due && /fan yin(?! superato)/.test(a.k)) continue;
+      var id = a.k + '|' + a.v; if (visti[id]) continue; visti[id] = 1; args.push({ k: a.k, v: a.v, f: fonte }); } };
+    var conTiene = function (r) { var l = (r && r.argomenti || []).slice(), gm = r && r.giornoOra, mot = (gm && gm.motivo) || (r && r.motivo) || '';
+      mot.split(' · ').forEach(function (t) { if (/il controllo tiene$/.test(t)) l.push({ k: t, v: true }); }); return l; };
+    if (zb && zb.parTimely) prendi('ZFTY', [{ k: zb.motivo, v: zb.segue }]);
+    else if (zb && !zb.paralleli && (due || zb.dir)) prendi('ZFTY', conTiene(zb));
+    if (due || !zb || zb.paralleli || !zb.dir) { var db = letturaBase(c, trend, 'dshs'); c._sis = 'zfty';
+      if (db && !(zb && zb.parTimely && !due)) prendi(zb && zb.paralleli ? 'DsHs (ZF e TY paralleli)' : 'DsHs', conTiene(db)); }
+    for (k = 0; k < args.length; k++) metti('arg: ' + args[k].k.replace(/^base: /, 'base '), args[k].f + ': ' + args[k].k.replace(/^base: /, '') + ' -> ' + (args[k].v ? 'segue' : 'non segue'), seg(args[k].v));
     // 2. lo stato dei palazzi di ZF e TY
     if (zf && ty && zf !== ty) {
       // Edu 25/11/2026: "Lo ZF sarebbe Jia quindi l'unico clash serio avviene se sta sopra Geng" -> per lo ZF conta solo Geng
@@ -966,9 +990,33 @@
       var pieno = br.indexOf(c.mese[1]) >= 0;
       if (toc && toc === br.length && !pieno) metti('ZF vuoto del giorno', 'ZF in ' + NOMEP[zf] + ' tutto vuoto coi vuoti del giorno -> non segue', opp);
       else if (toc && !pieno) metti('ZF toccato dai vuoti del giorno', 'ZF in ' + NOMEP[zf] + ' toccato dai vuoti del giorno -> non segue', opp); }
-    if (fanYinTotale(c)) metti('fan yin totale', 'fan yin totale (stelle e porte nel palazzo di fronte) -> non segue', opp);
+    var ds = palOf(c, stemOf(c.giorno));
+    // Fan yin. Edu 25/11/2026 (EURJPY 06/11/2026): il fan yin di sole stelle e steli "non e' uguale al fan yin totale" -> pesa meno.
+    // Pesi scelti da Claude, da provare: totale (anche le porte) 3 (carta 11, AUDUSD 29/10/2026: Edu "E' un fan yin totale", decide
+    // sopra tre indicazioni contrarie), solo stelle e steli 1. Se un ponte l'ha superato (28/10) non pesa.
+    var OPf = { 1:9, 9:1, 2:8, 8:2, 3:7, 7:3, 4:6, 6:4 }, fyS = true; for (k in OPf) if (c.palaces[k].tiH !== c.palaces[OPf[k]].diH) { fyS = false; break; }
+    var fySup = /fan yin superato/.test((zb && zb.giornoOra && zb.giornoOra.motivo) || '');
+    if (fanYinTotale(c)) metti('fan yin totale', 'fan yin totale (stelle, steli e porte nel palazzo di fronte) -> non segue', opp, due ? 3 : 1);
+    else if (due && fyS && !fySup) metti('fan yin di stelle e steli', 'fan yin di sole stelle e steli (le porte no): pesa meno del totale -> non segue', opp, 1);
+    // STATO DEL PALAZZO degli attori (S79). Edu 25/11: il clash interno "pesa su chiunque stia in quel palazzo"; "Dui e' pure debole".
+    // Estensione di Claude, SPENTA (QMDJ_BIL_STATO=true l'accende): misurata il 25/11, non migliora (carte giuste 52,7% -> 51,8% · 51,9% -> 52,3%): palazzo debole nel mese per ZF e TY; clash interno, palazzo
+    // debole e vuoti del giorno per DS e HS quando non stanno nel palazzo di ZF o TY; TY toccato dai vuoti del giorno.
+    if (due && W.QMDJ_BIL_STATO === true) {
+      var mbS = c.mese[1], vgS = vuotiDi(c.giorno), hsP = palOf(c, stemOf(c.pilastro));
+      var debS = function (q) { return tempo(PEL[q], BEL[mbS]) < 3; };
+      var vuoS = function (q) { var b = PBR[q], n = 0, i; for (i = 0; i < b.length; i++) if (vgS.indexOf(b[i]) >= 0) n++; return n > 0 && b.indexOf(mbS) < 0; };
+      if (zf && debS(zf)) metti('ZF debole nel mese', 'il palazzo dello ZF (' + NOMEP[zf] + ') e\' debole nel mese -> non segue', opp);
+      if (ty && ty !== zf) { if (debS(ty)) metti('TY debole nel mese', 'il palazzo del TY (' + NOMEP[ty] + ') e\' debole nel mese -> segue', trend);
+        if (vuoS(ty)) metti('TY toccato dai vuoti del giorno', 'TY in ' + NOMEP[ty] + ' toccato dai vuoti del giorno -> segue', trend); }
+      if (ds && ds !== zf && ds !== ty) { if (clashInterno(c, ds)) metti('clash interno DS', 'clash interno nel palazzo del DS (' + NOMEP[ds] + ') -> non segue', opp);
+        if (debS(ds)) metti('DS debole nel mese', 'il palazzo del DS (' + NOMEP[ds] + ') e\' debole nel mese -> non segue', opp);
+        if (vuoS(ds)) metti('DS toccato dai vuoti del giorno', 'DS in ' + NOMEP[ds] + ' toccato dai vuoti del giorno -> non segue', opp); }
+      if (hsP && hsP !== zf && hsP !== ty && hsP !== ds) { if (clashInterno(c, hsP)) metti('clash interno HS', 'clash interno nel palazzo dell\'HS (' + NOMEP[hsP] + ') -> segue', trend);
+        if (debS(hsP)) metti('HS debole nel mese', 'il palazzo dell\'HS (' + NOMEP[hsP] + ') e\' debole nel mese -> segue', trend);
+        if (vuoS(hsP)) metti('HS toccato dai vuoti del giorno', 'HS in ' + NOMEP[hsP] + ' toccato dai vuoti del giorno -> segue', trend); }
+    }
     // 4. ZF generato dal Tai Sui e dal DS
-    var ts = taiSuiPal(c), ds = palOf(c, stemOf(c.giorno));
+    var ts = taiSuiPal(c);
     if (zf && ts && ds && ds !== zf && GEN[PEL[ts]] === PEL[zf] && GEN[PEL[ds]] === PEL[zf] && !(ty && GEN[PEL[zf]] === PEL[ty]))
       metti('ZF aiutato', 'ZF generato dal Tai Sui e dal DS -> segue', trend);
     // 5. View che spinge in su, e cio' che la indebolisce
@@ -988,7 +1036,7 @@
     return { voci: voci, long: L, short: S, dir: dir, segue: dir ? dir === trend : null };
   }
 
-  var API = { lettura: lettura, unito: unito, bilancia: bilancia, fanYinTotale: fanYinTotale, wuInternoZfEsterno: wuInternoZfEsterno, letturaBase: letturaBase, viewSu: viewSu, zfVuotoGiorno: zfVuotoGiorno, wuBirth: wuBirth, giornoOra: giornoOra, oraria: oraria, giornaliera: giornaliera, testo: testo, hourGZ: hourGZ, juOraria: juOraria, juGiornaliera: juGiornaliera };
+  var API = { lettura: lettura, unito: unito, unitoCascata: unitoCascata, bilancia: bilancia, fanYinTotale: fanYinTotale, wuInternoZfEsterno: wuInternoZfEsterno, letturaBase: letturaBase, viewSu: viewSu, zfVuotoGiorno: zfVuotoGiorno, wuBirth: wuBirth, giornoOra: giornoOra, oraria: oraria, giornaliera: giornaliera, testo: testo, hourGZ: hourGZ, juOraria: juOraria, juGiornaliera: juGiornaliera };
   W.XKDGQimen = API;
   if (typeof module !== 'undefined') module.exports = API;
 })();
