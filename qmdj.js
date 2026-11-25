@@ -306,10 +306,13 @@
     var vp = W.QMDJ_VIEW_PONTE || 'zfty';
     if (vp === 'tutti' || (vp === 'zfty' && c._sis === 'zfty'))
       for (var q2 = 1; q2 <= 9; q2++) if (q2 !== 5 && (c.palaces[q2].doorName || c.palaces[q2].door) === 'View' && (ponte(q2) || (W.QMDJ_VIEW_PONTE_VUOTO && pontePieno(q2)))) { ponti.push('View'); break; }   // Edu 25/10: Wu (indicatore economico) fa da ponte
-    // Edu 27/10/2026 (USDJPY 28/03/2022): anche lo stelo del mese nel cielo fa da ponte. QMDJ_MESE_PONTE: 'zfty' | 'tutti' | 'off' (default)
-    var mp = W.QMDJ_MESE_PONTE || 'off';
+    // Edu 27/10/2026 (USDJPY 28/03/2022): anche lo stelo del mese nel cielo fa da ponte. QMDJ_MESE_PONTE: 'zfty' (default dal 25/11/2026) | 'tutti' | 'off'
+    // S79, Edu 25/11/2026 (USDCHF 12/10/2023: "Ren del mese non fa da ponte?" - Ren secondo stelo del cielo in Li, fra ZF in Zhen e TY in Gen):
+    // ACCESA nello ZFTY (era spenta dal 24/10 per i pip) e vale anche il secondo stelo del cielo. Misura (qmdj_lavoro/ponte_mese.js):
+    // con questo ponte vince il controllato 63,3% (109) · 58,3% (115); senza ponti 50%.
+    var mp = W.QMDJ_MESE_PONTE || 'zfty';
     if (mp === 'tutti' || (mp === 'zfty' && c._sis === 'zfty'))
-      for (var q6 = 1; q6 <= 9; q6++) if (q6 !== 5 && c.palaces[q6].tiH === c.mese[0] && ponte(q6)) { ponti.push('stelo del mese'); break; }
+      for (var q6 = 1; q6 <= 9; q6++) if (q6 !== 5 && (c.palaces[q6].tiH === c.mese[0] || c.palaces[q6].ti2H === c.mese[0]) && ponte(q6)) { ponti.push('stelo del mese'); break; }
     // Edu 30/10/2026 (EURJPY 29/09): anche lo stelo del giorno nel cielo fa da ponte (丙 su Kun fra il TY in Li e lo ZF in Dui).
     // "Il ponte del DS vale sempre". QMDJ_DS_PONTE: 'tutti' | 'zfty' | 'off' (default; nel DsHs il DS e' un attore, quindi agisce nello ZFTY)
     var dsp = W.QMDJ_DS_PONTE || 'off';
