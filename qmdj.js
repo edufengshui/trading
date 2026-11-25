@@ -153,6 +153,9 @@
     if (!vw) return null; var op = OPx[vw], ds = palOf(c, stemOf(c.giorno)), nz = prossimoCmd(c), x = [];
     if (ds === op && tempo(PEL[ds], BEL[c.mese[1]]) >= 3) x.push('dal DS timely');
     if (nz === op) x.push('dal prossimo Commander');
+    // Edu 25/11/2026 (AUDUSD 25/11): "View ha un clash interno! Dui e' pure debole e il clash e' contro lo stelo del mese nel di pan"
+    // -> View con un clash interno nel suo palazzo non spinge il cross in su. QMDJ_VIEW_SU_CLASH_INT (default true).
+    if (W.QMDJ_VIEW_SU_CLASH_INT !== false && clashInterno(c, vw)) x.push('da un clash interno');
     return x.length ? x : null; }
   function clashInterno(c, p) { var t = c.palaces[p].tiH, e = c.palaces[p].diH; if (W.QMDJ_GENG_BING_CLASH && ((t === '庚' && e === '丙') || (t === '丙' && e === '庚'))) return true; return CLV[t] === e || !!(YIV[t] && YIV[e] && CHV[YIV[t]] === YIV[e]); }
   // Trigono in tomba (Edu 27/10/2026, AUDUSD 14/10: "Ji, Gui e Wu dentro View sono un trigono di fuoco in tomba nel mese Xu"): i rami portati
