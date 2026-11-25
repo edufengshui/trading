@@ -1043,7 +1043,46 @@
     return { voci: voci, long: L, short: S, dir: dir, segue: dir ? dir === trend : null };
   }
 
-  var API = { lettura: lettura, unito: unito, unitoCascata: unitoCascata, bilancia: bilancia, fanYinTotale: fanYinTotale, wuInternoZfEsterno: wuInternoZfEsterno, letturaBase: letturaBase, viewSu: viewSu, zfVuotoGiorno: zfVuotoGiorno, wuBirth: wuBirth, giornoOra: giornoOra, oraria: oraria, giornaliera: giornaliera, testo: testo, hourGZ: hourGZ, juOraria: juOraria, juGiornaliera: juGiornaliera };
+  // PREVISIONE A PRIORI SULLE 1080 CARTE (Edu 25/11/2026: "Analizzare tutte le 1080 carte qimen e fare una predizione a priori su
+  // ciascuna di esse e poi verificare sullo storico incluso gli ultimi giorni quante di queste previsioni si sono avverate").
+  // La carta da sola (ju, dun, pilastro dell'ora) non conosce giorno, mese e anno: la bilancia qui usa SOLO cio' che sta nella carta.
+  // Voci, peso 1 salvo il fan yin: ZF contro TY (controlla / genera); ZF (Jia) sopra Geng; clash interno e penalita' Ji-Geng nel
+  // palazzo del TY; combinazione che blocca ZF o TY; ZF o TY tutto vuoto coi vuoti dell'ora; fan yin totale (3) o di sole stelle e
+  // steli (1). Restano fuori: DS, vuoti del giorno, forza nel mese, Tai Sui, View che spinge in su (da' un verso, non segue/non segue).
+  // bilanciaCarta(c) -> { voci: [{ k, t, segue, peso }], pro, contro, segue: true | false | null }
+  function bilanciaCarta(c) {
+    if (!c || !c.palaces) return null;
+    var HOME = { 1:'Grass', 2:'Rice', 3:'Aggressor', 4:'Assistant', 6:'Heart', 7:'Pillar', 8:'Official', 9:'Hero' }, zf = null, ty = null, k, voci = [];
+    var metti = function (ch, t, sg, w) { voci.push({ k: ch, t: t, segue: sg, peso: w === undefined ? 1 : w }); };
+    for (k = 1; k <= 9; k++) if (k !== 5 && c.palaces[k].zhiFu) zf = k;
+    if (zf) for (k = 1; k <= 9; k++) if (k !== 5 && c.palaces[k].star === HOME[zf]) ty = k;
+    if (zf && ty && zf !== ty) { var a = PEL[zf], b = PEL[ty];
+      if (CTL[a] === b) metti('ZF controlla TY', 'lo ZF (' + NOMEP[zf] + ') controlla il TY (' + NOMEP[ty] + ')', true);
+      else if (CTL[b] === a) metti('TY controlla ZF', 'il TY (' + NOMEP[ty] + ') controlla lo ZF (' + NOMEP[zf] + ')', false);
+      else if (GEN[a] === b) metti('ZF genera TY', 'lo ZF (' + NOMEP[zf] + ') genera il TY (' + NOMEP[ty] + ')', false);
+      else if (GEN[b] === a) metti('TY genera ZF', 'il TY (' + NOMEP[ty] + ') genera lo ZF (' + NOMEP[zf] + ')', true);
+      var xt = c.palaces[ty], pena = false; [xt.tiH, xt.ti2H].forEach(function (t) { [xt.diH, xt.di2H].forEach(function (e) { if ((t === '己' && e === '庚') || (t === '庚' && e === '己')) pena = true; }); });
+      if (pena) metti('penalita TY', 'penalita\' Ji-Geng nel palazzo del TY (' + NOMEP[ty] + ')', true);
+      if (clashInterno(c, ty)) metti('clash interno TY', 'clash interno nel palazzo del TY (' + NOMEP[ty] + ')', true);
+      if (bloccato(c, ty)) metti('TY bloccato', 'il TY e\' bloccato da una combinazione fra cielo e terra', true);
+      var vuT = vuotiDi(c.pilastro), tuttoV = function (q) { var br = PBR[q], i; for (i = 0; i < br.length; i++) if (vuT.indexOf(br[i]) < 0) return false; return true; };
+      if (tuttoV(ty)) metti('TY vuoto', 'il TY (' + NOMEP[ty] + ') e\' nel vuoto dell\'ora', true);
+    }
+    if (zf) { var xz = c.palaces[zf];
+      if (xz.diH === '庚' || xz.di2H === '庚') metti('ZF sopra Geng', 'lo ZF (Jia) in ' + NOMEP[zf] + ' sta sopra Geng', false);
+      if (bloccato(c, zf)) metti('ZF bloccato', 'lo ZF e\' bloccato da una combinazione fra cielo e terra', false);
+      var vuZ = vuotiDi(c.pilastro), brz = PBR[zf], tv = true; for (k = 0; k < brz.length; k++) if (vuZ.indexOf(brz[k]) < 0) tv = false;
+      if (tv) metti('ZF vuoto', 'lo ZF (' + NOMEP[zf] + ') e\' nel vuoto dell\'ora', false); }
+    var OPf = { 1:9, 9:1, 2:8, 8:2, 3:7, 7:3, 4:6, 6:4 }, fyS = true; for (k in OPf) if (c.palaces[k].tiH !== c.palaces[OPf[k]].diH) { fyS = false; break; }
+    if (fanYinTotale(c)) metti('fan yin totale', 'fan yin totale (stelle, steli e porte)', false, 3);
+    else if (fyS) metti('fan yin di stelle e steli', 'fan yin di sole stelle e steli', false, 1);
+    var pro = 0, con = 0; voci.forEach(function (v) { if (v.segue) pro += v.peso; else con += v.peso; });
+    return { voci: voci, pro: pro, contro: con, zf: zf, ty: ty, segue: pro > con ? true : con > pro ? false : null };
+  }
+  // cartaDi(ju, dun, pilastro): la carta rotante di un ju e di un'ora, senza data (per la tavola delle 1080).
+  function cartaDi(ju, dun, gz) { var c = engine().getRotatingHourChart(2026, 1, 1, gz[0], gz[1], null, { ju: ju, dun: dun }); if (c) { c.pilastro = gz; c.ju = c.ju || ju; c.dun = c.dun || dun; } return c; }
+
+  var API = { lettura: lettura, bilanciaCarta: bilanciaCarta, cartaDi: cartaDi, unito: unito, unitoCascata: unitoCascata, bilancia: bilancia, fanYinTotale: fanYinTotale, wuInternoZfEsterno: wuInternoZfEsterno, letturaBase: letturaBase, viewSu: viewSu, zfVuotoGiorno: zfVuotoGiorno, wuBirth: wuBirth, giornoOra: giornoOra, oraria: oraria, giornaliera: giornaliera, testo: testo, hourGZ: hourGZ, juOraria: juOraria, juGiornaliera: juGiornaliera };
   W.XKDGQimen = API;
   if (typeof module !== 'undefined') module.exports = API;
 })();
