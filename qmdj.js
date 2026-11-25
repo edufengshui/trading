@@ -335,7 +335,11 @@
   var HE = { '甲':'己','己':'甲','乙':'庚','庚':'乙','丙':'辛','辛':'丙','丁':'壬','壬':'丁','戊':'癸','癸':'戊' };
   // Edu 06/11/2026 (USDCAD 05/11/2026): lo stelo del palazzo centrale che sta nel cielo del palazzo (ti2H, li' 戊 accanto a 辛 in Dui)
   // clasha lo stelo del cielo e impedisce la combinazione con la terra (丙辛) -> il palazzo non e' bloccato. Dottrina (Edu 06/11): sempre accesa, DsHs e ZFTY. QMDJ_COMB_CENTRO=false spegne solo per le prove.
+  // Edu 25/11/2026 (AUDUSD 28/10/2026, Geng sopra Yi nel palazzo dello ZF): "No, non lo blocca perche' quel Geng non e' veramente
+  // Geng, e' Jia" -> lo stelo del Commander nel cielo del palazzo dello ZF e' Jia: non entra in combinazione con lo stelo della
+  // terra, il palazzo non e' bloccato. QMDJ_COMB_JIA=false spegne solo per le prove.
   function bloccato(c, p) { if (!p) return false; var x = c.palaces[p]; if (HE[x.tiH] !== x.diH) return false;
+    if (W.QMDJ_COMB_JIA !== false && x.zhiFu && c.pilastro && x.tiH === '戊己庚辛壬癸'[Math.floor(idx60(c.pilastro) / 10)]) return false;
     return !(W.QMDJ_COMB_CENTRO !== false && x.ti2H); }
   function giornoOra(c) {
     var r = giornoOraBase(c); if (!r) return r;
