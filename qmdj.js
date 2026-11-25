@@ -1132,6 +1132,12 @@
       if (nz === OPx[vw]) deb.push('clashata dal prossimo Commander');
       metti('View su', v + ': il cross tende a salire' + (deb.length ? ' — ma View e\' indebolita, non spinge' : ''), 'LONG', deb.length ? 0 : 1);
       for (k = 0; k < deb.length; k++) voci.push({ k: 'View debole: ' + deb[k].replace(/^(Kan|Kun|Zhen|Xun|Qian|Dui|Gen|Li) /, 'palazzo '), t: 'contro View: ' + deb[k], dir: null, peso: 0 }); }
+    // Estensione di Claude della frase di Edu del 25/11/2026 ("Temo che la porta Death non porti benefici"; Edu: "Hai gia' corretto
+    // perche' chiedi ancora?"): se lo ZF genera il TY e il TY ha la porta Death, il qi dello ZF finisce in un palazzo che non ne trae
+    // beneficio -> il voto "ZF genera il TY" non pesa. Misura: ZF genera TY con Death sul TY, il mercato segue 57,8% · 59,8%;
+    // senza Death 47,7% · 47,8%. QMDJ_BIL_DEATH_GENERA=false la spegne.
+    if (W.QMDJ_BIL_DEATH_GENERA !== false && voci.some(function (v) { return v.k === 'Death TY'; }))
+      for (k = 0; k < voci.length; k++) if (/^ZFTY: il giorno genera l'ora/.test(voci[k].t) && voci[k].peso) { voci[k].peso = 0; voci[k].t += ' — ma il TY ha la porta Death: non pesa'; }
     var L = 0, S = 0; for (k = 0; k < voci.length; k++) { if (voci[k].dir === 'LONG') L += voci[k].peso; else if (voci[k].dir === 'SHORT') S += voci[k].peso; }
     var dir = L > S ? 'LONG' : S > L ? 'SHORT' : null;
     return { voci: voci, long: L, short: S, dir: dir, segue: dir ? dir === trend : null };
