@@ -222,10 +222,29 @@
     for (i = 0; i < da.length; i++) if (GEN[PEL[da[i]]] === PEL[p]) return true;
     return false;
   }
+  // FLUSSO DEL QI COME LETTURA GENERALE (Edu 25/11/2026: "Implementalo"). Costruzione di Claude sulla dottrina dettata, DA VALIDARE.
+  // Il qi del mese parte dal palazzo del ramo del mese e scorre per generazione da un palazzo all'altro, ma solo attraverso palazzi
+  // che portano un attore (ZF, Zhi Shi, TY; con QMDJ_FLUSSO_ATTORI='dshs' anche DS e HS). flussoQi(c) dice chi viene raggiunto:
+  // { pm, zf, ty, arrivaZF, arrivaTY, viaZF: [palazzi], viaTY: [palazzi] }. Il palazzo del mese stesso conta come raggiunto.
+  function flussoQi(c) {
+    var HOMEf = { 1:'Grass', 2:'Rice', 3:'Aggressor', 4:'Assistant', 6:'Heart', 7:'Pillar', 8:'Official', 9:'Hero' }, pm = palMese(c), zf = null, ty = null, k, att = {};
+    for (k = 1; k <= 9; k++) if (k !== 5 && c.palaces[k].zhiFu) zf = k;
+    if (zf) for (k = 1; k <= 9; k++) if (k !== 5 && c.palaces[k].star === HOMEf[zf]) ty = k;
+    if (!pm || !zf || !ty) return null;
+    for (k = 1; k <= 9; k++) if (k !== 5 && (k === zf || k === ty || c.palaces[k].zhiShi)) att[k] = 1;
+    if (W.QMDJ_FLUSSO_ATTORI === 'dshs') { var dsF = c.giorno && palOf(c, stemOf(c.giorno)), hsF = palOf(c, stemOf(c.pilastro)); if (dsF) att[dsF] = 1; if (hsF) att[hsF] = 1; }
+    var via = {}, da = [pm], giro, i, q, nuovi; via[pm] = [pm];
+    for (giro = 0; giro < 4 && da.length; giro++) { nuovi = [];
+      for (i = 0; i < da.length; i++) for (q = 1; q <= 9; q++) if (q !== 5 && !via[q] && att[q] && GEN[PEL[da[i]]] === PEL[q]) { via[q] = via[da[i]].concat([q]); nuovi.push(q); }
+      da = nuovi; }
+    return { pm: pm, zf: zf, ty: ty, arrivaZF: !!via[zf], arrivaTY: !!via[ty], viaZF: via[zf] || null, viaTY: via[ty] || null };
+  }
   function comboFavorevole(c, p) { var d = c.palaces[p], dn = d.doorName || d.door;
     return (d.tiH === '丙' || d.ti2H === '丙') && (d.diH === '戊' || d.di2H === '戊') && (dn === 'Open' || dn === 'Rest' || dn === 'Birth'); }
   function vuoto(c, p, vu) { if (TOMBA[PEL[p]] === c.mese[1] && !((W.QMDJ_TOMBA_FLUSSO !== false && nutrito(c, p)) || (W.QMDJ_TOMBA_COMBO !== false && comboFavorevole(c, p)))) return true;
     var tgm = W.QMDJ_TRIGONO || 'off'; if ((tgm === 'tutti' || tgm === c._sis) && trigonoInTomba(c, p)) return true;
+    // Prova di Claude (S79), SPENTA: anche un palazzo nel vuoto, se nutrito dal flusso del qi, e' operativo. QMDJ_VUOTO_FLUSSO=true l'accende.
+    if (W.QMDJ_VUOTO_FLUSSO === true && nutrito(c, p)) return false;
     if (PBR[p].indexOf(c.mese[1]) >= 0 || (W.QMDJ_GIORNO_RIEMPIE !== false && PBR[p].indexOf(c.giorno[1]) >= 0)) return false;   // QMDJ_GIORNO_RIEMPIE=false: solo il mese riempie (prova 28/10)   // Edu 24/10: il ramo del mese o del giorno riempie il vuoto
     // Edu 25/10 e 27/10/2026: "un palazzo con un clash interno non e' mai vuoto". QMDJ_CLASH_PIENO: 'tutti' | 'zfty' | 'dshs' | 'off' (default)
     // 旺相不空 (prova 28/10, USDCAD 14/08): un palazzo molto in stagione (mese+stagione >= QMDJ_TIMELY_PIENO) non e' vuoto.
@@ -1114,7 +1133,7 @@
   // cartaDi(ju, dun, pilastro): la carta rotante di un ju e di un'ora, senza data (per la tavola delle 1080).
   function cartaDi(ju, dun, gz) { var c = engine().getRotatingHourChart(2026, 1, 1, gz[0], gz[1], null, { ju: ju, dun: dun }); if (c) { c.pilastro = gz; c.ju = c.ju || ju; c.dun = c.dun || dun; } return c; }
 
-  var API = { lettura: lettura, bilanciaCarta: bilanciaCarta, cartaDi: cartaDi, unito: unito, unitoCascata: unitoCascata, bilancia: bilancia, fanYinTotale: fanYinTotale, wuInternoZfEsterno: wuInternoZfEsterno, letturaBase: letturaBase, viewSu: viewSu, zfVuotoGiorno: zfVuotoGiorno, wuBirth: wuBirth, giornoOra: giornoOra, oraria: oraria, giornaliera: giornaliera, testo: testo, hourGZ: hourGZ, juOraria: juOraria, juGiornaliera: juGiornaliera };
+  var API = { lettura: lettura, flussoQi: flussoQi, bilanciaCarta: bilanciaCarta, cartaDi: cartaDi, unito: unito, unitoCascata: unitoCascata, bilancia: bilancia, fanYinTotale: fanYinTotale, wuInternoZfEsterno: wuInternoZfEsterno, letturaBase: letturaBase, viewSu: viewSu, zfVuotoGiorno: zfVuotoGiorno, wuBirth: wuBirth, giornoOra: giornoOra, oraria: oraria, giornaliera: giornaliera, testo: testo, hourGZ: hourGZ, juOraria: juOraria, juGiornaliera: juGiornaliera };
   W.XKDGQimen = API;
   if (typeof module !== 'undefined') module.exports = API;
 })();
