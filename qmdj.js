@@ -356,7 +356,7 @@
       // molto debole: nonostante lo ZF su 庚 il Commander vince". Sostegni: ts = ramo dell'anno nel palazzo; gen = stelo del mese o dell'anno
       // (nel cielo) in un palazzo che lo genera; deb = l'altro ha forza <= QMDJ_GENG_ECC_DEBOLE (1). QMDJ_GENG_ECC: 'off' | 'uno' | 'due' | 'tre' | 'ts' | 'gen' | 'deb'
       var gem = W.QMDJ_GENG_ECC || 'off';
-      var sost = function (p, fo) { var n = { ts: PBR[p].indexOf(c.anno[1]) >= 0, gen: false, deb: fo <= (W.QMDJ_GENG_ECC_DEBOLE === undefined ? 1 : W.QMDJ_GENG_ECC_DEBOLE) };
+      var sost = function (p, fo) { var n = { ts: (W.QMDJ_TAISUI_DOVE || 'stelo') === 'ramo' ? PBR[p].indexOf(c.anno[1]) >= 0 : p === palOf(c, stemOf(c.anno)), gen: false, deb: fo <= (W.QMDJ_GENG_ECC_DEBOLE === undefined ? 1 : W.QMDJ_GENG_ECC_DEBOLE) };
         for (var q = 1; q <= 9; q++) if (q !== 5 && q !== p && (c.palaces[q].tiH === c.mese[0] || c.palaces[q].tiH === c.anno[0]) && GEN[PEL[q]] === PEL[p]) n.gen = true;
         var k = (n.ts ? 1 : 0) + (n.gen ? 1 : 0) + (n.deb ? 1 : 0);
         return gem === 'uno' ? k >= 1 : gem === 'due' ? k >= 2 : gem === 'tre' ? k >= 3 : !!n[gem]; };
@@ -763,7 +763,7 @@
     else if (/青龍逃走/.test(passo)) p = trova(function (d) { return d.tiH === '乙' && d.diH === '辛'; });
     else if (/Commander opposto|Tai Sui eccita/.test(passo)) p = cmd;
     else if (/genera lo ZS/.test(passo)) p = zs;
-    else if (/Tai Sui timely/.test(passo)) p = ramo(c.anno[1]);
+    else if (/Tai Sui timely/.test(passo)) p = (W.QMDJ_TAISUI_DOVE || 'stelo') === 'ramo' ? ramo(c.anno[1]) : palOf(c, stemOf(c.anno));
     else if (/^View |flusso|genera View/.test(passo)) p = porta('View');
     else if (/Birth piu' forte/.test(passo)) p = porta('Birth');
     else if (/ramo del mese/.test(passo)) p = ramo(c.mese[1]);
@@ -812,9 +812,11 @@
   // In quei giorni il verdetto SHORT diventa LONG. E' un risultato di misura, non dottrina (la 3 va contro le diapositive).
   // QMDJ_VIEW_SU: 'tutti' (default) | 'dshs' | 'zfty' | 'off'.
   // Edu 22/11/2026: "Per Tai Sui nel qimen si intende lo stelo dell'anno" (gia' detto il 25/10). Palazzo del Tai Sui = dove sta nel cielo
-  // lo stelo dell'anno. QMDJ_TAISUI_DOVE: 'stelo' | 'ramo' (com'era fino al 22/11: il palazzo del ramo dell'anno).
+  // lo stelo dell'anno. QMDJ_TAISUI_DOVE: 'stelo' (default dal 25/11) | 'ramo' (com'era prima: il palazzo del ramo dell'anno).
+  // Edu 25/11/2026 (AUDUSD 28/10/2026): "Si', il Tai Sui e' lo stelo dell'anno nel qimen" -> default 'stelo' ovunque (View, ZF aiutato,
+  // eccezione di Geng, bilancia). QMDJ_TAISUI_DOVE='ramo' solo per le prove.
   function taiSuiPal(c) { var k;
-    if ((W.QMDJ_TAISUI_DOVE || 'ramo') === 'ramo') { for (k = 1; k <= 9; k++) if (k !== 5 && PBR[k].indexOf(c.anno[1]) >= 0) return k; return null; }
+    if ((W.QMDJ_TAISUI_DOVE || 'stelo') === 'ramo') { for (k = 1; k <= 9; k++) if (k !== 5 && PBR[k].indexOf(c.anno[1]) >= 0) return k; return null; }
     return palOf(c, stemOf(c.anno)); }
   function viewSu(c) {
     var vw = null, k; for (k = 1; k <= 9; k++) if (k !== 5 && (c.palaces[k].doorName || c.palaces[k].door) === 'View') vw = k;
