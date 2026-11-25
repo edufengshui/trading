@@ -908,7 +908,79 @@
     return d || z;
   }
 
-  var API = { lettura: lettura, unito: unito, wuInternoZfEsterno: wuInternoZfEsterno, letturaBase: letturaBase, viewSu: viewSu, zfVuotoGiorno: zfVuotoGiorno, wuBirth: wuBirth, giornoOra: giornoOra, oraria: oraria, giornaliera: giornaliera, testo: testo, hourGZ: hourGZ, juOraria: juOraria, juGiornaliera: juGiornaliera };
+  // BILANCIA (Edu 24-25/11/2026: "spesso non c'e' un'indicazione definitiva ma tante piccole che vanno messe insieme e ognuna fa
+  // pesare la bilancia da un lato"; 25/11: "anche ieri abbiamo discusso di un clash interno come fattore negativo che pesa sulla
+  // decisione finale che si fa prendendo in considerazione molti aspetti, non solo uno").
+  // NON cambia nessun verdetto: elenca le indicazioni della carta, ognuna col suo verso, e le somma. Tutti i pesi valgono 1
+  // (QMDJ_BIL_PESI = { chiave: peso } per le prove). Le indicazioni:
+  //   - gli argomenti dello ZFTY (se lo ZFTY tace, quelli del DsHs), cosi' come li scrive la lettura;
+  //   - lo stato dei palazzi, valutato SEMPRE: clash interno nel palazzo dello ZF (contro lo ZF) o del TY (contro il TY);
+  //     se lo ZF controlla il TY, gli altri fattori dettati il 24/11 (DS timely che clasha il ponte debole, stelo del mese di
+  //     fronte al TY, prossimo Commander che genera lo ZF);
+  //   - ZF tutto vuoto coi vuoti del giorno; ZF toccato dai vuoti del giorno; fan yin totale (stelle e porte) (carta 11, 25/11);
+  //   - ZF generato dal Tai Sui e dal DS (20/11);
+  //   - View che spinge in su (misura del 20/11) e cio' che la indebolisce: clash interno, clash contro lo stelo del mese nel
+  //     di pan, palazzo debole nel mese, clash dal DS timely, dal prossimo Commander. View indebolita non spinge (peso 0).
+  // bilancia(c, trend) -> { voci: [{ k, t, dir, peso }], long, short, dir, segue }
+  var NOMEP = { 1:'Kan', 2:'Kun', 3:'Zhen', 4:'Xun', 6:'Qian', 7:'Dui', 8:'Gen', 9:'Li' };
+  function fanYinTotale(c) {
+    var OPx = { 1:9, 9:1, 2:8, 8:2, 3:7, 7:3, 4:6, 6:4 }, DH = { Rest:1, Birth:8, Injury:3, Delusion:4, View:9, Death:2, Shocking:7, Open:6 },
+        SH = { Grass:1, Rice:2, Aggressor:3, Assistant:4, Heart:6, Pillar:7, Official:8, Hero:9 }, st = 0, dr = 0, k;
+    for (k = 1; k <= 9; k++) if (k !== 5) { var d = c.palaces[k]; if (SH[d.star] === OPx[k]) st++; if (DH[d.doorName || d.door] === OPx[k]) dr++; }
+    return st >= 7 && dr >= 7; }
+  function bilancia(c, trend) {
+    if (!c || !c.palaces || (trend !== 'LONG' && trend !== 'SHORT')) return null;
+    var opp = trend === 'LONG' ? 'SHORT' : 'LONG', voci = [], P = W.QMDJ_BIL_PESI || {}, k;
+    var metti = function (ch, testo, dir, pesoBase) { var w = P[ch] === undefined ? (pesoBase === undefined ? 1 : pesoBase) : P[ch]; voci.push({ k: ch, t: testo, dir: dir, peso: w }); };
+    var seg = function (v) { return v ? trend : opp; };
+    var zb = letturaBase(c, trend, 'zfty'), zf = null, ty = null, HOME = { 1:'Grass', 2:'Rice', 3:'Aggressor', 4:'Assistant', 6:'Heart', 7:'Pillar', 8:'Official', 9:'Hero' };
+    for (k = 1; k <= 9; k++) if (k !== 5 && c.palaces[k].zhiFu) zf = k;
+    if (zf) for (k = 1; k <= 9; k++) if (k !== 5 && c.palaces[k].star === HOME[zf]) ty = k;
+    // 1. gli argomenti della lettura
+    var args = [], fonte = 'ZFTY';
+    if (zb && zb.parTimely) args = [{ k: zb.motivo, v: zb.segue }];
+    else if (zb && zb.paralleli) { fonte = 'DsHs (ZF e TY paralleli)'; args = zb.argomenti || []; }
+    else if (zb && zb.dir) args = zb.argomenti || [];
+    else { var db = letturaBase(c, trend, 'dshs'); fonte = 'DsHs (lo ZFTY tace)'; args = (db && db.argomenti) || []; c._sis = 'zfty'; }
+    // anche i passaggi che finiscono con "il controllo tiene" (segue), che argomenti() non conta
+    var gm = zb && zb.giornoOra, mot = (zb && !zb.parTimely && (zb.dir || zb.paralleli)) ? ((gm && gm.motivo) || zb.motivo || '') : '';
+    mot.split(' · ').forEach(function (t) { if (/il controllo tiene$/.test(t)) args.push({ k: t, v: true }); });
+    for (k = 0; k < args.length; k++) metti('arg: ' + args[k].k.replace(/^base: /, 'base '), fonte + ': ' + args[k].k.replace(/^base: /, '') + ' -> ' + (args[k].v ? 'segue' : 'non segue'), seg(args[k].v));
+    // 2. lo stato dei palazzi di ZF e TY
+    if (zf && ty && zf !== ty) {
+      if (clashInterno(c, zf)) metti('clash interno ZF', 'clash interno nel palazzo dello ZF (' + NOMEP[zf] + '): lo ZF e\' indebolito -> non segue', opp);
+      if (clashInterno(c, ty)) metti('clash interno TY', 'clash interno nel palazzo del TY (' + NOMEP[ty] + '): il TY e\' indebolito -> segue', trend);
+      if (CTL[PEL[zf]] === PEL[ty]) { var f = tyDebole(c, zf, ty);
+        for (k = 0; k < f.length; k++) if (f[k] !== 'clash interno') metti('TY: ' + f[k], 'lo ZF controlla il TY e ' + f[k] + ' -> segue', trend); }
+    }
+    // 3. ZF e i vuoti del giorno; fan yin totale
+    if (zf) { var vg = vuotiDi(c.giorno), br = PBR[zf], toc = 0; for (k = 0; k < br.length; k++) if (vg.indexOf(br[k]) >= 0) toc++;
+      var pieno = br.indexOf(c.mese[1]) >= 0;
+      if (toc && toc === br.length && !pieno) metti('ZF vuoto del giorno', 'ZF in ' + NOMEP[zf] + ' tutto vuoto coi vuoti del giorno -> non segue', opp);
+      else if (toc && !pieno) metti('ZF toccato dai vuoti del giorno', 'ZF in ' + NOMEP[zf] + ' toccato dai vuoti del giorno -> non segue', opp); }
+    if (fanYinTotale(c)) metti('fan yin totale', 'fan yin totale (stelle e porte nel palazzo di fronte) -> non segue', opp);
+    // 4. ZF generato dal Tai Sui e dal DS
+    var ts = taiSuiPal(c), ds = palOf(c, stemOf(c.giorno));
+    if (zf && ts && ds && ds !== zf && GEN[PEL[ts]] === PEL[zf] && GEN[PEL[ds]] === PEL[zf] && !(ty && GEN[PEL[zf]] === PEL[ty]))
+      metti('ZF aiutato', 'ZF generato dal Tai Sui e dal DS -> segue', trend);
+    // 5. View che spinge in su, e cio' che la indebolisce
+    var v = viewSu(c);
+    if (v) { var vw = null, deb = []; for (k = 1; k <= 9; k++) if (k !== 5 && (c.palaces[k].doorName || c.palaces[k].door) === 'View') vw = k;
+      var x = c.palaces[vw], ci = clashInterno(c, vw), sm = stemOf(c.mese);
+      if (ci) deb.push('clash interno nel suo palazzo');
+      if (ci && (x.diH === sm || x.di2H === sm)) deb.push('il clash e\' contro lo stelo del mese nel di pan');
+      if (v !== 'View vuota e fuori stagione' && tempo(PEL[vw], BEL[c.mese[1]]) < 3) deb.push(NOMEP[vw] + ' e\' debole nel mese');
+      var OPx = { 1:9, 9:1, 2:8, 8:2, 3:7, 7:3, 4:6, 6:4 }, nz = prossimoCmd(c);
+      if (ds === OPx[vw] && tempo(PEL[ds], BEL[c.mese[1]]) >= 3) deb.push('clashata dal DS timely');
+      if (nz === OPx[vw]) deb.push('clashata dal prossimo Commander');
+      metti('View su', v + ': il cross tende a salire' + (deb.length ? ' — ma View e\' indebolita, non spinge' : ''), 'LONG', deb.length ? 0 : 1);
+      for (k = 0; k < deb.length; k++) voci.push({ k: 'View debole: ' + deb[k].replace(/^(Kan|Kun|Zhen|Xun|Qian|Dui|Gen|Li) /, 'palazzo '), t: 'contro View: ' + deb[k], dir: null, peso: 0 }); }
+    var L = 0, S = 0; for (k = 0; k < voci.length; k++) { if (voci[k].dir === 'LONG') L += voci[k].peso; else if (voci[k].dir === 'SHORT') S += voci[k].peso; }
+    var dir = L > S ? 'LONG' : S > L ? 'SHORT' : null;
+    return { voci: voci, long: L, short: S, dir: dir, segue: dir ? dir === trend : null };
+  }
+
+  var API = { lettura: lettura, unito: unito, bilancia: bilancia, fanYinTotale: fanYinTotale, wuInternoZfEsterno: wuInternoZfEsterno, letturaBase: letturaBase, viewSu: viewSu, zfVuotoGiorno: zfVuotoGiorno, wuBirth: wuBirth, giornoOra: giornoOra, oraria: oraria, giornaliera: giornaliera, testo: testo, hourGZ: hourGZ, juOraria: juOraria, juGiornaliera: juGiornaliera };
   W.XKDGQimen = API;
   if (typeof module !== 'undefined') module.exports = API;
 })();
