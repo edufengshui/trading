@@ -1268,6 +1268,32 @@ function livelloTreSistemi(e) {
   return { liv: null, dir: null, perche: perche + ': fermo', voci: voci };
 }
 
+// S78 (26/11/2026, Edu: "Il software non e' stato aggiornato altrimenti mostrerebbe solo due trade da lanciare"): i trade di Lio che
+// NON vanno all'EA (filtri del 25/11 in storico-trading/qmdj_registro.js) non stanno piu' fra i "da tradare": hanno una sezione loro.
+// Fonte: segnali.json, lo stesso file che legge l'EA (scritto dalla raccolta notturna alle 00:12 GMT circa). Finche' non c'e' quello
+// del giorno valgono le due regole che l'app sa calcolare da sola (casella del cross; Lio debole col sistema D contro).
+var SEGNALI_EA = null, SEGNALI_EA_CHIESTI = '';
+function caricaSegnaliEA(data) {
+  if (SEGNALI_EA_CHIESTI === data || typeof fetch === 'undefined') return; SEGNALI_EA_CHIESTI = data;
+  fetch('https://raw.githubusercontent.com/edufengshui/storico-trading/main/segnali.json?t=' + Date.now(), { cache: 'no-store' })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (j) { if (j && j.data === data) { SEGNALI_EA = j; try { renderReportTreSistemi(); } catch (e) {} } })
+    .catch(function () {});
+}
+var EA_NON_TRADARE = [{ cross: 'AUDUSD', forza: 'debole', trend: 'contro' }, { cross: 'EURGBP', forza: 'debole' }];
+function eaMotivoNo(e, data) {
+  if (e.livello !== 'LI') return null;
+  if (SEGNALI_EA && SEGNALI_EA.data === data) {
+    var sl = (SEGNALI_EA.saltati || []).filter(function (x) { return x.cross === e.cross && x.dir === e.signal; })[0];
+    if (sl) return sl.motivo || 'saltato';
+    if ((SEGNALI_EA.trades || []).some(function (x) { return x.cross === e.cross; })) return null;
+  }
+  var fl = e.liForza || 'forte', ct = (e.trend === 'LONG' || e.trend === 'SHORT') ? (e.trend === e.signal ? 'con' : 'contro') : null;
+  if (EA_NON_TRADARE.some(function (n) { return n.cross === e.cross && (!n.forza || n.forza === fl) && (!n.trend || n.trend === ct); })) return 'casella del cross dove Lio sta intorno al 50%';
+  var m = /(?:^|[ ·‖]) ?Sistema D (LONG|SHORT)/.exec(e.voci || e.decisore || '');
+  if (fl === 'debole' && m && m[1] !== e.signal) return 'Lio debole col sistema D contro';
+  return null;
+}
 function renderReportTreSistemi() {
   var box = $('report'); if (!box) return;
   if (!forexData || !forexData.rows) {
@@ -1301,7 +1327,10 @@ function renderReportTreSistemi() {
   var ordine = { LI: 0, A: 0, B: 1, C: 2, D: 3, cantina: 99 };
   var ord = function (l) { return l in ordine ? ordine[l] : +l; };
   tradabili.sort(function (a, b) { return ord(a.livello) - ord(b.livello); });
-  var esclusi = esiti.filter(function (e) { return tradabili.indexOf(e) < 0 && inCantina.indexOf(e) < 0; });
+  caricaSegnaliEA(forexData.date);
+  var saltatiEA = tradabili.filter(function (e) { e.eaNo = eaMotivoNo(e, forexData.date); return !!e.eaNo; });
+  tradabili = tradabili.filter(function (e) { return !e.eaNo; });
+  var esclusi = esiti.filter(function (e) { return tradabili.indexOf(e) < 0 && saltatiEA.indexOf(e) < 0 && inCantina.indexOf(e) < 0; });
 
   var css = {
     card: 'margin:18px 0;border:1px solid rgba(255,255,255,.14);border-radius:10px;overflow:hidden',
@@ -1343,6 +1372,12 @@ function renderReportTreSistemi() {
       '<span style="font-size:12px;opacity:.9">' + (e.segue ? 'segue il trend' : 'non segue il trend') + ' · <b>' + ((e.motivo || '').indexOf('Leggo io') >= 0 ? 'Leggo io ' + (e.liForza || '') + ', si osserva' : 'in cantina') + ', non si trada</b></span>' +
       '<span style="' + css.note + '">' + '</span>' + (REGOLE ? listaRegole(e.voci + (e.dlrVia ? ' · via DLR: ' + e.dlrVia : '')) : '') + '</div>';
   }).join('');
+  var righeSalt = saltatiEA.map(function (e) {
+    return '<div class="repline" data-cross="' + e.cross + '" style="' + css.row + ';cursor:pointer;opacity:.75">' +
+      livBadge(e.livello) + '<span style="' + css.name + '">' + e.cross + '</span>' + badge(e.signal) +
+      '<span style="font-size:12px;opacity:.9"><b>non si trada</b>' + (REGOLE ? ' · ' + e.eaNo : '') + '</span>' +
+      '<span style="' + css.note + '"></span></div>';
+  }).join('');
   var righeNo = esclusi.map(function (e) {
     return '<div style="' + css.row + '">' +
       '<span style="' + css.name + ';opacity:.75">' + e.cross + '</span>' + badge('NO TRADE') +
@@ -1353,7 +1388,7 @@ function renderReportTreSistemi() {
   var nL = tradabili.filter(function (e) { return e.signal === 'LONG'; }).length;
   var nS = tradabili.filter(function (e) { return e.signal === 'SHORT'; }).length;
 
-  salvaNelRegistro(forexData.date, tradabili.concat(inCantina));   // le carte A in cantina si registrano con l'esito, ma non si tradano
+  salvaNelRegistro(forexData.date, tradabili.concat(saltatiEA).concat(inCantina));   // le carte A in cantina si registrano con l'esito, ma non si tradano
 
   var spente = Object.keys(lyToggles).filter(function (k) { return lyToggles[k] === false; }).length;
   var nota = '<div style="padding:6px 14px;font-size:12px;background:rgba(227,179,65,.08);border-bottom:1px solid rgba(255,255,255,.08)">' +
@@ -1371,12 +1406,14 @@ function renderReportTreSistemi() {
       '<div style="' + css.head + '">' +
         '<b style="font-size:16px">Da tradare oggi · ' + forexData.date + ' 00:00 GMT</b>' +
         '<span style="font-size:12px;opacity:.8">' + tradabili.length + ' da tradare (' + nL + ' long, ' + nS + ' short) · ' +
-        (nA + nB + nC + nD ? 'A ' + nA + ' · B ' + nB + ' · C ' + nC + ' · D ' + nD : 'punta ' + cont('1') + ' · gradini 2-10 ' + (tradabili.length - cont('1'))) + ' · in cantina ' + inCantina.length + ' · ' + esclusi.length + ' fermi</span>' +
+        (nA + nB + nC + nD ? 'A ' + nA + ' · B ' + nB + ' · C ' + nC + ' · D ' + nD : 'punta ' + cont('1') + ' · gradini 2-10 ' + (tradabili.length - cont('1'))) + ' · in cantina ' + inCantina.length + (saltatiEA.length ? ' · ' + saltatiEA.length + ' non si tradano' : '') + ' · ' + esclusi.length + ' fermi</span>' +
       (REGOLE ? '<button id="vediregole" class="ghost" style="font-size:12px">' + (REGOLE_VISTA ? 'Regole: nascondi' : 'Regole: mostra') + '</button>' : '') +
       '</div>' + (REGOLE ? '<div class="regole"' + (REGOLE_VISTA ? '' : ' style="display:none"') + '>' + nota + '</div><div class="regoleno"' + (REGOLE_VISTA ? ' style="display:none"' : '') + '>' + notaBreve + '</div>' : notaBreve) +
       '<div style="' + css.sect + '">' +
         '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">DA TRADARE · in ordine di gradino</div>' + righeOk +
       '</div>' +
+      (saltatiEA.length ? '<div style="' + css.sect + ';background:rgba(227,179,65,.05);border-top:1px solid rgba(255,255,255,.10)">' +
+        '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">NON SI TRADANO · saltati anche su MetaTrader</div>' + righeSalt + '</div>' : '') +
       (inCantina.length ? '<div style="' + css.sect + ';background:rgba(63,185,80,.05);border-top:1px solid rgba(255,255,255,.10)">' +
         '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">DA OSSERVARE · non si tradano (Leggo io con conclusione media o debole)</div>' + righeCant + '</div>' : '') +
       '<details style="' + css.sect + ';background:rgba(248,81,73,.05);border-top:1px solid rgba(255,255,255,.10)">' +
