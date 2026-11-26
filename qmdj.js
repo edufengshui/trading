@@ -1082,10 +1082,10 @@
       // Injury e Delusion in Kun; View in Qian; Open e Shocking in Gen. STELO DEL COMMANDER CHE CLASHA IL PALAZZO: Jia Yin Gui in Kun;
       // Jia Shen Geng in Gen; Jia Zi Wu in Li; Jia Xu Ji in Xun; Jia Chen Ren in Qian. "Non vuole dire che con questi qua lo ZF va sempre
       // male ma solo che vanno tenuti in considerazione nei punteggi": due voci, peso 1 ciascuna, contro lo ZF (non segue).
-      // QMDJ_BIL_ZFPAL=false le spegne. Jia Wu Xin in Kan NON e' stato dettato: QMDJ_BIL_ZFCLASH_XIN=true lo aggiunge (spento).
-      if (W.QMDJ_BIL_ZFPAL !== false) { var TOMBAP = { Rest: 4, Injury: 2, Delusion: 2, View: 6, Open: 8, Shocking: 8 }, CLP = { '癸': 2, '庚': 8, '戊': 9, '己': 4, '壬': 6 },
+      // QMDJ_BIL_ZFPAL=false le spegne. Jia Zi Wu in Li e Jia Wu Xin in Kan confermati da Edu il 26/11 (QMDJ_BIL_ZFCLASH_XIN=false toglie il secondo).
+      if (W.QMDJ_BIL_ZFPAL !== false) { var TOMBAP = { Rest: 4, Injury: 2, Delusion: 2, View: 6, Open: 8, Shocking: 8 }, CLP = { '癸': 2, '庚': 8, '戊': 9, '己': 4, '壬': 6, '辛': 1 },
           CMDH = { Wu: '戊', Ji: '己', Geng: '庚', Xin: '辛', Ren: '壬', Gui: '癸' }, xzp = c.palaces[zf], dnZ = xzp.doorName || xzp.door, cmh = CMDH[xzp.cmdStem] || xzp.tiH;
-        if (W.QMDJ_BIL_ZFCLASH_XIN === true) CLP['辛'] = 1;
+        if (W.QMDJ_BIL_ZFCLASH_XIN === false) delete CLP['辛'];   // Edu 26/11/2026: "Giusto Jia Zi Wu in Li, Zi contro Wu. Jia Wu Xin in Kan pure, aggiungi entrambi"
         if (TOMBAP[dnZ] === zf) metti('porta ZF in tomba', 'la porta ' + dnZ + ' nel palazzo dello ZF (' + NOMEP[zf] + ') e\' in tomba: lo ZF ha meno energia ', debDir);
         if (CLP[cmh] === zf) metti('ZF clasha il palazzo', 'lo stelo del Commander (' + xzp.cmdStem + ') clasha il suo palazzo (' + NOMEP[zf] + '): lo ZF ha meno energia ', debDir); }
       if (c.palaces[zf].diH === '庚' || c.palaces[zf].di2H === '庚') metti('ZF sopra Geng', 'lo ZF (Jia) in ' + NOMEP[zf] + ' sta sopra Geng: clash serio, lo ZF e\' indebolito ', debDir);
