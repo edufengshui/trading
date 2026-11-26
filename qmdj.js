@@ -1078,6 +1078,14 @@
       if (W.QMDJ_BIL_PENA !== false) { var xt = c.palaces[ty], cieli = [xt.tiH, xt.ti2H], terre = [xt.diH, xt.di2H], pena = null;
         cieli.forEach(function (t) { terre.forEach(function (e) { if ((t === '己' && e === '庚') || (t === '庚' && e === '己')) pena = t === '己' ? 'Ji sopra Geng' : 'Geng sopra Ji'; }); });
         if (pena) metti('penalita TY', 'penalita\' nel palazzo del TY (' + NOMEP[ty] + '): ' + pena + ' -> il TY e\' indebolito, segue', trend); }
+      // Edu 26/11/2026 (carta 17, USDCHF 25/11/2026, TY in Li con Ren, Assistant e Delusion): "Ren con Assistant e/o Delusion fa
+      // autopenalita' perche' entrambi contengono il ramo Chen" (Ren = Jia Chen; Assistant e Delusion sono di casa in Xun: Chen, Si).
+      // Nel palazzo del TY -> il TY e' indebolito (segue), peso 1. QMDJ_BIL_AUTOPENA=false la spegne. Solo sul TY.
+      // Estensione di Claude SPENTA (QMDJ_BIL_AUTOPENA_WU=true): lo stesso con Xin (Jia Wu) e Hero o View (di casa in Li: Wu-Wu).
+      if (W.QMDJ_BIL_AUTOPENA !== false) { var xa = c.palaces[ty], sta = [xa.tiH, xa.ti2H, xa.diH, xa.di2H], dnA = xa.doorName || xa.door, apa = null;
+        if (sta.indexOf('壬') >= 0 && (xa.star === 'Assistant' || xa.star2 === 'Assistant' || dnA === 'Delusion')) apa = 'Ren con ' + (dnA === 'Delusion' ? 'Delusion' : 'Assistant') + ' (Chen-Chen)';
+        else if (W.QMDJ_BIL_AUTOPENA_WU === true && sta.indexOf('辛') >= 0 && (xa.star === 'Hero' || xa.star2 === 'Hero' || dnA === 'View')) apa = 'Xin con ' + (dnA === 'View' ? 'View' : 'Hero') + ' (Wu-Wu)';
+        if (apa) metti('autopenalita TY', 'autopenalita\' nel palazzo del TY (' + NOMEP[ty] + '): ' + apa + ' -> il TY e\' indebolito, segue', trend); }
       if (clashInterno(c, ty)) metti('clash interno TY', 'clash interno nel palazzo del TY (' + NOMEP[ty] + '): il TY e\' indebolito -> segue', trend);
       // Edu 25/11/2026 (carta 15, EURGBP 17/11/2026: ZF in Gen genera il TY in Qian, eppure ha seguito): "Temo che la porta Death
       // non porti benefici". La porta Death nel palazzo del TY -> il TY non trae beneficio, e' indebolito (segue). E' un PESO nella
