@@ -1074,9 +1074,21 @@
       // dimenticato di vedere lo ZF sopra Xin che cambia tutto". Xin nel di pan del palazzo dello ZF (anche lo stelo venuto dal centro)
       // -> lo ZF e' indebolito: non segue. Corregge il "solo Geng" del 25/11: per lo ZF contano Geng e Xin.
       // QMDJ_BIL_XIN: 'annulla' (default: un punto per "non segue" e i voti "lo ZF controlla il TY" non pesano) | 'peso1' | 'peso3' | 'off'.
+      var debDir = (W.QMDJ_BIL_ZFDEB === 'relazione' && ty && GEN[PEL[zf]] === PEL[ty]) ? trend : opp;   // prova di Claude, spenta
       var xinM = W.QMDJ_BIL_XIN || 'annulla';
-      if (xinM !== 'off' && (c.palaces[zf].diH === '辛' || c.palaces[zf].di2H === '辛')) metti('ZF sopra Xin', 'lo ZF (Jia) in ' + NOMEP[zf] + ' sta sopra Xin: lo ZF e\' indebolito -> non segue', opp, xinM === 'peso3' ? 3 : 1);
-      if (c.palaces[zf].diH === '庚' || c.palaces[zf].di2H === '庚') metti('ZF sopra Geng', 'lo ZF (Jia) in ' + NOMEP[zf] + ' sta sopra Geng: clash serio, lo ZF e\' indebolito -> non segue', opp);
+      if (xinM !== 'off' && (c.palaces[zf].diH === '辛' || c.palaces[zf].di2H === '辛')) metti('ZF sopra Xin', 'lo ZF (Jia) in ' + NOMEP[zf] + ' sta sopra Xin: lo ZF e\' indebolito ', debDir, xinM === 'peso3' ? 3 : 1);
+      // Edu 26/11/2026 (carta 18, USDCAD 25/11/2026): "Ma insomma, non riesci a collezionare? Injury in Kun sta pure in tomba e Gui
+      // (Jia Yin Gui) clasha il palazzo. Lo ZF non ha l'energia per proseguire il trend." Tavole dettate: PORTE IN TOMBA: Rest in Xun;
+      // Injury e Delusion in Kun; View in Qian; Open e Shocking in Gen. STELO DEL COMMANDER CHE CLASHA IL PALAZZO: Jia Yin Gui in Kun;
+      // Jia Shen Geng in Gen; Jia Zi Wu in Li; Jia Xu Ji in Xun; Jia Chen Ren in Qian. "Non vuole dire che con questi qua lo ZF va sempre
+      // male ma solo che vanno tenuti in considerazione nei punteggi": due voci, peso 1 ciascuna, contro lo ZF (non segue).
+      // QMDJ_BIL_ZFPAL=false le spegne. Jia Wu Xin in Kan NON e' stato dettato: QMDJ_BIL_ZFCLASH_XIN=true lo aggiunge (spento).
+      if (W.QMDJ_BIL_ZFPAL !== false) { var TOMBAP = { Rest: 4, Injury: 2, Delusion: 2, View: 6, Open: 8, Shocking: 8 }, CLP = { '癸': 2, '庚': 8, '戊': 9, '己': 4, '壬': 6 },
+          CMDH = { Wu: '戊', Ji: '己', Geng: '庚', Xin: '辛', Ren: '壬', Gui: '癸' }, xzp = c.palaces[zf], dnZ = xzp.doorName || xzp.door, cmh = CMDH[xzp.cmdStem] || xzp.tiH;
+        if (W.QMDJ_BIL_ZFCLASH_XIN === true) CLP['辛'] = 1;
+        if (TOMBAP[dnZ] === zf) metti('porta ZF in tomba', 'la porta ' + dnZ + ' nel palazzo dello ZF (' + NOMEP[zf] + ') e\' in tomba: lo ZF ha meno energia ', debDir);
+        if (CLP[cmh] === zf) metti('ZF clasha il palazzo', 'lo stelo del Commander (' + xzp.cmdStem + ') clasha il suo palazzo (' + NOMEP[zf] + '): lo ZF ha meno energia ', debDir); }
+      if (c.palaces[zf].diH === '庚' || c.palaces[zf].di2H === '庚') metti('ZF sopra Geng', 'lo ZF (Jia) in ' + NOMEP[zf] + ' sta sopra Geng: clash serio, lo ZF e\' indebolito ', debDir);
       // Edu 25/11/2026 (carta 10, USDCHF 23/11/2026: ZF in Dui e TY in Qian paralleli, tutto tace): "Il TY ha una penalita' nel suo
       // palazzo"; "la penalita' e' Ji sopra Geng o l'opposto. E' tipica del qimen". Ji sopra Geng o Geng sopra Ji (cielo/terra)
       // nel palazzo del TY -> il TY e' indebolito (segue). Solo sul TY, come dettato. QMDJ_BIL_PENA=false la spegne.
@@ -1177,8 +1189,15 @@
       for (k = 0; k < voci.length; k++) if (/^ZFTY: il giorno genera l'ora/.test(voci[k].t) && voci[k].peso) { voci[k].peso = 0; voci[k].t += ' — ma il TY ha la porta Death: non pesa'; }
     // ZF sopra Xin (Edu 26/11/2026, "cambia tutto"): uno ZF indebolito non controlla -> i voti che poggiano sul controllo dello ZF sul TY
     // (la base "controlla", "il controllo tiene", la conferma del DsHs) non pesano. Parte 'annulla' = lettura di Claude del "cambia tutto".
-    if ((W.QMDJ_BIL_XIN || 'annulla') === 'annulla' && voci.some(function (v) { return v.k === 'ZF sopra Xin'; }) && zf && ty && CTL[PEL[zf]] === PEL[ty])
-      for (k = 0; k < voci.length; k++) if (voci[k].peso && voci[k].dir === trend && (/^ZFTY: il giorno controlla l'ora/.test(voci[k].t) || /il controllo tiene/.test(voci[k].t) || voci[k].k === 'DsHs conferma')) { voci[k].peso = 0; voci[k].t += ' — ma lo ZF sta sopra Xin: non pesa'; }
+    // 26/11 sera (Edu: "non riesci a collezionare?... Lo ZF non ha l'energia per proseguire il trend"): non e' Xin da solo che cambia
+    // tutto, sono le indicazioni RACCOLTE. Costruzione di Claude: con almeno QMDJ_BIL_ZF_ENERGIA (2) indicazioni contro lo ZF nel suo
+    // palazzo (sopra Geng, sopra Xin, porta in tomba, stelo del Commander che clasha il palazzo) lo ZF non ha energia e i voti che poggiano
+    // sul suo controllo sul TY non pesano. QMDJ_BIL_XIN='peso1': solo punteggi, niente annullamento.
+    var nDebZ = voci.filter(function (v) { return v.peso && (v.k === 'ZF sopra Geng' || v.k === 'ZF sopra Xin' || v.k === 'porta ZF in tomba' || v.k === 'ZF clasha il palazzo'); }).length;
+    if ((W.QMDJ_BIL_XIN || 'annulla') === 'annulla' && nDebZ >= (W.QMDJ_BIL_ZF_ENERGIA || 2) && zf && ty && CTL[PEL[zf]] === PEL[ty])
+      for (k = 0; k < voci.length; k++) if (voci[k].peso && voci[k].dir === trend && (/^ZFTY: il giorno controlla l'ora/.test(voci[k].t) || /il controllo tiene/.test(voci[k].t) || voci[k].k === 'DsHs conferma')) { voci[k].peso = 0; voci[k].t += ' — ma lo ZF non ha energia (' + nDebZ + ' indicazioni contro nel suo palazzo): non pesa'; }
+    if (W.QMDJ_BIL_ZFDEB === 'relazione' && nDebZ >= (W.QMDJ_BIL_ZF_ENERGIA || 2) && zf && ty && GEN[PEL[zf]] === PEL[ty])   // prova di Claude, spenta
+      for (k = 0; k < voci.length; k++) if (voci[k].peso && /^ZFTY: il giorno genera l'ora/.test(voci[k].t)) { voci[k].peso = 0; voci[k].t += ' — ma lo ZF non ha energia: non pesa'; }
     var L = 0, S = 0; for (k = 0; k < voci.length; k++) { if (voci[k].dir === 'LONG') L += voci[k].peso; else if (voci[k].dir === 'SHORT') S += voci[k].peso; }
     var dir = L > S ? 'LONG' : S > L ? 'SHORT' : null;
     return { voci: voci, long: L, short: S, dir: dir, segue: dir ? dir === trend : null };
