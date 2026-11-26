@@ -1136,6 +1136,22 @@
     // perche' chiedi ancora?"): se lo ZF genera il TY e il TY ha la porta Death, il qi dello ZF finisce in un palazzo che non ne trae
     // beneficio -> il voto "ZF genera il TY" non pesa. Misura: ZF genera TY con Death sul TY, il mercato segue 57,8% · 59,8%;
     // senza Death 47,7% · 47,8%. QMDJ_BIL_DEATH_GENERA=false la spegne.
+    // Edu 26/11/2026 (carta 17, USDCHF 25/11/2026: ZF in Xun genera il TY in Li, ZF vuoto del giorno, eppure ha seguito di 49 pip):
+    // "Gui sopra Ren con Injury e' una combinazione direzionale del Legno che e' molto timely nel mese Hai e nel giorno Mao. Il TY sta
+    // su Li che e' invece drenato da View". I rami portati dal palazzo dello ZF (steli 六仪, porta e stella: rami3) formano una
+    // combinazione direzionale completa (三会), il cui elemento e' timely nel mese (uguale all'elemento del mese o generato da lui)
+    // -> lo ZF e' forte: segue, peso 1. QMDJ_BIL_DIREZ=false la spegne. Solo sullo ZF, come dettato.
+    // Estensioni di Claude (spente, da provare): QMDJ_BIL_DIREZ_GIORNO=true -> un punto in piu' se e' timely anche nel giorno;
+    // QMDJ_BIL_DIREZ_VUOTO=true -> con la combinazione timely i vuoti del giorno sullo ZF non pesano.
+    // "Il TY drenato da View" e' gia' la voce "flusso: ZF genera TY genera View" della lettura: non si conta due volte.
+    if (zf && W.QMDJ_BIL_DIREZ !== false) { var ELB = { '亥':'W','子':'W','寅':'L','卯':'L','巳':'F','午':'F','申':'M','酉':'M','辰':'E','戌':'E','丑':'E','未':'E' },
+        HUI = [['亥子丑','W','Acqua'], ['寅卯辰','L','Legno'], ['巳午未','F','Fuoco'], ['申酉戌','M','Metallo']], brZ = rami3(c, zf), hi, tm = function (b, e) { return ELB[b] === e || GEN[ELB[b]] === e; };
+      for (hi = 0; hi < HUI.length; hi++) { var tt = HUI[hi][0], ee = HUI[hi][1];
+        if (!(brZ[tt[0]] && brZ[tt[1]] && brZ[tt[2]]) || !tm(c.mese[1], ee)) continue;
+        var gg = tm(c.giorno[1], ee);
+        metti('direzionale ZF', 'combinazione direzionale del ' + HUI[hi][2] + ' (' + tt + ') nel palazzo dello ZF (' + NOMEP[zf] + '), timely nel mese' + (gg ? ' e nel giorno' : '') + ': lo ZF e\' forte -> segue', trend, (gg && W.QMDJ_BIL_DIREZ_GIORNO === true) ? 2 : 1);
+        if (W.QMDJ_BIL_DIREZ_VUOTO === true) for (k = 0; k < voci.length; k++) if (/^ZF in .*vuot/.test(voci[k].t) && voci[k].peso) { voci[k].peso = 0; voci[k].t += ' — ma il palazzo porta una combinazione direzionale timely: non pesa'; }
+        break; } }
     // Edu 26/11/2026 (USDCAD 05/11/2026, Death sul TY eppure NON ha seguito): "Qui anche DsHs dicono la stessa cosa" (DS nel palazzo
     // dello ZF, HS in quello del TY: il DsHs ripete la relazione dello ZFTY). Allora la relazione e' confermata:
     // a) la porta Death sul TY NON toglie il peso a "ZF genera il TY" (QMDJ_BIL_DSHS_TIENE=false la spegne);
