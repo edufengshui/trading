@@ -1136,6 +1136,13 @@
     // perche' chiedi ancora?"): se lo ZF genera il TY e il TY ha la porta Death, il qi dello ZF finisce in un palazzo che non ne trae
     // beneficio -> il voto "ZF genera il TY" non pesa. Misura: ZF genera TY con Death sul TY, il mercato segue 57,8% · 59,8%;
     // senza Death 47,7% · 47,8%. QMDJ_BIL_DEATH_GENERA=false la spegne.
+    // Edu 26/11/2026 (USDCAD 05/11/2026, Death sul TY eppure NON ha seguito): "Qui anche DsHs dicono la stessa cosa" (DS nel palazzo
+    // dello ZF, HS in quello del TY: il DsHs ripete la relazione dello ZFTY). Allora la relazione e' confermata:
+    // a) la porta Death sul TY NON toglie il peso a "ZF genera il TY" (QMDJ_BIL_DSHS_TIENE=false la spegne);
+    // b) estensione di Claude, per ogni relazione di base: la conferma del DsHs e' una voce in piu', peso 1 (QMDJ_BIL_DSHS_CONF=false la spegne). Misura 26/11: bilancia 53,4% -> 53,8% · 52,5% -> 52,9%.
+    var confDsHs = !!stessi, baseZ = null; for (k = 0; k < voci.length; k++) if (/^arg: base /.test(voci[k].k) && /^ZFTY: /.test(voci[k].t)) { baseZ = voci[k]; break; }
+    if (confDsHs && baseZ && W.QMDJ_BIL_DSHS_CONF !== false) metti('DsHs conferma', 'DS col ZF e HS col TY: anche il DsHs dice la stessa cosa', baseZ.dir);
+    if (!(confDsHs && W.QMDJ_BIL_DSHS_TIENE !== false))
     if (W.QMDJ_BIL_DEATH_GENERA !== false && voci.some(function (v) { return v.k === 'Death TY'; }))
       for (k = 0; k < voci.length; k++) if (/^ZFTY: il giorno genera l'ora/.test(voci[k].t) && voci[k].peso) { voci[k].peso = 0; voci[k].t += ' — ma il TY ha la porta Death: non pesa'; }
     var L = 0, S = 0; for (k = 0; k < voci.length; k++) { if (voci[k].dir === 'LONG') L += voci[k].peso; else if (voci[k].dir === 'SHORT') S += voci[k].peso; }
