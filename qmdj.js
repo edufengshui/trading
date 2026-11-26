@@ -1070,6 +1070,12 @@
     if (zf && ty && zf !== ty) {
       // Edu 25/11/2026: "Lo ZF sarebbe Jia quindi l'unico clash serio avviene se sta sopra Geng" -> per lo ZF conta solo Geng
       // nel di pan del suo palazzo; gli altri clash interni del palazzo non pesano sullo ZF.
+      // Edu 26/11/2026 (carta 18, USDCAD 25/11/2026: ZF in Kun controlla il TY in Kan, View legata, eppure NON ha seguito): "Mi sono
+      // dimenticato di vedere lo ZF sopra Xin che cambia tutto". Xin nel di pan del palazzo dello ZF (anche lo stelo venuto dal centro)
+      // -> lo ZF e' indebolito: non segue. Corregge il "solo Geng" del 25/11: per lo ZF contano Geng e Xin.
+      // QMDJ_BIL_XIN: 'annulla' (default: un punto per "non segue" e i voti "lo ZF controlla il TY" non pesano) | 'peso1' | 'peso3' | 'off'.
+      var xinM = W.QMDJ_BIL_XIN || 'annulla';
+      if (xinM !== 'off' && (c.palaces[zf].diH === '辛' || c.palaces[zf].di2H === '辛')) metti('ZF sopra Xin', 'lo ZF (Jia) in ' + NOMEP[zf] + ' sta sopra Xin: lo ZF e\' indebolito -> non segue', opp, xinM === 'peso3' ? 3 : 1);
       if (c.palaces[zf].diH === '庚' || c.palaces[zf].di2H === '庚') metti('ZF sopra Geng', 'lo ZF (Jia) in ' + NOMEP[zf] + ' sta sopra Geng: clash serio, lo ZF e\' indebolito -> non segue', opp);
       // Edu 25/11/2026 (carta 10, USDCHF 23/11/2026: ZF in Dui e TY in Qian paralleli, tutto tace): "Il TY ha una penalita' nel suo
       // palazzo"; "la penalita' e' Ji sopra Geng o l'opposto. E' tipica del qimen". Ji sopra Geng o Geng sopra Ji (cielo/terra)
@@ -1169,6 +1175,10 @@
     if (!(confDsHs && W.QMDJ_BIL_DSHS_TIENE !== false))
     if (W.QMDJ_BIL_DEATH_GENERA !== false && voci.some(function (v) { return v.k === 'Death TY'; }))
       for (k = 0; k < voci.length; k++) if (/^ZFTY: il giorno genera l'ora/.test(voci[k].t) && voci[k].peso) { voci[k].peso = 0; voci[k].t += ' — ma il TY ha la porta Death: non pesa'; }
+    // ZF sopra Xin (Edu 26/11/2026, "cambia tutto"): uno ZF indebolito non controlla -> i voti che poggiano sul controllo dello ZF sul TY
+    // (la base "controlla", "il controllo tiene", la conferma del DsHs) non pesano. Parte 'annulla' = lettura di Claude del "cambia tutto".
+    if ((W.QMDJ_BIL_XIN || 'annulla') === 'annulla' && voci.some(function (v) { return v.k === 'ZF sopra Xin'; }) && zf && ty && CTL[PEL[zf]] === PEL[ty])
+      for (k = 0; k < voci.length; k++) if (voci[k].peso && voci[k].dir === trend && (/^ZFTY: il giorno controlla l'ora/.test(voci[k].t) || /il controllo tiene/.test(voci[k].t) || voci[k].k === 'DsHs conferma')) { voci[k].peso = 0; voci[k].t += ' — ma lo ZF sta sopra Xin: non pesa'; }
     var L = 0, S = 0; for (k = 0; k < voci.length; k++) { if (voci[k].dir === 'LONG') L += voci[k].peso; else if (voci[k].dir === 'SHORT') S += voci[k].peso; }
     var dir = L > S ? 'LONG' : S > L ? 'SHORT' : null;
     return { voci: voci, long: L, short: S, dir: dir, segue: dir ? dir === trend : null };
