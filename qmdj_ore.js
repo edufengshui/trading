@@ -131,6 +131,17 @@
         if (pty !== pc || !o.autoTY) { if (inPal(pc) && clP(pc)) { o.autoZF = true; o.autoZFlato = 'stelo'; }
           else if (PB[pc].indexOf(BR[i]) >= 0 && OPP[pc] && inPal(OPP[pc])) { o.autoZF = true; o.autoZFlato = 'ramo'; } }
         if (pty && pty !== pc && inPal(pty) && PB[pty].indexOf(BR[i]) >= 0) { o.completoTY = true; o.completoTYgenera = GEN[PEL[pty]] === PEL[pc]; }
+        // Edu 27/11/2026 (EURUSD 01/10/2026, Bing Chen): "Bing e' opposto a Delusion che contiene Chen (anche Assistant). Anche stelle e porte
+        // contengono i rami. Si possono usare nell'interpretazione se rilevanti". Autoclash PORTATO: lo stelo dell'ora sta in un palazzo e il
+        // ramo dell'ora e' contenuto nella porta o nella stella del palazzo di fronte. Segnato a parte (via 'porta' / 'stella'): "se rilevanti".
+        var portato = function (q) { var d = c.palaces[q], v = [];
+          if ((PB[DOORHOME[d.doorName || d.door]] || '').indexOf(BR[i]) >= 0) v.push('porta ' + (d.doorName || d.door));
+          if ((PB[STARHOME[d.star]] || '').indexOf(BR[i]) >= 0) v.push('stella ' + d.star);
+          return v.length ? v.join(' e ') : null; };
+        if (pty && pty !== pc && !o.autoTY && OPP[pty]) { var vT = inPal(pty) ? portato(OPP[pty]) : (inPal(OPP[pty]) ? portato(pty) : null);
+          if (vT) { o.autoTY = true; o.autoTYlato = 'portato'; o.autoTYvia = vT; o.autoTYgenera = GEN[PEL[pty]] === PEL[pc]; } }
+        if (!o.autoZF && OPP[pc]) { var vZ = inPal(pc) ? portato(OPP[pc]) : (inPal(OPP[pc]) ? portato(pc) : null);
+          if (vZ) { o.autoZF = true; o.autoZFlato = 'portato'; o.autoZFvia = vZ; } }
         if (inPal(pc) && PB[pc].indexOf(BR[i]) >= 0) o.completoZF = true;   // gia' dottrina del 28/10 ("identica nel suo stesso palazzo"); qui anche con lo stelo nella terra
       }
       L.push(o); }
