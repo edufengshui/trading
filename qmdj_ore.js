@@ -109,6 +109,13 @@
         if (pr) { o.output = true; o.outputStelo = outP.some(function (p) { return c.palaces[p].tiH === stemVisibile(gz); });
           o.outputMotivo = BR[i] + ' nel palazzo ' + pr + ' (Output timely del TY controllato)' + (o.outputStelo ? ', anche lo stelo' : '');
           o.outputVerso = segue === false ? 'contro il trend' : 'trend'; } }
+      // Edu 27/11/2026 (USDCAD 10/11/2026): "TY genera ZF e l'ora Ji Wei e Geng Shen autoclashano il TY".
+      // Autoclash del TY: lo stelo dell'ora sta nel palazzo del TY (cielo o terra) e il ramo dell'ora clasha un ramo di quel palazzo.
+      // Dettato per il caso in cui il TY genera lo ZF: l'ora muove nel verso del trend. Solo indicazione: non decide niente.
+      if (o && pc && pty && pty !== pc) { var stA = stemVisibile(gz), dT = c.palaces[pty];
+        if ([dT.tiH, dT.ti2H, dT.diH, dT.di2H].indexOf(stA) >= 0 && PB[pty].split('').some(function (b) { return clash(b, BR[i]); })) {
+          o.autoTY = true; o.autoTYgenera = GEN[PEL[pty]] === PEL[pc];
+          o.autoTYMotivo = stA + ' nel palazzo del TY, ' + BR[i] + ' clasha il palazzo' + (o.autoTYgenera ? ': il TY genera lo ZF, con il trend' : ''); } }
       L.push(o); }
     return L; }
   // barre GMT della giornata di trading (00..20) che cadono in ogni ramo: 子 23-01 -> solo 00
