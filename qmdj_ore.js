@@ -123,6 +123,16 @@
           if ([dO.tiH, dO.ti2H, dO.diH, dO.di2H].indexOf(stA) >= 0 && PB[OPP[pty]].split('').some(function (b) { return clash(b, BR[i]); })) {
             o.autoTY = true; o.autoTYlato = 'ramo'; o.autoTYgenera = GEN[PEL[pty]] === PEL[pc];
             o.autoTYMotivo = BR[i] + ' nel palazzo del TY, ' + stA + ' nel palazzo di fronte' + (o.autoTYgenera ? ': il TY genera lo ZF, con il trend' : ''); } } }
+      // Edu 27/11/2026 (EURUSD 01/10/2026): "Bing Chen e' di nuovo un autoclash mentre Geng Shen e' invece completo in TY che genera ZF".
+      // autoZF: l'autoclash sul palazzo dello ZF (Bing nella terra di Qian sotto lo ZF, Chen clasha Xu), nei due modi come per il TY.
+      // completoTY: stelo dell'ora (cielo o terra) e ramo dell'ora tutti e due nel palazzo del TY. Solo indicazioni: non decidono niente.
+      if (o && pc) { var stB = stemVisibile(gz), inPal = function (q) { var d = c.palaces[q]; return [d.tiH, d.ti2H, d.diH, d.di2H].indexOf(stB) >= 0; };
+        var clP = function (q) { return PB[q].split('').some(function (b) { return clash(b, BR[i]); }); };
+        if (pty !== pc || !o.autoTY) { if (inPal(pc) && clP(pc)) { o.autoZF = true; o.autoZFlato = 'stelo'; }
+          else if (PB[pc].indexOf(BR[i]) >= 0 && OPP[pc] && inPal(OPP[pc])) { o.autoZF = true; o.autoZFlato = 'ramo'; } }
+        if (pty && pty !== pc && inPal(pty) && PB[pty].indexOf(BR[i]) >= 0) { o.completoTY = true; o.completoTYgenera = GEN[PEL[pty]] === PEL[pc]; }
+        if (inPal(pc) && PB[pc].indexOf(BR[i]) >= 0) o.completoZF = true;   // gia' dottrina del 28/10 ("identica nel suo stesso palazzo"); qui anche con lo stelo nella terra
+      }
       L.push(o); }
     return L; }
   // barre GMT della giornata di trading (00..20) che cadono in ogni ramo: 子 23-01 -> solo 00
