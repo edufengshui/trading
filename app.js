@@ -1280,6 +1280,13 @@ function caricaSegnaliEA(data) {
     .then(function (j) { if (j && j.data === data) { SEGNALI_EA = j; try { renderReportTreSistemi(); } catch (e) {} } })
     .catch(function () {});
 }
+// S79 (27/11/2026): la SECONDA ENTRATA dell'EA (forti e medi; livello calcolato dalla raccolta notturna, campo "seconda" di segnali.json).
+function eaSeconda(e, data) {
+  if (e.livello !== 'LI' || !SEGNALI_EA || SEGNALI_EA.data !== data) return '';
+  var t = (SEGNALI_EA.trades || []).filter(function (x) { return x.cross === e.cross && x.dir === e.signal; })[0];
+  if (!t || !t.seconda || !(t.seconda.livello > 0)) return '';
+  return '2ª entrata 0,01 se ' + (e.signal === 'LONG' ? 'scende a ' : 'sale a ') + String(t.seconda.livello).replace('.', ',') + ' (ore piene 02-07 GMT)';
+}
 var EA_NON_TRADARE = [{ cross: 'AUDUSD', forza: 'debole', trend: 'contro' }, { cross: 'EURGBP', forza: 'debole' }];
 function eaMotivoNo(e, data) {
   if (e.livello !== 'LI') return null;
@@ -1363,7 +1370,7 @@ function renderReportTreSistemi() {
       // etichetta della fiducia TOLTA dallo schermo (Edu 20/11/2026, "Togli allora"): sui 4.801 trade di Lio dello storico
       // alta 65,6% · media 65,3% · bassa 65,9%, non separa niente. e.fiducia resta calcolata e nel registro.
       (e.misura ? '<span style="font-size:11px;font-weight:800;padding:1px 6px;border-radius:6px;margin-left:6px;color:#0e1022;background:' + (e.misura === 'piena' ? '#58a6ff' : '#d2a8ff') + '" title="misura della posizione: piena sulle conclusioni forti, meta\' su medie e deboli">' + (e.misura === 'piena' ? 'posizione piena' : 'mezza posizione') + ' · ' + (e.liForza || '') + '</span>' : '') +
-      '<span style="' + css.note + '">' + (e.avviso ? '<b style="color:#e3b341">' + e.avviso + '</b>' : '') + '</span>' +
+      '<span style="' + css.note + '">' + (e.avviso ? '<b style="color:#e3b341">' + e.avviso + '</b>' : '') + (eaSeconda(e, forexData.date) ? (e.avviso ? ' · ' : '') + eaSeconda(e, forexData.date) : '') + '</span>' +
       (REGOLE ? listaRegole(e.voci + (e.dlrVia ? ' · via DLR: ' + e.dlrVia : '')) : '') + '</div>';
   }).join('') || '<div style="padding:8px 0;opacity:.7">Nessun cross da tradare oggi: nessun gradino della scala.</div>';
   var righeCant = inCantina.map(function (e) {
