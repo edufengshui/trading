@@ -115,7 +115,14 @@
       if (o && pc && pty && pty !== pc) { var stA = stemVisibile(gz), dT = c.palaces[pty];
         if ([dT.tiH, dT.ti2H, dT.diH, dT.di2H].indexOf(stA) >= 0 && PB[pty].split('').some(function (b) { return clash(b, BR[i]); })) {
           o.autoTY = true; o.autoTYgenera = GEN[PEL[pty]] === PEL[pc];
-          o.autoTYMotivo = stA + ' nel palazzo del TY, ' + BR[i] + ' clasha il palazzo' + (o.autoTYgenera ? ': il TY genera lo ZF, con il trend' : ''); } }
+          o.autoTYlato = 'stelo';
+          o.autoTYMotivo = stA + ' nel palazzo del TY, ' + BR[i] + ' clasha il palazzo' + (o.autoTYgenera ? ': il TY genera lo ZF, con il trend' : ''); }
+        // Edu 27/11/2026 (EURJPY 24/09/2026, Xin Mao): "anche questa ha un autoclash". Al rovescio: il ramo dell'ora e' un ramo del palazzo
+        // del TY e lo stelo dell'ora sta nel palazzo di fronte (il ramo dell'ora clasha un ramo del palazzo dello stelo).
+        else if (PB[pty].indexOf(BR[i]) >= 0 && OPP[pty]) { var dO = c.palaces[OPP[pty]];
+          if ([dO.tiH, dO.ti2H, dO.diH, dO.di2H].indexOf(stA) >= 0 && PB[OPP[pty]].split('').some(function (b) { return clash(b, BR[i]); })) {
+            o.autoTY = true; o.autoTYlato = 'ramo'; o.autoTYgenera = GEN[PEL[pty]] === PEL[pc];
+            o.autoTYMotivo = BR[i] + ' nel palazzo del TY, ' + stA + ' nel palazzo di fronte' + (o.autoTYgenera ? ': il TY genera lo ZF, con il trend' : ''); } } }
       L.push(o); }
     return L; }
   // barre GMT della giornata di trading (00..20) che cadono in ogni ramo: 子 23-01 -> solo 00
