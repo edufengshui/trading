@@ -1431,7 +1431,7 @@ function renderReportTreSistemi() {
       (saltatiEA.length ? '<div style="' + css.sect + ';background:rgba(227,179,65,.05);border-top:1px solid rgba(255,255,255,.10)">' +
         '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">NON SI TRADANO · saltati anche su MetaTrader</div>' + righeSalt + '</div>' : '') +
       (qimenFermi.length ? '<div style="' + css.sect + ';background:rgba(88,166,255,.06);border-top:1px solid rgba(255,255,255,.10)">' +
-        '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">LIO FERMO · il qimen dice (a mano, non va su MetaTrader)</div>' + righeQF + '</div>' : '') +
+        '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">' + (SEGNALI_EA.qimen_all_ea ? 'LIO FERMO · decide il qimen (entra su MetaTrader a 0,01)' : 'LIO FERMO · il qimen dice (a mano, non va su MetaTrader)') + '</div>' + righeQF + '</div>' : '') +
       (inCantina.length ? '<div style="' + css.sect + ';background:rgba(63,185,80,.05);border-top:1px solid rgba(255,255,255,.10)">' +
         '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">DA OSSERVARE · non si tradano (Leggo io con conclusione media o debole)</div>' + righeCant + '</div>' : '') +
       '<details style="' + css.sect + ';background:rgba(248,81,73,.05);border-top:1px solid rgba(255,255,255,.10)">' +

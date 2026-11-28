@@ -21,6 +21,7 @@
     [/Da tradare oggi/g, 'To trade today'],
     [/NON SI TRADANO · saltati anche su MetaTrader/g, 'NOT TRADED · also skipped on MetaTrader'],
     [/LIO FERMO · il qimen dice \(a mano, non va su MetaTrader\)/g, 'LIO SILENT · qimen says (manual, not sent to MetaTrader)'],
+    [/LIO FERMO · decide il qimen \(entra su MetaTrader a 0,01\)/g, 'LIO SILENT · qimen decides (enters on MetaTrader at 0.01)'],
     [/qimen con scarto /g, 'qimen by a margin of '], [/qimen di misura/g, 'qimen by a narrow margin'],
     [/2ª entrata 0,01 se scende a ([0-9,]+) \(ore piene 02-07 GMT\)/g, '2nd entry 0.01 if it falls to $1 (on the hour, 02-07 GMT)'],
     [/2ª entrata 0,01 se sale a ([0-9,]+) \(ore piene 02-07 GMT\)/g, '2nd entry 0.01 if it rises to $1 (on the hour, 02-07 GMT)'],
