@@ -20,6 +20,8 @@
     [/ e riprova\./g, ' and try again.'],
     [/Da tradare oggi/g, 'To trade today'],
     [/NON SI TRADANO · saltati anche su MetaTrader/g, 'NOT TRADED · also skipped on MetaTrader'],
+    [/LIO FERMO · il qimen dice \(a mano, non va su MetaTrader\)/g, 'LIO SILENT · qimen says (manual, not sent to MetaTrader)'],
+    [/qimen con scarto /g, 'qimen by a margin of '], [/qimen di misura/g, 'qimen by a narrow margin'],
     [/2ª entrata 0,01 se scende a ([0-9,]+) \(ore piene 02-07 GMT\)/g, '2nd entry 0.01 if it falls to $1 (on the hour, 02-07 GMT)'],
     [/2ª entrata 0,01 se sale a ([0-9,]+) \(ore piene 02-07 GMT\)/g, '2nd entry 0.01 if it rises to $1 (on the hour, 02-07 GMT)'],
     [/DA TRADARE · in ordine di gradino/g, 'TO TRADE · in order of level'],

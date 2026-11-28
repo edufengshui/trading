@@ -1385,6 +1385,15 @@ function renderReportTreSistemi() {
       '<span style="font-size:12px;opacity:.9"><b>non si trada</b>' + (REGOLE ? ' · ' + e.eaNo : '') + '</span>' +
       '<span style="' + css.note + '"></span></div>';
   }).join('');
+  // S80 (28/11/2026, Edu: "Vale la pena usare il qimen quando Lio tace, fallo"): dove Lio e' fermo si mostra il verdetto del qimen
+  // (bilancia), scritto dalla raccolta notturna in segnali.json (campo qimen_lio_fermo). Non va su MetaTrader: si lancia a mano.
+  var qimenFermi = (SEGNALI_EA && SEGNALI_EA.data === forexData.date && SEGNALI_EA.qimen_lio_fermo) || [];
+  var righeQF = qimenFermi.map(function (q) {
+    return '<div class="repline" data-cross="' + q.cross + '" style="' + css.row + ';cursor:pointer">' +
+      '<span style="' + css.name + '">' + q.cross + '</span>' + badge(q.dir) +
+      '<span style="font-size:12px;opacity:.9">' + (q.segue ? 'segue il trend' : 'non segue il trend') + ' · qimen ' + (q.scarto >= 2 ? 'con scarto ' + q.scarto : 'di misura') + '</span>' +
+      '<span style="' + css.note + '"></span></div>';
+  }).join('');
   var righeNo = esclusi.map(function (e) {
     return '<div style="' + css.row + '">' +
       '<span style="' + css.name + ';opacity:.75">' + e.cross + '</span>' + badge('NO TRADE') +
@@ -1421,6 +1430,8 @@ function renderReportTreSistemi() {
       '</div>' +
       (saltatiEA.length ? '<div style="' + css.sect + ';background:rgba(227,179,65,.05);border-top:1px solid rgba(255,255,255,.10)">' +
         '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">NON SI TRADANO · saltati anche su MetaTrader</div>' + righeSalt + '</div>' : '') +
+      (qimenFermi.length ? '<div style="' + css.sect + ';background:rgba(88,166,255,.06);border-top:1px solid rgba(255,255,255,.10)">' +
+        '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">LIO FERMO · il qimen dice (a mano, non va su MetaTrader)</div>' + righeQF + '</div>' : '') +
       (inCantina.length ? '<div style="' + css.sect + ';background:rgba(63,185,80,.05);border-top:1px solid rgba(255,255,255,.10)">' +
         '<div style="font-size:12px;letter-spacing:1px;opacity:.65;margin-bottom:4px">DA OSSERVARE · non si tradano (Leggo io con conclusione media o debole)</div>' + righeCant + '</div>' : '') +
       '<details style="' + css.sect + ';background:rgba(248,81,73,.05);border-top:1px solid rgba(255,255,255,.10)">' +
